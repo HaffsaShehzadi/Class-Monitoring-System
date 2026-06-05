@@ -3,9 +3,9 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView } fr
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 const DUTIES = [
-  { id: 1, title: 'Monitor Class 10-A', teacher: 'Mr. Ali', time: '09:00 AM' },
-  { id: 2, title: 'Check Lab 2', teacher: 'Mrs. Sara', time: '11:30 AM' },
-  { id: 3, title: 'Exam Duty Hall B', teacher: 'Mr. Usman', time: '02:00 PM' },
+  { id: 1, title: 'Monitor Class 10-A', teacher: 'Mr. Hamza', time: '09:00 AM' },
+  { id: 2, title: 'Check Lab 2', teacher: 'Mrs.Haffsa', time: '11:30 AM' },
+  { id: 3, title: 'Exam Duty Hall B', teacher: 'Mrs. Eman', time: '02:00 PM' },
 ];
 
 export default function AssignDutyScreen({ onBack }: { onBack: () => void }) {
