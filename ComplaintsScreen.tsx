@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Modal, TextInput } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Modal } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 const COMPLAINTS = [
@@ -31,58 +31,64 @@ const COMPLAINTS = [
 
 export default function ComplaintsScreen({ onBack }: { onBack: () => void }) {
   const [complaints, setComplaints] = useState(COMPLAINTS);
+  const [activeTab, setActiveTab] = useState<'pending' | 'completed'>('pending');
   
   // Detail Screen Modal
   const [detailModalVisible, setDetailModalVisible] = useState(false);
   const [selectedComplaint, setSelectedComplaint] = useState<any>(null);
-  
-  // Action (Note) Modal
-  const [actionModalVisible, setActionModalVisible] = useState(false);
-  const [actionMode, setActionMode] = useState<'resolve' | 'reject'>('resolve');
-  const [note, setNote] = useState('');
 
   const openDetailScreen = (complaint: any) => {
     setSelectedComplaint(complaint);
     setDetailModalVisible(true);
   };
 
-  const openActionModal = (mode: 'resolve' | 'reject') => {
-    setActionMode(mode);
-    setNote('');
-    setActionModalVisible(true);
+  const handleResolve = () => {
+    Alert.alert(
+      '✅ Resolve Complaint',
+      'Are you sure you want to resolve this complaint?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Resolve',
+          onPress: () => {
+            setComplaints(prev => prev.map(c => 
+              c.id === selectedComplaint.id ? { ...c, status: 'resolved' } : c
+            ));
+            setDetailModalVisible(false);
+            setSelectedComplaint(null);
+            Alert.alert('Success', '✅ Complaint resolved successfully!');
+          }
+        }
+      ]
+    );
   };
 
-  const handleConfirmAction = () => {
-    if (!note.trim()) {
-      Alert.alert(
-        '⚠️ Required', 
-        `Please enter a ${actionMode === 'resolve' ? 'resolution note' : 'reason for rejection'}.`
-      );
-      return;
-    }
-
-    setComplaints(prev => prev.map(c => 
-      c.id === selectedComplaint.id ? { ...c, status: actionMode === 'resolve' ? 'resolved' : 'rejected' } : c
-    ));
-
-    const successMsg = actionMode === 'resolve' 
-      ? `✅ Resolved!\nNote: ${note}\n\n📩 Teacher ki attendance update kar di gayi hai.`
-      : `❌ Rejected!\nReason: ${note}\n\n📩 Teacher ko rejection message bhej diya gaya hai.`;
-
-    Alert.alert('Success', successMsg, [
-      { 
-        text: 'OK', 
-        onPress: () => {
-          setActionModalVisible(false);
-          setDetailModalVisible(false);
-          setNote('');
-          setSelectedComplaint(null);
-        } 
-      }
-    ]);
+  const handleReject = () => {
+    Alert.alert(
+      '❌ Reject Complaint',
+      'Are you sure you want to reject this complaint?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Reject',
+          style: 'destructive',
+          onPress: () => {
+            setComplaints(prev => prev.map(c => 
+              c.id === selectedComplaint.id ? { ...c, status: 'rejected' } : c
+            ));
+            setDetailModalVisible(false);
+            setSelectedComplaint(null);
+            Alert.alert('Success', '❌ Complaint rejected!');
+          }
+        }
+      ]
+    );
   };
 
   const pendingComplaints = complaints.filter(c => c.status === 'pending');
+  const completedComplaints = complaints.filter(c => c.status === 'resolved' || c.status === 'rejected');
+
+  const displayComplaints = activeTab === 'pending' ? pendingComplaints : completedComplaints;
 
   return (
     <View style={styles.container}>
@@ -93,15 +99,54 @@ export default function ComplaintsScreen({ onBack }: { onBack: () => void }) {
         <Text style={styles.headerTitle}>Resolve Complaints</Text>
         <View style={{ width: 24 }} />
       </View>
+
+      {/* Tabs */}
+      <View style={styles.tabContainer}>
+        <TouchableOpacity 
+          style={[styles.tab, activeTab === 'pending' && styles.activeTab]}
+          onPress={() => setActiveTab('pending')}
+        >
+          <MaterialCommunityIcons 
+            name="clock-outline" 
+            size={20} 
+            color={activeTab === 'pending' ? '#1A237E' : '#666'} 
+          />
+          <Text style={[styles.tabText, activeTab === 'pending' && styles.activeTabText]}>
+            Pending ({pendingComplaints.length})
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={[styles.tab, activeTab === 'completed' && styles.activeTab]}
+          onPress={() => setActiveTab('completed')}
+        >
+          <MaterialCommunityIcons 
+            name="check-all" 
+            size={20} 
+            color={activeTab === 'completed' ? '#1A237E' : '#666'} 
+          />
+          <Text style={[styles.tabText, activeTab === 'completed' && styles.activeTabText]}>
+            Resolved/Rejected ({completedComplaints.length})
+          </Text>
+        </TouchableOpacity>
+      </View>
       
       <ScrollView contentContainerStyle={styles.list}>
-        {pendingComplaints.length === 0 ? (
+        {displayComplaints.length === 0 ? (
           <View style={styles.emptyContainer}>
-            <MaterialCommunityIcons name="check-circle-outline" size={60} color="#4CAF50" />
-            <Text style={styles.emptyText}>🎉 All complaints resolved!</Text>
+            <MaterialCommunityIcons 
+              name={activeTab === 'pending' ? 'check-circle-outline' : 'inbox-outline'} 
+              size={60} 
+              color={activeTab === 'pending' ? '#4CAF50' : '#999'} 
+            />
+            <Text style={styles.emptyText}>
+              {activeTab === 'pending' 
+                ? '🎉 All complaints resolved!' 
+                : 'No resolved or rejected complaints yet'}
+            </Text>
           </View>
         ) : (
-          pendingComplaints.map(complaint => (
+          displayComplaints.map(complaint => (
             <View key={complaint.id} style={styles.card}>
               <View style={styles.cardContent}>
                 <View style={styles.avatar}>
@@ -111,6 +156,22 @@ export default function ComplaintsScreen({ onBack }: { onBack: () => void }) {
                   <Text style={styles.teacher}>{complaint.teacher}</Text>
                   <Text style={styles.department}>{complaint.subject} Department</Text>
                 </View>
+                {/* Status Badge for Completed Tab */}
+                {complaint.status !== 'pending' && (
+                  <View style={[
+                    styles.statusBadge,
+                    complaint.status === 'resolved' ? styles.resolvedBadge : styles.rejectedBadge
+                  ]}>
+                    <MaterialCommunityIcons 
+                      name={complaint.status === 'resolved' ? 'check-circle' : 'close-circle'} 
+                      size={14} 
+                      color="#FFF" 
+                    />
+                    <Text style={styles.statusText}>
+                      {complaint.status === 'resolved' ? 'Resolved' : 'Rejected'}
+                    </Text>
+                  </View>
+                )}
               </View>
               
               <TouchableOpacity 
@@ -156,8 +217,15 @@ export default function ComplaintsScreen({ onBack }: { onBack: () => void }) {
               <View style={styles.complaintLabelRow}>
                 <MaterialCommunityIcons name="label" size={18} color="#1A237E" />
                 <Text style={styles.complaintLabel}>Status</Text>
-                <View style={styles.pendingBadge}>
-                  <Text style={styles.pendingText}>Pending</Text>
+                <View style={[
+                  styles.statusBadge,
+                  selectedComplaint?.status === 'resolved' ? styles.resolvedBadge : 
+                  selectedComplaint?.status === 'rejected' ? styles.rejectedBadge : styles.pendingBadge
+                ]}>
+                  <Text style={styles.statusText}>
+                    {selectedComplaint?.status === 'pending' ? 'Pending' : 
+                     selectedComplaint?.status === 'resolved' ? 'Resolved' : 'Rejected'}
+                  </Text>
                 </View>
               </View>
               
@@ -168,70 +236,26 @@ export default function ComplaintsScreen({ onBack }: { onBack: () => void }) {
             </View>
           </ScrollView>
           
-          <View style={styles.bottomActions}>
-            <TouchableOpacity 
-              style={[styles.bottomBtn, styles.bottomRejectBtn]} 
-              onPress={() => openActionModal('reject')}
-            >
-              <MaterialCommunityIcons name="close-circle" size={20} color="#FFF" />
-              <Text style={styles.bottomBtnText}>Reject</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={[styles.bottomBtn, styles.bottomResolveBtn]} 
-              onPress={() => openActionModal('resolve')}
-            >
-              <MaterialCommunityIcons name="check-circle" size={20} color="#FFF" />
-              <Text style={styles.bottomBtnText}>Resolve</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Action Modal (Note Input) */}
-      <Modal visible={actionModalVisible} transparent animationType="fade">
-        <View style={styles.actionModalOverlay}>
-          <View style={styles.actionModalContent}>
-            <View style={styles.actionModalHeader}>
-              <Text style={styles.actionModalTitle}>
-                {actionMode === 'resolve' ? '✅ Resolve Complaint' : '❌ Reject Complaint'}
-              </Text>
-              <TouchableOpacity onPress={() => setActionModalVisible(false)}>
-                <MaterialCommunityIcons name="close" size={24} color="#666" />
-              </TouchableOpacity>
-            </View>
-            
-            <TextInput
-              style={styles.modalInput}
-              placeholder={actionMode === 'resolve' 
-                ? "Resolution note..." 
-                : "Rejection reason..."}
-              multiline
-              numberOfLines={4}
-              value={note}
-              onChangeText={setNote}
-              textAlignVertical="top"
-            />
-            
-            <View style={styles.modalButtons}>
+          {/* Only show Resolve/Reject buttons for pending complaints */}
+          {selectedComplaint?.status === 'pending' && (
+            <View style={styles.bottomActions}>
               <TouchableOpacity 
-                style={[styles.modalBtn, styles.cancelBtn]} 
-                onPress={() => setActionModalVisible(false)}
+                style={[styles.bottomBtn, styles.bottomRejectBtn]} 
+                onPress={handleReject}
               >
-                <Text style={styles.cancelBtnText}>Cancel</Text>
+                <MaterialCommunityIcons name="close-circle" size={20} color="#FFF" />
+                <Text style={styles.bottomBtnText}>Reject</Text>
               </TouchableOpacity>
               
               <TouchableOpacity 
-                style={[
-                  styles.modalBtn, 
-                  actionMode === 'resolve' ? styles.confirmResolveBtn : styles.confirmRejectBtn
-                ]} 
-                onPress={handleConfirmAction}
+                style={[styles.bottomBtn, styles.bottomResolveBtn]} 
+                onPress={handleResolve}
               >
-                <Text style={styles.confirmBtnText}>Confirm</Text>
+                <MaterialCommunityIcons name="check-circle" size={20} color="#FFF" />
+                <Text style={styles.bottomBtnText}>Resolve</Text>
               </TouchableOpacity>
             </View>
-          </View>
+          )}
         </View>
       </Modal>
     </View>
@@ -252,10 +276,45 @@ const styles = StyleSheet.create({
     borderBottomColor: '#E0E0E0' 
   },
   headerTitle: { fontSize: 20, fontWeight: '700', color: '#1A237E' },
+  
+  // Tab Styles
+  tabContainer: { 
+    flexDirection: 'row', 
+    backgroundColor: '#FFF', 
+    padding: 10, 
+    gap: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0'
+  },
+  tab: { 
+    flex: 1, 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    paddingVertical: 12, 
+    borderRadius: 10, 
+    backgroundColor: '#F5F5F5',
+    gap: 6
+  },
+  activeTab: { 
+    backgroundColor: '#E8EAF6',
+    borderWidth: 2,
+    borderColor: '#1A237E'
+  },
+  tabText: { 
+    fontSize: 13, 
+    fontWeight: '700', 
+    color: '#666' 
+  },
+  activeTabText: { 
+    color: '#1A237E',
+    fontWeight: '800'
+  },
+  
   list: { padding: 15 },
   
   emptyContainer: { alignItems: 'center', marginTop: 80 },
-  emptyText: { textAlign: 'center', marginTop: 15, fontSize: 18, fontWeight: '600', color: '#666' },
+  emptyText: { textAlign: 'center', marginTop: 15, fontSize: 16, fontWeight: '600', color: '#666' },
   
   // Card Styles
   card: { backgroundColor: '#FFF', borderRadius: 12, padding: 15, marginBottom: 12, elevation: 2 },
@@ -272,6 +331,24 @@ const styles = StyleSheet.create({
   infoContainer: { flex: 1 },
   teacher: { fontSize: 16, fontWeight: '700', color: '#1A237E', marginBottom: 2 },
   department: { fontSize: 14, color: '#666', fontWeight: '500' },
+  
+  // Status Badge
+  statusBadge: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    paddingHorizontal: 10, 
+    paddingVertical: 5, 
+    borderRadius: 15,
+    gap: 4
+  },
+  pendingBadge: { backgroundColor: '#FFF3E0' },
+  resolvedBadge: { backgroundColor: '#4CAF50' },
+  rejectedBadge: { backgroundColor: '#F44336' },
+  statusText: { 
+    color: '#FFF', 
+    fontSize: 11, 
+    fontWeight: '800' 
+  },
   
   viewBtn: { 
     flexDirection: 'row', 
@@ -324,9 +401,6 @@ const styles = StyleSheet.create({
   complaintLabel: { fontSize: 14, color: '#666', fontWeight: '600', marginLeft: 8, flex: 1 },
   complaintValue: { fontSize: 14, color: '#333', fontWeight: '600' },
   
-  pendingBadge: { backgroundColor: '#FFF3E0', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
-  pendingText: { color: '#F57C00', fontSize: 12, fontWeight: '700' },
-  
   descriptionBox: { marginTop: 15 },
   descriptionLabel: { fontSize: 14, color: '#1A237E', fontWeight: '700', marginBottom: 8 },
   descriptionText: { 
@@ -361,49 +435,4 @@ const styles = StyleSheet.create({
   bottomRejectBtn: { backgroundColor: '#F44336' },
   bottomResolveBtn: { backgroundColor: '#4CAF50' },
   bottomBtnText: { color: '#FFF', fontSize: 15, fontWeight: '700' },
-  
-  // Action Modal
-  actionModalOverlay: { 
-    flex: 1, 
-    backgroundColor: 'rgba(0,0,0,0.6)', 
-    justifyContent: 'center', 
-    alignItems: 'center' 
-  },
-  actionModalContent: { 
-    backgroundColor: '#FFF', 
-    borderRadius: 16, 
-    padding: 20, 
-    width: '90%', 
-    maxWidth: 400, 
-    elevation: 10 
-  },
-  actionModalHeader: { 
-    flexDirection: 'row', 
-    justifyContent: 'space-between', 
-    alignItems: 'center', 
-    marginBottom: 15 
-  },
-  actionModalTitle: { fontSize: 18, fontWeight: '800', color: '#1A237E' },
-  
-  modalInput: { 
-    backgroundColor: '#F9F9F9', 
-    borderWidth: 1.5, 
-    borderColor: '#DDD', 
-    borderRadius: 10, 
-    padding: 12, 
-    fontSize: 14, 
-    minHeight: 80, 
-    textAlignVertical: 'top', 
-    marginBottom: 20 
-  },
-  
-  modalButtons: { flexDirection: 'row', justifyContent: 'space-between', gap: 12 },
-  modalBtn: { flex: 1, paddingVertical: 14, borderRadius: 10, alignItems: 'center' },
-  
-  cancelBtn: { backgroundColor: '#E0E0E0' },
-  cancelBtnText: { color: '#666', fontSize: 15, fontWeight: '700' },
-  
-  confirmResolveBtn: { backgroundColor: '#4CAF50' },
-  confirmRejectBtn: { backgroundColor: '#F44336' },
-  confirmBtnText: { color: '#FFF', fontSize: 15, fontWeight: '700' },
 });
