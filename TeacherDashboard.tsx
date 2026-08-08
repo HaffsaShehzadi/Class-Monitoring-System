@@ -2,18 +2,18 @@ import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
-export default function MonitoringOfficialDashboard({ onNavigate, onLogout }: any) {
+export default function TeacherDashboard({ onNavigate, onLogout }: any) {
   const menuItems = [
-    { id: 'markAttendance', title: 'Mark Attendance', icon: 'clipboard-check', color: '#4CAF50' },
-    { id: 'viewAssignDuty', title: 'View Assign Duty', icon: 'calendar-check', color: '#2196F3' },
     { id: 'todayAttendance', title: "Today's Attendance", icon: 'calendar-today', color: '#FF9800' },
     { id: 'attendanceHistoryReport', title: 'Attendance History', icon: 'history', color: '#00BCD4' },
+    { id: 'submitComplaint', title: 'Submit Complaint', icon: 'alert-circle', color: '#F44336' },
+    
   ];
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.welcomeText}>Welcome, Monitoring</Text>
+        <Text style={styles.welcomeText}>Welcome, Teacher</Text>
         <TouchableOpacity onPress={onLogout}>
           <MaterialCommunityIcons name="logout" size={24} color="#FFF" />
         </TouchableOpacity>
@@ -24,7 +24,7 @@ export default function MonitoringOfficialDashboard({ onNavigate, onLogout }: an
             <TouchableOpacity 
               key={item.id} 
               style={styles.card} 
-              onPress={() => onNavigate(item.id, { userRole: 'monitoring' })}
+              onPress={() => onNavigate(item.id, { userRole: 'teacher' })}
             >
               <View style={[styles.iconBox, { backgroundColor: item.color + '20' }]}>
                 <MaterialCommunityIcons name={item.icon} size={35} color={item.color} />

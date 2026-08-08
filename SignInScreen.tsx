@@ -1,12 +1,15 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert, Image } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
-export default function SignInScreen({ onBack, onSignIn, onForgotPassword }: { 
-  onBack: () => void, 
-  onSignIn: () => void,
-  onForgotPassword: () => void 
-}) {
+export default function SignInScreen({ 
+  onBack, 
+  onAdminLogin, 
+  onTeacherLogin, 
+  onMonitoringLogin,
+  onSignUp,
+  onForgotPassword 
+}: any) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -17,23 +20,29 @@ export default function SignInScreen({ onBack, onSignIn, onForgotPassword }: {
       return;
     }
     
-    // Email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       Alert.alert('⚠️ Invalid Email', 'Please enter a valid email address');
       return;
     }
 
-    // Simple demo login (baad mein API se connect karenge)
     if (password.length < 6) {
       Alert.alert('⚠️ Invalid Password', 'Password must be at least 6 characters');
       return;
     }
 
-    // Demo: Successful login
-    Alert.alert('✅ Signed In!', `Welcome back!\nEmail: ${email}`, [
-      { text: 'OK', onPress: onSignIn }
-    ]);
+    // ✅ Email ke basis pe role auto-detect
+    const lowerEmail = email.toLowerCase();
+    if (lowerEmail.includes('admin')) {
+      onAdminLogin();
+    } else if (lowerEmail.includes('teacher')) {
+      onTeacherLogin();
+    } else if (lowerEmail.includes('monitor')) {
+      onMonitoringLogin();
+    } else {
+      // Default: Admin Dashboard
+      onAdminLogin();
+    }
   };
 
   return (
@@ -110,9 +119,18 @@ export default function SignInScreen({ onBack, onSignIn, onForgotPassword }: {
         {/* Sign Up Link */}
         <View style={styles.footer}>
           <Text style={styles.footerText}>Don't have an account? </Text>
-          <TouchableOpacity onPress={onBack}>
+          <TouchableOpacity onPress={onSignUp}>
             <Text style={styles.linkText}>Sign up here</Text>
           </TouchableOpacity>
+        </View>
+
+        {/* Demo Login Info */}
+        <View style={styles.demoBox}>
+          <Text style={styles.demoTitle}>📌 Demo Login Emails:</Text>
+          <Text style={styles.demoText}>• Admin: admin@test.com</Text>
+          <Text style={styles.demoText}>• Teacher: teacher@test.com</Text>
+          <Text style={styles.demoText}>• Monitoring: monitor@test.com</Text>
+          <Text style={styles.demoText}>• Password: 123456 (any 6+ chars)</Text>
         </View>
       </View>
     </ScrollView>
@@ -148,11 +166,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 12,
     marginBottom: 5,
+    width: '100%',
   },
   inputIcon: { marginRight: 10 },
   input: { flex: 1, paddingVertical: 14, fontSize: 16 },
   eyeIcon: { padding: 5 },
-  forgotContainer: { alignSelf: 'flex-end', marginBottom: 20 },
+  forgotContainer: { alignSelf: 'flex-end', marginBottom: 20, width: '100%' },
   forgotText: { fontSize: 14, color: '#1A237E', fontWeight: '500' },
   signInButton: {
     backgroundColor: '#1A237E',
@@ -175,4 +194,15 @@ const styles = StyleSheet.create({
   footer: { flexDirection: 'row', justifyContent: 'center', marginTop: 10, marginBottom: 30 },
   footerText: { fontSize: 14, color: '#666' },
   linkText: { fontSize: 14, color: '#1A237E', fontWeight: '600' },
+  demoBox: {
+    backgroundColor: '#E8EAF6',
+    padding: 15,
+    borderRadius: 10,
+    width: '100%',
+    marginTop: 10,
+    borderLeftWidth: 4,
+    borderLeftColor: '#1A237E',
+  },
+  demoTitle: { fontSize: 14, fontWeight: '700', color: '#1A237E', marginBottom: 8 },
+  demoText: { fontSize: 13, color: '#333', marginBottom: 4 },
 });

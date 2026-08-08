@@ -1,114 +1,287 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Modal, TextInput } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, SafeAreaView, Modal } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
-const APPROVED_USERS = [
-  { id: 1, name: 'Ali Khan', role: 'Teacher', email: 'ali@test.com', department: 'Math', assigned: false },
-  { id: 2, name: 'Sara Ahmed', role: 'Monitoring Official', email: 'sara@test.com', department: '-', assigned: true },
-  { id: 3, name: 'Usman Raza', role: 'Teacher', email: 'usman@test.com', department: 'Physics', assigned: false },
-  { id: 4, name: 'Fatima Malik', role: 'Teacher', email: 'fatima@test.com', department: 'English', assigned: false },
+const INITIAL_USERS = [
+  { id: 1, name: 'Ali Khan', role: 'Teacher', department: 'Math', joinDate: '2024-01-15' },
+  { id: 2, name: 'Sara Ahmed', role: 'Monitoring Official', department: '-', joinDate: '2024-02-20' },
+  { id: 3, name: 'Usman Raza', role: 'Teacher', department: 'Physics', joinDate: '2024-03-10' },
+  { id: 4, name: 'Fatima Malik', role: 'Teacher', department: 'English', joinDate: '2024-01-25' },
+  { id: 5, name: 'Ahmed Hassan', role: 'Monitoring Official', department: '-', joinDate: '2024-04-05' },
 ];
 
-export default function UserProfilesScreen({ onBack }: { onBack: () => void }) {
-  const [users, setUsers] = useState(APPROVED_USERS);
-  const [modalVisible, setModalVisible] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<number | null>(null);
-  const [dutyNote, setDutyNote] = useState('');
+export default function UserProfilesScreen({ onBack }: any) {
+  const [users, setUsers] = useState(INITIAL_USERS);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterRole, setFilterRole] = useState('All');
+  const [selectedUser, setSelectedUser] = useState<any>(null);
+  const [viewModalVisible, setViewModalVisible] = useState(false);
 
-  const handleAssignDuty = () => {
-    if (!selectedUser || !dutyNote.trim()) {
-      Alert.alert('⚠️ Note Required', 'Please enter duty assignment details');
-      return;
-    }
-    setUsers(prev => prev.map(u => 
-      u.id === selectedUser ? { ...u, assigned: true } : u
-    ));
-    Alert.alert('✅ Duty Assigned', `Duty assigned to user #${selectedUser}\nNote: ${dutyNote}`);
-    setModalVisible(false);
-    setSelectedUser(null);
-    setDutyNote('');
+  const filteredUsers = users.filter(user => {
+    const matchesSearch = user.name.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesRole = filterRole === 'All' || user.role === filterRole;
+    return matchesSearch && matchesRole;
+  });
+
+  const handleDeleteUser = (id: number, name: string) => {
+    Alert.alert(
+      'Remove User',
+      `Are you sure you want to remove ${name}? This action cannot be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Remove', 
+          style: 'destructive', 
+          onPress: () => setUsers(users.filter(u => u.id !== id)) 
+        }
+      ]
+    );
+  };
+
+  const handleViewProfile = (user: any) => {
+    setSelectedUser(user);
+    setViewModalVisible(true);
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={onBack}><MaterialCommunityIcons name="arrow-left" size={24} color="#1A237E" /></TouchableOpacity>
-        <Text style={styles.headerTitle}>User Profiles & Duty</Text>
+        <TouchableOpacity onPress={onBack}>
+          <MaterialCommunityIcons name="arrow-left" size={24} color="#1A237E" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>User Profiles</Text>
         <View style={{ width: 24 }} />
       </View>
-      <ScrollView contentContainerStyle={styles.list}>
-        {users.map(user => (
-          <View key={user.id} style={styles.card}>
-            <View style={styles.userInfo}>
-              <Text style={styles.name}>{user.name}</Text>
-              <Text style={styles.role}>{user.role} • {user.department}</Text>
-              <Text style={styles.email}>{user.email}</Text>
-            </View>
-            <View style={styles.statusBadge}>
-              <Text style={[styles.statusText, user.assigned ? { color: '#4CAF50' } : { color: '#FF9800' }]}>
-                {user.assigned ? '✅ Assigned' : '⏳ Pending'}
+
+      <ScrollView contentContainerStyle={styles.content}>
+        {/* Search Bar */}
+        <View style={styles.searchContainer}>
+          <MaterialCommunityIcons name="magnify" size={22} color="#666" />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search by name..."
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={() => setSearchQuery('')}>
+              <MaterialCommunityIcons name="close-circle" size={22} color="#999" />
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {/* Filter Tabs */}
+        <View style={styles.filterRow}>
+          {['All', 'Teacher', 'Monitoring Official'].map(role => (
+            <TouchableOpacity
+              key={role}
+              style={[styles.filterTab, filterRole === role && styles.filterTabActive]}
+              onPress={() => setFilterRole(role)}
+            >
+              <Text style={[styles.filterText, filterRole === role && styles.filterTextActive]}>
+                {role === 'All' ? 'All Users' : role}
               </Text>
-            </View>
-            {!user.assigned && user.role === 'Teacher' && (
-              <TouchableOpacity 
-                style={styles.assignBtn}
-                onPress={() => { setSelectedUser(user.id); setModalVisible(true); }}
-              >
-                <Text style={styles.assignBtnText}>Assign Duty</Text>
-              </TouchableOpacity>
-            )}
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        <Text style={styles.resultText}>
+          Showing {filteredUsers.length} user{filteredUsers.length !== 1 ? 's' : ''}
+        </Text>
+
+        {filteredUsers.length === 0 ? (
+          <View style={styles.emptyBox}>
+            <MaterialCommunityIcons name="account-off" size={60} color="#CCC" />
+            <Text style={styles.emptyText}>No users found</Text>
           </View>
-        ))}
+        ) : (
+          filteredUsers.map(user => (
+            <View key={user.id} style={styles.card}>
+              <View style={styles.cardHeader}>
+                <View style={styles.avatar}>
+                  <MaterialCommunityIcons 
+                    name={user.role === 'Teacher' ? 'account-school' : 'eye-check'} 
+                    size={28} 
+                    color="#1A237E" 
+                  />
+                </View>
+                <View style={styles.userInfo}>
+                  <Text style={styles.name}>{user.name}</Text>
+                  <Text style={styles.roleDept}>
+                    {user.role} {user.department !== '-' ? `• ${user.department}` : ''}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.cardActions}>
+                <TouchableOpacity style={styles.actionBtnView} onPress={() => handleViewProfile(user)}>
+                  <MaterialCommunityIcons name="eye" size={18} color="#1A237E" />
+                  <Text style={styles.actionTextView}>View Profile</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.actionBtnDelete} onPress={() => handleDeleteUser(user.id, user.name)}>
+                  <MaterialCommunityIcons name="trash-can-outline" size={18} color="#F44336" />
+                  <Text style={styles.actionTextDelete}>Remove</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          ))
+        )}
       </ScrollView>
 
-      {/* Assign Duty Modal */}
-      <Modal visible={modalVisible} transparent animationType="slide">
+      {/* View Profile Modal */}
+      <Modal visible={viewModalVisible} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Assign Duty</Text>
-            <TextInput
-              style={styles.modalInput}
-              placeholder="Enter duty details (e.g., Class 10-A, Morning Shift)"
-              value={dutyNote}
-              onChangeText={setDutyNote}
-              multiline
-            />
-            <View style={styles.modalActions}>
-              <TouchableOpacity style={[styles.modalBtn, styles.cancelBtn]} onPress={() => setModalVisible(false)}>
-                <Text style={styles.modalBtnText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.modalBtn, styles.confirmBtn]} onPress={handleAssignDuty}>
-                <Text style={styles.modalBtnText}>Confirm</Text>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>User Profile</Text>
+              <TouchableOpacity onPress={() => setViewModalVisible(false)}>
+                <MaterialCommunityIcons name="close" size={24} color="#1A237E" />
               </TouchableOpacity>
             </View>
+
+            {selectedUser && (
+              <ScrollView>
+                <View style={styles.profileAvatar}>
+                  <MaterialCommunityIcons 
+                    name={selectedUser.role === 'Teacher' ? 'account-school' : 'eye-check'} 
+                    size={60} 
+                    color="#1A237E" 
+                  />
+                </View>
+                <Text style={styles.profileName}>{selectedUser.name}</Text>
+                <Text style={styles.profileRole}>{selectedUser.role}</Text>
+
+                <View style={styles.profileSection}>
+                  <View style={styles.profileRow}>
+                    <MaterialCommunityIcons name="badge-account" size={20} color="#666" />
+                    <Text style={styles.profileLabel}>Role:</Text>
+                    <Text style={styles.profileValue}>{selectedUser.role}</Text>
+                  </View>
+
+                  {selectedUser.role === 'Teacher' && selectedUser.department !== '-' && (
+                    <View style={styles.profileRow}>
+                      <MaterialCommunityIcons name="school" size={20} color="#666" />
+                      <Text style={styles.profileLabel}>Department:</Text>
+                      <Text style={styles.profileValue}>{selectedUser.department}</Text>
+                    </View>
+                  )}
+
+                  <View style={styles.profileRow}>
+                    <MaterialCommunityIcons name="calendar-check" size={20} color="#666" />
+                    <Text style={styles.profileLabel}>Join Date:</Text>
+                    <Text style={styles.profileValue}>{selectedUser.joinDate}</Text>
+                  </View>
+                </View>
+
+                <TouchableOpacity 
+                  style={styles.closeModalBtn} 
+                  onPress={() => setViewModalVisible(false)}
+                >
+                  <Text style={styles.closeModalText}>Close</Text>
+                </TouchableOpacity>
+              </ScrollView>
+            )}
           </View>
         </View>
       </Modal>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F5F5' },
-  header: { backgroundColor: '#FFF', paddingTop: 50, paddingBottom: 15, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: 1, borderBottomColor: '#E0E0E0' },
+  header: { 
+    backgroundColor: '#FFF', 
+    paddingTop: 50, 
+    paddingBottom: 15, 
+    paddingHorizontal: 20, 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'space-between', 
+    borderBottomWidth: 1, 
+    borderBottomColor: '#E0E0E0' 
+  },
   headerTitle: { fontSize: 20, fontWeight: '700', color: '#1A237E' },
-  list: { padding: 15 },
+  content: { padding: 15 },
+  
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF',
+    borderRadius: 12,
+    paddingHorizontal: 15,
+    paddingVertical: 12,
+    marginBottom: 15,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+  },
+  searchInput: { flex: 1, marginLeft: 10, fontSize: 15, color: '#333' },
+  
+  filterRow: { flexDirection: 'row', marginBottom: 15, gap: 8 },
+  filterTab: {
+    flex: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 4,
+    borderRadius: 20,
+    backgroundColor: '#FFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#DDD',
+  },
+  filterTabActive: { backgroundColor: '#1A237E', borderColor: '#1A237E' },
+  filterText: { 
+    fontSize: 11, 
+    fontWeight: '600', 
+    color: '#666',
+    textAlign: 'center', 
+  },
+  filterTextActive: { color: '#FFF' },
+  resultText: { fontSize: 13, color: '#666', marginBottom: 10, fontWeight: '600' },
+  
   card: { backgroundColor: '#FFF', borderRadius: 12, padding: 15, marginBottom: 12, elevation: 2 },
-  userInfo: { flex: 1 },
-  name: { fontSize: 16, fontWeight: '600', color: '#333' },
-  role: { fontSize: 13, color: '#666', marginTop: 2 },
-  email: { fontSize: 12, color: '#999', marginTop: 4 },
-  statusBadge: { marginTop: 8 },
-  statusText: { fontSize: 12, fontWeight: '600' },
-  assignBtn: { backgroundColor: '#2196F3', paddingVertical: 8, paddingHorizontal: 16, borderRadius: 6, marginTop: 10, alignItems: 'center' },
-  assignBtnText: { color: '#FFF', fontSize: 13, fontWeight: '600' },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
-  modalContent: { backgroundColor: '#FFF', borderRadius: 16, padding: 20, width: '90%', maxWidth: 400 },
-  modalTitle: { fontSize: 18, fontWeight: '700', color: '#1A237E', marginBottom: 15, textAlign: 'center' },
-  modalInput: { backgroundColor: '#F9F9F9', borderWidth: 1, borderColor: '#DDD', borderRadius: 8, padding: 12, fontSize: 14, minHeight: 80, marginBottom: 20 },
-  modalActions: { flexDirection: 'row', justifyContent: 'space-between' },
-  modalBtn: { flex: 1, paddingVertical: 12, borderRadius: 8, marginHorizontal: 5, alignItems: 'center' },
-  cancelBtn: { backgroundColor: '#E0E0E0' },
-  confirmBtn: { backgroundColor: '#1A237E' },
-  modalBtnText: { color: '#FFF', fontSize: 14, fontWeight: '600' },
+  cardHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
+  avatar: { width: 50, height: 50, borderRadius: 25, backgroundColor: '#E8EAF6', alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+  userInfo: { flex: 1, minWidth: 0 },
+  name: { fontSize: 16, fontWeight: '700', color: '#1A237E', marginBottom: 2 },
+  roleDept: { fontSize: 13, color: '#666', flex: 1 },
+  
+  cardActions: { flexDirection: 'row', gap: 10, borderTopWidth: 1, borderTopColor: '#F0F0F0', paddingTop: 12 },
+  actionBtnView: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#E8EAF6', paddingVertical: 10, borderRadius: 8 },
+  actionTextView: { color: '#1A237E', fontSize: 14, fontWeight: '600', marginLeft: 6 },
+  actionBtnDelete: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFEBEE', paddingVertical: 10, borderRadius: 8 },
+  actionTextDelete: { color: '#F44336', fontSize: 14, fontWeight: '600', marginLeft: 6 },
+  
+  emptyBox: { alignItems: 'center', paddingVertical: 40 },
+  emptyText: { fontSize: 16, color: '#999', marginTop: 10 },
+
+  // Modal Styles - Centered
+  modalOverlay: { 
+    flex: 1, 
+    backgroundColor: 'rgba(0,0,0,0.5)', 
+    justifyContent: 'center', 
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: { 
+    backgroundColor: '#FFF', 
+    borderRadius: 25, 
+    maxHeight: '85%',
+    width: '100%',
+    padding: 25,
+  },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, paddingBottom: 15, borderBottomWidth: 1, borderBottomColor: '#E0E0E0' },
+  modalTitle: { fontSize: 20, fontWeight: '800', color: '#1A237E' },
+  
+  profileAvatar: { alignItems: 'center', marginBottom: 15 },
+  profileName: { fontSize: 24, fontWeight: '800', color: '#1A237E', textAlign: 'center', marginBottom: 5 },
+  profileRole: { fontSize: 16, color: '#666', textAlign: 'center', marginBottom: 25, fontWeight: '600' },
+  
+  profileSection: { marginBottom: 20 },
+  profileRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#F5F5F5' },
+  profileLabel: { fontSize: 14, color: '#666', marginLeft: 12, fontWeight: '600', width: 100 },
+  profileValue: { fontSize: 14, color: '#333', flex: 1, fontWeight: '500' },
+  
+  closeModalBtn: { backgroundColor: '#1A237E', paddingVertical: 14, borderRadius: 12, alignItems: 'center', marginTop: 15 },
+  closeModalText: { color: '#FFF', fontSize: 16, fontWeight: '700' },
 });

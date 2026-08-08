@@ -3,32 +3,83 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Modal, Tex
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 const COMPLAINTS = [
-  { id: 1, teacher: 'Ali Khan', subject: 'Math', date: '2024-06-01', description: 'Projector not working in Room 101', status: 'pending' },
-  { id: 2, teacher: 'Hassan Raza', subject: 'English', date: '2024-05-30', description: 'Need extra copies of worksheets', status: 'pending' },
-  { id: 3, teacher: 'Fatima Malik', subject: 'Science', date: '2024-05-28', description: 'AC not cooling properly', status: 'resolved' },
+  { 
+    id: 1, 
+    teacher: 'Ali Khan', 
+    subject: 'Math', 
+    date: '2024-06-01', 
+    description: 'Period 2 mein mujhe ghalat "Absent" mark kiya gaya hai, jabke main class le raha tha.', 
+    status: 'pending' 
+  },
+  { 
+    id: 2, 
+    teacher: 'Hassan Raza', 
+    subject: 'English', 
+    date: '2024-05-30', 
+    description: '30 May ko mujhe ghalat "Late" mark kiya gaya, main time par class mein mojood tha.', 
+    status: 'pending' 
+  },
+  { 
+    id: 3, 
+    teacher: 'Fatima Malik', 
+    subject: 'Science', 
+    date: '2024-05-28', 
+    description: '28 May ki meri Period 3 ki attendance system mein missing show ho rahi hai.', 
+    status: 'pending' 
+  },
 ];
 
 export default function ComplaintsScreen({ onBack }: { onBack: () => void }) {
   const [complaints, setComplaints] = useState(COMPLAINTS);
-  const [modalVisible, setModalVisible] = useState(false);
+  
+  // Detail Screen Modal
+  const [detailModalVisible, setDetailModalVisible] = useState(false);
   const [selectedComplaint, setSelectedComplaint] = useState<any>(null);
-  const [resolutionNote, setResolutionNote] = useState('');
+  
+  // Action (Note) Modal
+  const [actionModalVisible, setActionModalVisible] = useState(false);
+  const [actionMode, setActionMode] = useState<'resolve' | 'reject'>('resolve');
+  const [note, setNote] = useState('');
 
-  const handleAction = (action: 'resolve' | 'reject') => {
-    if (action === 'resolve' && !resolutionNote.trim()) {
-      Alert.alert('⚠️ Note Required', 'Please add a resolution note');
+  const openDetailScreen = (complaint: any) => {
+    setSelectedComplaint(complaint);
+    setDetailModalVisible(true);
+  };
+
+  const openActionModal = (mode: 'resolve' | 'reject') => {
+    setActionMode(mode);
+    setNote('');
+    setActionModalVisible(true);
+  };
+
+  const handleConfirmAction = () => {
+    if (!note.trim()) {
+      Alert.alert(
+        '⚠️ Required', 
+        `Please enter a ${actionMode === 'resolve' ? 'resolution note' : 'reason for rejection'}.`
+      );
       return;
     }
+
     setComplaints(prev => prev.map(c => 
-      c.id === selectedComplaint.id ? { ...c, status: action } : c
+      c.id === selectedComplaint.id ? { ...c, status: actionMode === 'resolve' ? 'resolved' : 'rejected' } : c
     ));
-    Alert.alert(
-      action === 'resolve' ? '✅ Complaint Resolved' : '🗑️ Complaint Rejected',
-      action === 'resolve' ? `Resolved:\n${resolutionNote}` : 'Complaint has been rejected.'
-    );
-    setModalVisible(false);
-    setResolutionNote('');
-    setSelectedComplaint(null);
+
+    const successMsg = actionMode === 'resolve' 
+      ? `✅ Resolved!\nNote: ${note}\n\n📩 Teacher ki attendance update kar di gayi hai.`
+      : `❌ Rejected!\nReason: ${note}\n\n📩 Teacher ko rejection message bhej diya gaya hai.`;
+
+    Alert.alert('Success', successMsg, [
+      { 
+        text: 'OK', 
+        onPress: () => {
+          setActionModalVisible(false);
+          setDetailModalVisible(false);
+          setNote('');
+          setSelectedComplaint(null);
+        } 
+      }
+    ]);
   };
 
   const pendingComplaints = complaints.filter(c => c.status === 'pending');
@@ -36,58 +87,148 @@ export default function ComplaintsScreen({ onBack }: { onBack: () => void }) {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={onBack}><MaterialCommunityIcons name="arrow-left" size={24} color="#1A237E" /></TouchableOpacity>
+        <TouchableOpacity onPress={onBack}>
+          <MaterialCommunityIcons name="arrow-left" size={24} color="#1A237E" />
+        </TouchableOpacity>
         <Text style={styles.headerTitle}>Resolve Complaints</Text>
         <View style={{ width: 24 }} />
       </View>
+      
       <ScrollView contentContainerStyle={styles.list}>
         {pendingComplaints.length === 0 ? (
-          <Text style={styles.emptyText}>🎉 All complaints resolved!</Text>
+          <View style={styles.emptyContainer}>
+            <MaterialCommunityIcons name="check-circle-outline" size={60} color="#4CAF50" />
+            <Text style={styles.emptyText}>🎉 All complaints resolved!</Text>
+          </View>
         ) : (
           pendingComplaints.map(complaint => (
             <View key={complaint.id} style={styles.card}>
-              <View style={styles.cardHeader}>
-                <Text style={styles.teacher}>{complaint.teacher}</Text>
-                <Text style={styles.date}>{complaint.date}</Text>
+              <View style={styles.cardContent}>
+                <View style={styles.avatar}>
+                  <MaterialCommunityIcons name="account-school" size={28} color="#1A237E" />
+                </View>
+                <View style={styles.infoContainer}>
+                  <Text style={styles.teacher}>{complaint.teacher}</Text>
+                  <Text style={styles.department}>{complaint.subject} Department</Text>
+                </View>
               </View>
-              <Text style={styles.subject}>{complaint.subject} Department</Text>
-              <Text style={styles.description}>{complaint.description}</Text>
-              <View style={styles.actions}>
-                <TouchableOpacity style={[styles.actionBtn, styles.resolveBtn]} onPress={() => { setSelectedComplaint(complaint); setModalVisible(true); }}>
-                  <Text style={styles.actionBtnText}>✅ Resolve</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={[styles.actionBtn, styles.rejectBtn]} onPress={() => { setSelectedComplaint(complaint); setModalVisible(true); }}>
-                  <Text style={styles.actionBtnText}>🗑️ Reject</Text>
-                </TouchableOpacity>
-              </View>
+              
+              <TouchableOpacity 
+                style={styles.viewBtn} 
+                onPress={() => openDetailScreen(complaint)}
+              >
+                <MaterialCommunityIcons name="file-document-outline" size={18} color="#FFF" />
+                <Text style={styles.viewBtnText}>View Complaint</Text>
+                <MaterialCommunityIcons name="chevron-right" size={18} color="#FFF" />
+              </TouchableOpacity>
             </View>
           ))
         )}
       </ScrollView>
 
-      {/* Resolution Modal */}
-      <Modal visible={modalVisible} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>{selectedComplaint ? `${selectedComplaint.teacher}'s Complaint` : ''}</Text>
-            <Text style={styles.modalDesc}>{selectedComplaint?.description}</Text>
+      {/* Detail Screen Modal */}
+      <Modal visible={detailModalVisible} animationType="slide">
+        <View style={styles.detailScreen}>
+          <View style={styles.detailHeader}>
+            <TouchableOpacity onPress={() => setDetailModalVisible(false)}>
+              <MaterialCommunityIcons name="arrow-left" size={24} color="#1A237E" />
+            </TouchableOpacity>
+            <Text style={styles.detailHeaderTitle}>Complaint Details</Text>
+            <View style={{ width: 24 }} />
+          </View>
+          
+          <ScrollView contentContainerStyle={styles.detailContent}>
+            <View style={styles.teacherProfile}>
+              <View style={styles.detailAvatar}>
+                <MaterialCommunityIcons name="account-school" size={40} color="#1A237E" />
+              </View>
+              <Text style={styles.detailTeacherName}>{selectedComplaint?.teacher}</Text>
+              <Text style={styles.detailDepartment}>{selectedComplaint?.subject} Department</Text>
+            </View>
+            
+            <View style={styles.complaintBox}>
+              <View style={styles.complaintLabelRow}>
+                <MaterialCommunityIcons name="calendar" size={18} color="#1A237E" />
+                <Text style={styles.complaintLabel}>Date</Text>
+                <Text style={styles.complaintValue}>{selectedComplaint?.date}</Text>
+              </View>
+              
+              <View style={styles.complaintLabelRow}>
+                <MaterialCommunityIcons name="label" size={18} color="#1A237E" />
+                <Text style={styles.complaintLabel}>Status</Text>
+                <View style={styles.pendingBadge}>
+                  <Text style={styles.pendingText}>Pending</Text>
+                </View>
+              </View>
+              
+              <View style={styles.descriptionBox}>
+                <Text style={styles.descriptionLabel}>Complaint</Text>
+                <Text style={styles.descriptionText}>{selectedComplaint?.description}</Text>
+              </View>
+            </View>
+          </ScrollView>
+          
+          <View style={styles.bottomActions}>
+            <TouchableOpacity 
+              style={[styles.bottomBtn, styles.bottomRejectBtn]} 
+              onPress={() => openActionModal('reject')}
+            >
+              <MaterialCommunityIcons name="close-circle" size={20} color="#FFF" />
+              <Text style={styles.bottomBtnText}>Reject</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={[styles.bottomBtn, styles.bottomResolveBtn]} 
+              onPress={() => openActionModal('resolve')}
+            >
+              <MaterialCommunityIcons name="check-circle" size={20} color="#FFF" />
+              <Text style={styles.bottomBtnText}>Resolve</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Action Modal (Note Input) */}
+      <Modal visible={actionModalVisible} transparent animationType="fade">
+        <View style={styles.actionModalOverlay}>
+          <View style={styles.actionModalContent}>
+            <View style={styles.actionModalHeader}>
+              <Text style={styles.actionModalTitle}>
+                {actionMode === 'resolve' ? '✅ Resolve Complaint' : '❌ Reject Complaint'}
+              </Text>
+              <TouchableOpacity onPress={() => setActionModalVisible(false)}>
+                <MaterialCommunityIcons name="close" size={24} color="#666" />
+              </TouchableOpacity>
+            </View>
+            
             <TextInput
               style={styles.modalInput}
-              placeholder="Add resolution note (for Resolve) or reason (for Reject)..."
+              placeholder={actionMode === 'resolve' 
+                ? "Resolution note..." 
+                : "Rejection reason..."}
               multiline
               numberOfLines={4}
-              value={resolutionNote}
-              onChangeText={setResolutionNote}
+              value={note}
+              onChangeText={setNote}
+              textAlignVertical="top"
             />
+            
             <View style={styles.modalButtons}>
-              <TouchableOpacity style={[styles.modalBtn, styles.cancelBtn]} onPress={() => { setModalVisible(false); setResolutionNote(''); }}>
-                <Text style={styles.modalBtnText}>Cancel</Text>
+              <TouchableOpacity 
+                style={[styles.modalBtn, styles.cancelBtn]} 
+                onPress={() => setActionModalVisible(false)}
+              >
+                <Text style={styles.cancelBtnText}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.modalBtn, styles.resolveModalBtn]} onPress={() => handleAction('resolve')}>
-                <Text style={styles.modalBtnText}>✅ Resolve</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.modalBtn, styles.rejectModalBtn]} onPress={() => handleAction('reject')}>
-                <Text style={styles.modalBtnText}>🗑️ Reject</Text>
+              
+              <TouchableOpacity 
+                style={[
+                  styles.modalBtn, 
+                  actionMode === 'resolve' ? styles.confirmResolveBtn : styles.confirmRejectBtn
+                ]} 
+                onPress={handleConfirmAction}
+              >
+                <Text style={styles.confirmBtnText}>Confirm</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -99,30 +240,170 @@ export default function ComplaintsScreen({ onBack }: { onBack: () => void }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F5F5' },
-  header: { backgroundColor: '#FFF', paddingTop: 50, paddingBottom: 15, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: 1, borderBottomColor: '#E0E0E0' },
+  header: { 
+    backgroundColor: '#FFF', 
+    paddingTop: 50, 
+    paddingBottom: 15, 
+    paddingHorizontal: 20, 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'space-between', 
+    borderBottomWidth: 1, 
+    borderBottomColor: '#E0E0E0' 
+  },
   headerTitle: { fontSize: 20, fontWeight: '700', color: '#1A237E' },
   list: { padding: 15 },
+  
+  emptyContainer: { alignItems: 'center', marginTop: 80 },
+  emptyText: { textAlign: 'center', marginTop: 15, fontSize: 18, fontWeight: '600', color: '#666' },
+  
+  // Card Styles
   card: { backgroundColor: '#FFF', borderRadius: 12, padding: 15, marginBottom: 12, elevation: 2 },
-  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
-  teacher: { fontSize: 16, fontWeight: '600', color: '#333' },
-  date: { fontSize: 13, color: '#999' },
-  subject: { fontSize: 14, color: '#1A237E', fontWeight: '500', marginBottom: 8 },
-  description: { fontSize: 14, color: '#555', lineHeight: 20, marginBottom: 12 },
-  actions: { flexDirection: 'row', gap: 10 },
-  actionBtn: { flex: 1, paddingVertical: 10, borderRadius: 8, alignItems: 'center' },
-  resolveBtn: { backgroundColor: '#4CAF50' },
-  rejectBtn: { backgroundColor: '#F44336' },
-  actionBtnText: { color: '#FFF', fontSize: 13, fontWeight: '600' },
-  emptyText: { textAlign: 'center', marginTop: 50, fontSize: 16, color: '#666' },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
-  modalContent: { backgroundColor: '#FFF', borderRadius: 16, padding: 20, width: '90%', maxWidth: 400 },
-  modalTitle: { fontSize: 18, fontWeight: '700', color: '#1A237E', marginBottom: 10, textAlign: 'center' },
-  modalDesc: { fontSize: 14, color: '#555', textAlign: 'center', marginBottom: 15, fontStyle: 'italic' },
-  modalInput: { backgroundColor: '#F9F9F9', borderWidth: 1, borderColor: '#DDD', borderRadius: 10, padding: 12, fontSize: 14, minHeight: 80, textAlignVertical: 'top', marginBottom: 20 },
-  modalButtons: { flexDirection: 'row', justifyContent: 'space-between' },
-  modalBtn: { flex: 1, paddingVertical: 12, borderRadius: 10, alignItems: 'center', marginHorizontal: 4 },
+  cardContent: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
+  avatar: { 
+    width: 50, 
+    height: 50, 
+    borderRadius: 25, 
+    backgroundColor: '#E8EAF6', 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    marginRight: 12 
+  },
+  infoContainer: { flex: 1 },
+  teacher: { fontSize: 16, fontWeight: '700', color: '#1A237E', marginBottom: 2 },
+  department: { fontSize: 14, color: '#666', fontWeight: '500' },
+  
+  viewBtn: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    backgroundColor: '#1A237E', 
+    paddingVertical: 12, 
+    borderRadius: 8, 
+    gap: 8 
+  },
+  viewBtnText: { color: '#FFF', fontSize: 14, fontWeight: '700' },
+  
+  // Detail Screen
+  detailScreen: { flex: 1, backgroundColor: '#F5F5F5' },
+  detailHeader: { 
+    backgroundColor: '#FFF', 
+    paddingTop: 50, 
+    paddingBottom: 15, 
+    paddingHorizontal: 20, 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'space-between', 
+    borderBottomWidth: 1, 
+    borderBottomColor: '#E0E0E0' 
+  },
+  detailHeaderTitle: { fontSize: 20, fontWeight: '700', color: '#1A237E' },
+  detailContent: { padding: 15 },
+  
+  teacherProfile: { alignItems: 'center', backgroundColor: '#FFF', padding: 20, borderRadius: 12, marginBottom: 15, elevation: 2 },
+  detailAvatar: { 
+    width: 80, 
+    height: 80, 
+    borderRadius: 40, 
+    backgroundColor: '#E8EAF6', 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    marginBottom: 10 
+  },
+  detailTeacherName: { fontSize: 20, fontWeight: '800', color: '#1A237E', marginBottom: 4 },
+  detailDepartment: { fontSize: 14, color: '#666', fontWeight: '600' },
+  
+  complaintBox: { backgroundColor: '#FFF', borderRadius: 12, padding: 15, elevation: 2 },
+  complaintLabelRow: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    paddingVertical: 10, 
+    borderBottomWidth: 1, 
+    borderBottomColor: '#F0F0F0' 
+  },
+  complaintLabel: { fontSize: 14, color: '#666', fontWeight: '600', marginLeft: 8, flex: 1 },
+  complaintValue: { fontSize: 14, color: '#333', fontWeight: '600' },
+  
+  pendingBadge: { backgroundColor: '#FFF3E0', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
+  pendingText: { color: '#F57C00', fontSize: 12, fontWeight: '700' },
+  
+  descriptionBox: { marginTop: 15 },
+  descriptionLabel: { fontSize: 14, color: '#1A237E', fontWeight: '700', marginBottom: 8 },
+  descriptionText: { 
+    fontSize: 15, 
+    color: '#333', 
+    lineHeight: 22, 
+    backgroundColor: '#F9F9F9', 
+    padding: 12, 
+    borderRadius: 8,
+    borderLeftWidth: 3,
+    borderLeftColor: '#1A237E'
+  },
+  
+  bottomActions: { 
+    flexDirection: 'row', 
+    padding: 15, 
+    paddingBottom: 30,
+    backgroundColor: '#FFF', 
+    borderTopWidth: 1, 
+    borderTopColor: '#E0E0E0',
+    gap: 12 
+  },
+  bottomBtn: { 
+    flex: 1, 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    paddingVertical: 15, 
+    borderRadius: 10, 
+    gap: 6 
+  },
+  bottomRejectBtn: { backgroundColor: '#F44336' },
+  bottomResolveBtn: { backgroundColor: '#4CAF50' },
+  bottomBtnText: { color: '#FFF', fontSize: 15, fontWeight: '700' },
+  
+  // Action Modal
+  actionModalOverlay: { 
+    flex: 1, 
+    backgroundColor: 'rgba(0,0,0,0.6)', 
+    justifyContent: 'center', 
+    alignItems: 'center' 
+  },
+  actionModalContent: { 
+    backgroundColor: '#FFF', 
+    borderRadius: 16, 
+    padding: 20, 
+    width: '90%', 
+    maxWidth: 400, 
+    elevation: 10 
+  },
+  actionModalHeader: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center', 
+    marginBottom: 15 
+  },
+  actionModalTitle: { fontSize: 18, fontWeight: '800', color: '#1A237E' },
+  
+  modalInput: { 
+    backgroundColor: '#F9F9F9', 
+    borderWidth: 1.5, 
+    borderColor: '#DDD', 
+    borderRadius: 10, 
+    padding: 12, 
+    fontSize: 14, 
+    minHeight: 80, 
+    textAlignVertical: 'top', 
+    marginBottom: 20 
+  },
+  
+  modalButtons: { flexDirection: 'row', justifyContent: 'space-between', gap: 12 },
+  modalBtn: { flex: 1, paddingVertical: 14, borderRadius: 10, alignItems: 'center' },
+  
   cancelBtn: { backgroundColor: '#E0E0E0' },
-  resolveModalBtn: { backgroundColor: '#4CAF50' },
-  rejectModalBtn: { backgroundColor: '#F44336' },
-  modalBtnText: { color: '#FFF', fontSize: 13, fontWeight: '600' },
+  cancelBtnText: { color: '#666', fontSize: 15, fontWeight: '700' },
+  
+  confirmResolveBtn: { backgroundColor: '#4CAF50' },
+  confirmRejectBtn: { backgroundColor: '#F44336' },
+  confirmBtnText: { color: '#FFF', fontSize: 15, fontWeight: '700' },
 });
