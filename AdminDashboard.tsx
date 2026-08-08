@@ -9,7 +9,7 @@ export default function AdminDashboard({ onNavigate, onLogout }: any) {
     { id: 'assignDuty', title: 'Assign Duty', icon: 'clipboard-check', color: '#4CAF50' },
     { id: 'timetableManagement', title: 'Manage Timetable', icon: 'calendar-edit', color: '#9C27B0' },
     { id: 'complaints', title: 'Resolve Complaints', icon: 'alert-circle', color: '#F44336' },
-    { id: 'attendanceHistoryReport', title: 'Attendance History', icon: 'history', color: '#795548' }
+    { id: 'attendanceHistory', title: 'Attendance History', icon: 'history', color: '#795548' } // ✅ FIXED
   ];
 
   return (
@@ -23,7 +23,12 @@ export default function AdminDashboard({ onNavigate, onLogout }: any) {
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.grid}>
           {menuItems.map((item) => (
-            <TouchableOpacity key={item.id} style={styles.card} onPress={() => onNavigate(item.id)}>
+            <TouchableOpacity 
+              key={item.id} 
+              style={styles.card} 
+              onPress={() => onNavigate(item.id)}
+              activeOpacity={0.7}
+            >
               <View style={[styles.iconBox, { backgroundColor: item.color + '20' }]}>
                 <MaterialCommunityIcons name={item.icon} size={35} color={item.color} />
               </View>
@@ -38,11 +43,33 @@ export default function AdminDashboard({ onNavigate, onLogout }: any) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F5F5' },
-  header: { backgroundColor: '#1A237E', padding: 20, paddingTop: 40, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  header: { 
+    backgroundColor: '#1A237E', 
+    padding: 20, 
+    paddingTop: 40, 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center' 
+  },
   welcomeText: { color: '#FFF', fontSize: 22, fontWeight: '700' },
   content: { padding: 20 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
-  card: { width: '48%', backgroundColor: '#FFF', borderRadius: 15, padding: 20, marginBottom: 15, alignItems: 'center', elevation: 2 },
-  iconBox: { width: 70, height: 70, borderRadius: 35, alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
+  card: { 
+    width: '48%', 
+    backgroundColor: '#FFF', 
+    borderRadius: 15, 
+    padding: 20, 
+    marginBottom: 15, 
+    alignItems: 'center', 
+    elevation: 2 
+  },
+  iconBox: { 
+    width: 70, 
+    height: 70, 
+    borderRadius: 35, 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    marginBottom: 12 
+  },
   cardTitle: { fontSize: 14, fontWeight: '600', color: '#333', textAlign: 'center' },
 });
