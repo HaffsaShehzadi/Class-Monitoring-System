@@ -43,6 +43,11 @@ export default function UserProfilesScreen({ onBack }: any) {
     setViewModalVisible(true);
   };
 
+  // Helper: Get initials from name
+  const getInitials = (name: string) => {
+    return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
@@ -141,33 +146,30 @@ export default function UserProfilesScreen({ onBack }: any) {
 
             {selectedUser && (
               <ScrollView>
+                {/* Avatar with initials instead of icon */}
                 <View style={styles.profileAvatar}>
-                  <MaterialCommunityIcons 
-                    name={selectedUser.role === 'Teacher' ? 'account-school' : 'eye-check'} 
-                    size={60} 
-                    color="#1A237E" 
-                  />
+                  <Text style={styles.avatarInitials}>{getInitials(selectedUser.name)}</Text>
                 </View>
                 <Text style={styles.profileName}>{selectedUser.name}</Text>
                 <Text style={styles.profileRole}>{selectedUser.role}</Text>
 
                 <View style={styles.profileSection}>
+                  {/* Role Row - No Icon */}
                   <View style={styles.profileRow}>
-                    <MaterialCommunityIcons name="badge-account" size={20} color="#666" />
                     <Text style={styles.profileLabel}>Role:</Text>
                     <Text style={styles.profileValue}>{selectedUser.role}</Text>
                   </View>
 
                   {selectedUser.role === 'Teacher' && selectedUser.department !== '-' && (
+                    /* Department Row - No Icon */
                     <View style={styles.profileRow}>
-                      <MaterialCommunityIcons name="school" size={20} color="#666" />
                       <Text style={styles.profileLabel}>Department:</Text>
                       <Text style={styles.profileValue}>{selectedUser.department}</Text>
                     </View>
                   )}
 
+                  {/* Join Date Row - No Icon */}
                   <View style={styles.profileRow}>
-                    <MaterialCommunityIcons name="calendar-check" size={20} color="#666" />
                     <Text style={styles.profileLabel}>Join Date:</Text>
                     <Text style={styles.profileValue}>{selectedUser.joinDate}</Text>
                   </View>
@@ -273,13 +275,27 @@ const styles = StyleSheet.create({
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, paddingBottom: 15, borderBottomWidth: 1, borderBottomColor: '#E0E0E0' },
   modalTitle: { fontSize: 20, fontWeight: '800', color: '#1A237E' },
   
-  profileAvatar: { alignItems: 'center', marginBottom: 15 },
+  profileAvatar: { 
+    width: 80, 
+    height: 80, 
+    borderRadius: 40, 
+    backgroundColor: '#E8EAF6', 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    alignSelf: 'center',
+    marginBottom: 15 
+  },
+  avatarInitials: { 
+    fontSize: 28, 
+    fontWeight: '800', 
+    color: '#1A237E' 
+  },
   profileName: { fontSize: 24, fontWeight: '800', color: '#1A237E', textAlign: 'center', marginBottom: 5 },
   profileRole: { fontSize: 16, color: '#666', textAlign: 'center', marginBottom: 25, fontWeight: '600' },
   
   profileSection: { marginBottom: 20 },
-  profileRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#F5F5F5' },
-  profileLabel: { fontSize: 14, color: '#666', marginLeft: 12, fontWeight: '600', width: 100 },
+  profileRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#F5F5F5' },
+  profileLabel: { fontSize: 14, color: '#666', fontWeight: '600', width: 100 },
   profileValue: { fontSize: 14, color: '#333', flex: 1, fontWeight: '500' },
   
   closeModalBtn: { backgroundColor: '#1A237E', paddingVertical: 14, borderRadius: 12, alignItems: 'center', marginTop: 15 },
