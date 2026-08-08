@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Modal } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Modal, SafeAreaView } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 const COMPLAINTS = [
@@ -33,13 +33,17 @@ export default function ComplaintsScreen({ onBack }: { onBack: () => void }) {
   const [complaints, setComplaints] = useState(COMPLAINTS);
   const [activeTab, setActiveTab] = useState<'pending' | 'completed'>('pending');
   
-  // Detail Screen Modal
   const [detailModalVisible, setDetailModalVisible] = useState(false);
   const [selectedComplaint, setSelectedComplaint] = useState<any>(null);
 
   const openDetailScreen = (complaint: any) => {
     setSelectedComplaint(complaint);
     setDetailModalVisible(true);
+  };
+
+  const closeDetailScreen = () => {
+    setDetailModalVisible(false);
+    setSelectedComplaint(null);
   };
 
   const handleResolve = () => {
@@ -54,8 +58,7 @@ export default function ComplaintsScreen({ onBack }: { onBack: () => void }) {
             setComplaints(prev => prev.map(c => 
               c.id === selectedComplaint.id ? { ...c, status: 'resolved' } : c
             ));
-            setDetailModalVisible(false);
-            setSelectedComplaint(null);
+            closeDetailScreen();
             Alert.alert('Success', '✅ Complaint resolved successfully!');
           }
         }
@@ -76,8 +79,7 @@ export default function ComplaintsScreen({ onBack }: { onBack: () => void }) {
             setComplaints(prev => prev.map(c => 
               c.id === selectedComplaint.id ? { ...c, status: 'rejected' } : c
             ));
-            setDetailModalVisible(false);
-            setSelectedComplaint(null);
+            closeDetailScreen();
             Alert.alert('Success', '❌ Complaint rejected!');
           }
         }
@@ -87,8 +89,12 @@ export default function ComplaintsScreen({ onBack }: { onBack: () => void }) {
 
   const pendingComplaints = complaints.filter(c => c.status === 'pending');
   const completedComplaints = complaints.filter(c => c.status === 'resolved' || c.status === 'rejected');
-
   const displayComplaints = activeTab === 'pending' ? pendingComplaints : completedComplaints;
+
+  // Helper function to get initials
+  const getInitials = (name: string) => {
+    return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+  };
 
   return (
     <View style={styles.container}>
@@ -150,13 +156,12 @@ export default function ComplaintsScreen({ onBack }: { onBack: () => void }) {
             <View key={complaint.id} style={styles.card}>
               <View style={styles.cardContent}>
                 <View style={styles.avatar}>
-                  <MaterialCommunityIcons name="account-school" size={28} color="#1A237E" />
+                  <Text style={styles.avatarText}>{getInitials(complaint.teacher)}</Text>
                 </View>
                 <View style={styles.infoContainer}>
                   <Text style={styles.teacher}>{complaint.teacher}</Text>
                   <Text style={styles.department}>{complaint.subject} Department</Text>
                 </View>
-                {/* Status Badge for Completed Tab */}
                 {complaint.status !== 'pending' && (
                   <View style={[
                     styles.statusBadge,
@@ -187,11 +192,11 @@ export default function ComplaintsScreen({ onBack }: { onBack: () => void }) {
         )}
       </ScrollView>
 
-      {/* Detail Screen Modal */}
+      {/* Detail Screen Modal - WITH SafeAreaView */}
       <Modal visible={detailModalVisible} animationType="slide">
-        <View style={styles.detailScreen}>
+        <SafeAreaView style={styles.detailScreen}>
           <View style={styles.detailHeader}>
-            <TouchableOpacity onPress={() => setDetailModalVisible(false)}>
+            <TouchableOpacity onPress={closeDetailScreen}>
               <MaterialCommunityIcons name="arrow-left" size={24} color="#1A237E" />
             </TouchableOpacity>
             <Text style={styles.detailHeaderTitle}>Complaint Details</Text>
@@ -201,7 +206,9 @@ export default function ComplaintsScreen({ onBack }: { onBack: () => void }) {
           <ScrollView contentContainerStyle={styles.detailContent}>
             <View style={styles.teacherProfile}>
               <View style={styles.detailAvatar}>
-                <MaterialCommunityIcons name="account-school" size={40} color="#1A237E" />
+                <Text style={styles.detailAvatarText}>
+                  {selectedComplaint ? getInitials(selectedComplaint.teacher) : ''}
+                </Text>
               </View>
               <Text style={styles.detailTeacherName}>{selectedComplaint?.teacher}</Text>
               <Text style={styles.detailDepartment}>{selectedComplaint?.subject} Department</Text>
@@ -236,7 +243,6 @@ export default function ComplaintsScreen({ onBack }: { onBack: () => void }) {
             </View>
           </ScrollView>
           
-          {/* Only show Resolve/Reject buttons for pending complaints */}
           {selectedComplaint?.status === 'pending' && (
             <View style={styles.bottomActions}>
               <TouchableOpacity 
@@ -256,7 +262,7 @@ export default function ComplaintsScreen({ onBack }: { onBack: () => void }) {
               </TouchableOpacity>
             </View>
           )}
-        </View>
+        </SafeAreaView>
       </Modal>
     </View>
   );
@@ -277,7 +283,6 @@ const styles = StyleSheet.create({
   },
   headerTitle: { fontSize: 20, fontWeight: '700', color: '#1A237E' },
   
-  // Tab Styles
   tabContainer: { 
     flexDirection: 'row', 
     backgroundColor: '#FFF', 
@@ -316,7 +321,6 @@ const styles = StyleSheet.create({
   emptyContainer: { alignItems: 'center', marginTop: 80 },
   emptyText: { textAlign: 'center', marginTop: 15, fontSize: 16, fontWeight: '600', color: '#666' },
   
-  // Card Styles
   card: { backgroundColor: '#FFF', borderRadius: 12, padding: 15, marginBottom: 12, elevation: 2 },
   cardContent: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
   avatar: { 
@@ -328,11 +332,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center', 
     marginRight: 12 
   },
+  avatarText: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#1A237E'
+  },
   infoContainer: { flex: 1 },
   teacher: { fontSize: 16, fontWeight: '700', color: '#1A237E', marginBottom: 2 },
   department: { fontSize: 14, color: '#666', fontWeight: '500' },
   
-  // Status Badge
   statusBadge: { 
     flexDirection: 'row', 
     alignItems: 'center', 
@@ -361,11 +369,10 @@ const styles = StyleSheet.create({
   },
   viewBtnText: { color: '#FFF', fontSize: 14, fontWeight: '700' },
   
-  // Detail Screen
   detailScreen: { flex: 1, backgroundColor: '#F5F5F5' },
   detailHeader: { 
     backgroundColor: '#FFF', 
-    paddingTop: 50, 
+    paddingTop: 15, 
     paddingBottom: 15, 
     paddingHorizontal: 20, 
     flexDirection: 'row', 
@@ -386,6 +393,11 @@ const styles = StyleSheet.create({
     alignItems: 'center', 
     justifyContent: 'center', 
     marginBottom: 10 
+  },
+  detailAvatarText: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#1A237E'
   },
   detailTeacherName: { fontSize: 20, fontWeight: '800', color: '#1A237E', marginBottom: 4 },
   detailDepartment: { fontSize: 14, color: '#666', fontWeight: '600' },

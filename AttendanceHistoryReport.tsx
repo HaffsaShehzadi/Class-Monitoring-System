@@ -1,8 +1,7 @@
 import React, { useState, useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Modal, Alert, StatusBar } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Modal, Alert, StatusBar, SafeAreaView } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
-// ✅ SAFE FALLBACK: Agar SharedData nahi mili, toh default departments use honge (App crash nahi hogi)
 import { AVAILABLE_DEPARTMENTS } from './SharedData';
 const DEPTS = typeof AVAILABLE_DEPARTMENTS !== 'undefined' ? AVAILABLE_DEPARTMENTS : ['IT', 'BSCS', 'Math', 'Physics', 'English', 'Urdu'];
 
@@ -101,8 +100,10 @@ export default function AttendanceHistoryReport({ onBack, userRole, currentUser 
   const isAdmin = userRole === 'admin';
   const isTeacher = userRole === 'teacher';
 
+  const showBottomBar = filteredHistory.length > 0 && (isAdmin || isTeacher);
+
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#FFF" />
       
       <View style={styles.header}>
@@ -113,7 +114,13 @@ export default function AttendanceHistoryReport({ onBack, userRole, currentUser 
         <View style={{ width: 24 }} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView 
+        contentContainerStyle={[
+          styles.content, 
+          showBottomBar && { paddingBottom: 100 }
+        ]}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.modeSelector}>
           <TouchableOpacity style={[styles.modeBtn, viewMode === 'department' && styles.modeBtnActive]} onPress={() => setViewMode('department')}>
             <Text style={[styles.modeText, viewMode === 'department' && styles.modeTextActive]}>Department Wise</Text>
@@ -131,19 +138,27 @@ export default function AttendanceHistoryReport({ onBack, userRole, currentUser 
           
           {viewMode === 'department' ? (
             <TouchableOpacity style={styles.filterBtn} onPress={() => setDeptModalVisible(true)}>
-              <Text style={styles.filterBtnText}>{selectedDept || 'Select Department'}</Text>
+              <MaterialCommunityIcons name="school-outline" size={18} color="#666" />
+              <Text style={[styles.filterBtnText, !selectedDept && { color: '#999' }]}>{selectedDept || 'Select Department'}</Text>
               <MaterialCommunityIcons name="chevron-down" size={18} color="#666" />
             </TouchableOpacity>
           ) : (
             <TouchableOpacity style={styles.filterBtn} onPress={() => setTeacherModalVisible(true)}>
+              <MaterialCommunityIcons name="account-tie" size={18} color="#666" />
               <Text style={[styles.filterBtnText, !selectedTeacher && { color: '#999' }]}>{selectedTeacher || 'Select Teacher'}</Text>
               <MaterialCommunityIcons name="chevron-down" size={18} color="#666" />
             </TouchableOpacity>
           )}
 
           <View style={styles.filterRow}>
-            <TextInput style={styles.dateInput} placeholder="Start Date (YYYY-MM-DD)" value={startDate} onChangeText={setStartDate} />
-            <TextInput style={styles.dateInput} placeholder="End Date (YYYY-MM-DD)" value={endDate} onChangeText={setEndDate} />
+            <View style={styles.dateInputWrapper}>
+              <MaterialCommunityIcons name="calendar-start" size={18} color="#666" style={styles.dateIcon} />
+              <TextInput style={styles.dateInput} placeholder="Start Date (YYYY-MM-DD)" placeholderTextColor="#999" value={startDate} onChangeText={setStartDate} />
+            </View>
+            <View style={styles.dateInputWrapper}>
+              <MaterialCommunityIcons name="calendar-end" size={18} color="#666" style={styles.dateIcon} />
+              <TextInput style={styles.dateInput} placeholder="End Date (YYYY-MM-DD)" placeholderTextColor="#999" value={endDate} onChangeText={setEndDate} />
+            </View>
           </View>
         </View>
 
@@ -159,7 +174,7 @@ export default function AttendanceHistoryReport({ onBack, userRole, currentUser 
 
         {filteredHistory.length === 0 ? (
           <View style={styles.emptyBox}>
-            <MaterialCommunityIcons name="history" size={50} color="#CCC" />
+            <MaterialCommunityIcons name="history" size={60} color="#CCC" />
             <Text style={styles.emptyText}>No attendance records found for these filters.</Text>
           </View>
         ) : (
@@ -176,7 +191,7 @@ export default function AttendanceHistoryReport({ onBack, userRole, currentUser 
                   <Text style={styles.dateText}>{item.day}, {item.date}</Text>
                   <Text style={styles.timeText}>{item.time}</Text>
                 </View>
-                <Text style={styles.deptSemText}>{item.dept} - {item.sem} Semester</Text>
+                <Text style={styles.deptSemText}>{item.dept} • {item.sem} Semester</Text>
                 <Text style={styles.teacherText}>{item.teacher}</Text>
                 <Text style={styles.subjectText}>{item.subject} {item.code ? `(${item.code})` : ''} | Room: {item.room}</Text>
               </View>
@@ -193,44 +208,54 @@ export default function AttendanceHistoryReport({ onBack, userRole, currentUser 
             </View>
           ))
         )}
-        <View style={{ height: 100 }} />
       </ScrollView>
 
-      {filteredHistory.length > 0 && isAdmin && (
+      {/* Sticky Bottom Bar */}
+      {showBottomBar && (
         <View style={styles.stickyBottom}>
-          <Text style={styles.selectedCount}>{selectAll ? 'All' : selectedRecords.length} Selected</Text>
-          <TouchableOpacity style={styles.generateBtn} onPress={handleGenerateReport}>
-            <MaterialCommunityIcons name="file-pdf-box" size={22} color="#FFF" />
-            <Text style={styles.generateBtnText}>Generate Report</Text>
-          </TouchableOpacity>
+          {isAdmin ? (
+            <>
+              <Text style={styles.selectedCount}>{selectAll ? 'All' : selectedRecords.length} Selected</Text>
+              <TouchableOpacity style={styles.generateBtn} onPress={handleGenerateReport}>
+                <MaterialCommunityIcons name="file-pdf-box" size={22} color="#FFF" />
+                <Text style={styles.generateBtnText}>Generate Report</Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <TouchableOpacity style={[styles.generateBtn, { flex: 1 }]} onPress={() => Alert.alert('✅ Report Generated', 'Your attendance report downloaded as PDF.')}>
+              <MaterialCommunityIcons name="file-pdf-box" size={22} color="#FFF" />
+              <Text style={styles.generateBtnText}>Generate My Report</Text>
+            </TouchableOpacity>
+          )}
         </View>
       )}
 
-      {filteredHistory.length > 0 && isTeacher && (
-        <View style={styles.stickyBottom}>
-          <TouchableOpacity style={[styles.generateBtn, { flex: 1 }]} onPress={() => Alert.alert('✅ Report Generated', 'Your attendance report downloaded as PDF.')}>
-            <MaterialCommunityIcons name="file-pdf-box" size={22} color="#FFF" />
-            <Text style={styles.generateBtnText}>Generate My Report</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {/* Department Modal */}
-      <Modal visible={deptModalVisible} transparent animationType="slide">
+      {/* Department Modal - CENTERED */}
+      <Modal visible={deptModalVisible} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Select Department</Text>
-              <TouchableOpacity onPress={() => setDeptModalVisible(false)}><MaterialCommunityIcons name="close" size={24} color="#1A237E" /></TouchableOpacity>
+              <TouchableOpacity onPress={() => setDeptModalVisible(false)}>
+                <MaterialCommunityIcons name="close" size={24} color="#1A237E" />
+              </TouchableOpacity>
             </View>
-            <ScrollView style={styles.modalList}>
-              <TouchableOpacity style={styles.modalItem} onPress={() => { setSelectedDept(''); setDeptModalVisible(false); }}>
-                <Text style={[styles.modalItemText, !selectedDept && { fontWeight: '800', color: '#1A237E' }]}>All Departments</Text>
+            <ScrollView style={styles.modalList} showsVerticalScrollIndicator={false}>
+              <TouchableOpacity 
+                style={[styles.modalItem, !selectedDept && styles.modalItemActive]} 
+                onPress={() => { setSelectedDept(''); setDeptModalVisible(false); }}
+              >
+                <Text style={[styles.modalItemText, !selectedDept && styles.modalItemTextActive]}>All Departments</Text>
+                {!selectedDept && <MaterialCommunityIcons name="check" size={20} color="#FFF" />}
               </TouchableOpacity>
               {DEPTS.map((dept: string) => (
-                <TouchableOpacity key={dept} style={styles.modalItem} onPress={() => { setSelectedDept(dept); setDeptModalVisible(false); }}>
-                  <Text style={[styles.modalItemText, selectedDept === dept && { fontWeight: '800', color: '#1A237E' }]}>{dept}</Text>
-                  {selectedDept === dept && <MaterialCommunityIcons name="check" size={20} color="#1A237E" />}
+                <TouchableOpacity 
+                  key={dept} 
+                  style={[styles.modalItem, selectedDept === dept && styles.modalItemActive]} 
+                  onPress={() => { setSelectedDept(dept); setDeptModalVisible(false); }}
+                >
+                  <Text style={[styles.modalItemText, selectedDept === dept && styles.modalItemTextActive]}>{dept}</Text>
+                  {selectedDept === dept && <MaterialCommunityIcons name="check" size={20} color="#FFF" />}
                 </TouchableOpacity>
               ))}
             </ScrollView>
@@ -238,129 +263,247 @@ export default function AttendanceHistoryReport({ onBack, userRole, currentUser 
         </View>
       </Modal>
 
-      {/* Teacher Modal */}
-      <Modal visible={teacherModalVisible} transparent animationType="slide">
+      {/* Teacher Modal - CENTERED */}
+      <Modal visible={teacherModalVisible} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Select Teacher</Text>
-              <TouchableOpacity onPress={() => setTeacherModalVisible(false)}><MaterialCommunityIcons name="close" size={24} color="#1A237E" /></TouchableOpacity>
+              <TouchableOpacity onPress={() => { setTeacherModalVisible(false); setTeacherSearch(''); }}>
+                <MaterialCommunityIcons name="close" size={24} color="#1A237E" />
+              </TouchableOpacity>
             </View>
             <View style={styles.searchBox}>
               <MaterialCommunityIcons name="magnify" size={20} color="#666" />
-              <TextInput style={styles.searchInput} placeholder="Search teacher name..." value={teacherSearch} onChangeText={setTeacherSearch} />
-            </View>
-            <ScrollView style={styles.modalList}>
-              <TouchableOpacity style={styles.modalItem} onPress={() => { setSelectedTeacher(''); setTeacherModalVisible(false); }}>
-                <Text style={[styles.modalItemText, !selectedTeacher && { fontWeight: '800', color: '#1A237E' }]}>All Teachers</Text>
-              </TouchableOpacity>
-              {filteredTeachers.map((teacher: string) => (
-                <TouchableOpacity key={teacher} style={styles.modalItem} onPress={() => { setSelectedTeacher(teacher); setTeacherModalVisible(false); }}>
-                  <Text style={[styles.modalItemText, selectedTeacher === teacher && { fontWeight: '800', color: '#1A237E' }]}>{teacher}</Text>
-                  {selectedTeacher === teacher && <MaterialCommunityIcons name="check" size={20} color="#1A237E" />}
+              <TextInput 
+                style={styles.searchInput} 
+                placeholder="Search teacher name..." 
+                placeholderTextColor="#999"
+                value={teacherSearch} 
+                onChangeText={setTeacherSearch} 
+              />
+              {teacherSearch.length > 0 && (
+                <TouchableOpacity onPress={() => setTeacherSearch('')}>
+                  <MaterialCommunityIcons name="close-circle" size={20} color="#999" />
                 </TouchableOpacity>
-              ))}
+              )}
+            </View>
+            <ScrollView style={styles.modalList} showsVerticalScrollIndicator={false}>
+              <TouchableOpacity 
+                style={[styles.modalItem, !selectedTeacher && styles.modalItemActive]} 
+                onPress={() => { setSelectedTeacher(''); setTeacherModalVisible(false); setTeacherSearch(''); }}
+              >
+                <Text style={[styles.modalItemText, !selectedTeacher && styles.modalItemTextActive]}>All Teachers</Text>
+                {!selectedTeacher && <MaterialCommunityIcons name="check" size={20} color="#FFF" />}
+              </TouchableOpacity>
+              {filteredTeachers.length === 0 ? (
+                <View style={styles.emptyModal}>
+                  <Text style={styles.emptyModalText}>No teachers found</Text>
+                </View>
+              ) : (
+                filteredTeachers.map((teacher: string) => (
+                  <TouchableOpacity 
+                    key={teacher} 
+                    style={[styles.modalItem, selectedTeacher === teacher && styles.modalItemActive]} 
+                    onPress={() => { setSelectedTeacher(teacher); setTeacherModalVisible(false); setTeacherSearch(''); }}
+                  >
+                    <Text style={[styles.modalItemText, selectedTeacher === teacher && styles.modalItemTextActive]}>{teacher}</Text>
+                    {selectedTeacher === teacher && <MaterialCommunityIcons name="check" size={20} color="#FFF" />}
+                  </TouchableOpacity>
+                ))
+              )}
             </ScrollView>
           </View>
         </View>
       </Modal>
 
-      {/* Edit Modal */}
-      <Modal visible={editModalVisible} transparent animationType="slide">
+      {/* Edit Modal - CENTERED */}
+      <Modal visible={editModalVisible} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Edit Attendance</Text>
-              <TouchableOpacity onPress={() => setEditModalVisible(false)}><MaterialCommunityIcons name="close" size={24} color="#1A237E" /></TouchableOpacity>
+              <TouchableOpacity onPress={() => setEditModalVisible(false)}>
+                <MaterialCommunityIcons name="close" size={24} color="#1A237E" />
+              </TouchableOpacity>
             </View>
             {editingRecord && (
               <>
                 <View style={styles.editInfo}>
-                  <Text style={styles.editLabel}>Teacher: <Text style={styles.editValue}>{editingRecord.teacher}</Text></Text>
-                  <Text style={styles.editLabel}>Date: <Text style={styles.editValue}>{editingRecord.day}, {editingRecord.date}</Text></Text>
-                  <Text style={styles.editLabel}>Subject: <Text style={styles.editValue}>{editingRecord.subject} ({editingRecord.code})</Text></Text>
+                  <View style={styles.editInfoRow}>
+                    <Text style={styles.editLabel}>Teacher:</Text>
+                    <Text style={styles.editValue}>{editingRecord.teacher}</Text>
+                  </View>
+                  <View style={styles.editInfoRow}>
+                    <Text style={styles.editLabel}>Date:</Text>
+                    <Text style={styles.editValue}>{editingRecord.day}, {editingRecord.date}</Text>
+                  </View>
+                  <View style={styles.editInfoRow}>
+                    <Text style={styles.editLabel}>Subject:</Text>
+                    <Text style={styles.editValue}>{editingRecord.subject} ({editingRecord.code})</Text>
+                  </View>
                 </View>
                 <Text style={styles.label}>New Status:</Text>
                 <View style={styles.statusOptions}>
                   {['Present', 'Absent', 'Late'].map((status) => (
-                    <TouchableOpacity key={status} style={[styles.statusOption, editStatus === status && styles.statusOptionActive, { borderColor: status === 'Present' ? '#4CAF50' : status === 'Absent' ? '#F44336' : '#FF9800' }]} onPress={() => setEditStatus(status)}>
+                    <TouchableOpacity 
+                      key={status} 
+                      style={[
+                        styles.statusOption, 
+                        editStatus === status && styles.statusOptionActive, 
+                        { 
+                          borderColor: status === 'Present' ? '#4CAF50' : status === 'Absent' ? '#F44336' : '#FF9800',
+                          backgroundColor: editStatus === status 
+                            ? (status === 'Present' ? '#4CAF50' : status === 'Absent' ? '#F44336' : '#FF9800')
+                            : '#FFF'
+                        }
+                      ]} 
+                      onPress={() => setEditStatus(status)}
+                    >
                       <Text style={[styles.statusOptionText, editStatus === status && { color: '#FFF' }]}>{status}</Text>
                     </TouchableOpacity>
                   ))}
                 </View>
                 <View style={styles.modalButtons}>
-                  <TouchableOpacity style={[styles.modalBtn, styles.cancelBtn]} onPress={() => setEditModalVisible(false)}><Text style={styles.cancelBtnText}>Cancel</Text></TouchableOpacity>
-                  <TouchableOpacity style={[styles.modalBtn, styles.saveBtn]} onPress={saveEditAttendance}><Text style={styles.saveBtnText}>Save Changes</Text></TouchableOpacity>
+                  <TouchableOpacity style={[styles.modalBtn, styles.cancelBtn]} onPress={() => setEditModalVisible(false)}>
+                    <Text style={styles.cancelBtnText}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={[styles.modalBtn, styles.saveBtn]} onPress={saveEditAttendance}>
+                    <Text style={styles.saveBtnText}>Save Changes</Text>
+                  </TouchableOpacity>
                 </View>
               </>
             )}
           </View>
         </View>
       </Modal>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F5F5' },
-  header: { backgroundColor: '#FFF', paddingTop: 50, paddingBottom: 15, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: 1, borderBottomColor: '#E0E0E0' },
+  header: { backgroundColor: '#FFF', paddingTop: 15, paddingBottom: 15, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: 1, borderBottomColor: '#E0E0E0' },
   headerTitle: { fontSize: 18, fontWeight: '700', color: '#1A237E' },
   content: { padding: 15 },
+  
   modeSelector: { flexDirection: 'row', marginBottom: 15, backgroundColor: '#FFF', borderRadius: 10, padding: 4, elevation: 2 },
   modeBtn: { flex: 1, paddingVertical: 12, borderRadius: 8, alignItems: 'center' },
   modeBtnActive: { backgroundColor: '#1A237E' },
   modeText: { fontSize: 14, fontWeight: '600', color: '#666' },
-  modeTextActive: { color: '#FFF' },
+  modeTextActive: { color: '#FFF', fontWeight: '700' },
+  
   filterCard: { backgroundColor: '#FFF', borderRadius: 12, padding: 15, marginBottom: 15, elevation: 2 },
   filterHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
   filterTitle: { fontSize: 16, fontWeight: '700', color: '#1A237E' },
   clearText: { fontSize: 13, color: '#F44336', fontWeight: '600' },
-  filterBtn: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#F9F9F9', borderWidth: 1, borderColor: '#DDD', borderRadius: 8, padding: 12, marginBottom: 10 },
-  filterBtnText: { fontSize: 14, color: '#333', fontWeight: '500' },
+  filterBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F9F9F9', borderWidth: 1, borderColor: '#DDD', borderRadius: 10, padding: 14, marginBottom: 12, gap: 10 },
+  filterBtnText: { fontSize: 14, color: '#333', fontWeight: '600', flex: 1 },
   filterRow: { flexDirection: 'row', gap: 10 },
-  dateInput: { flex: 1, backgroundColor: '#F9F9F9', borderWidth: 1, borderColor: '#DDD', borderRadius: 8, padding: 12, fontSize: 14 },
-  summaryRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, paddingHorizontal: 5 },
+  dateInputWrapper: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#F9F9F9', borderWidth: 1, borderColor: '#DDD', borderRadius: 10, paddingHorizontal: 12 },
+  dateIcon: { marginRight: 8 },
+  dateInput: { flex: 1, paddingVertical: 12, fontSize: 13, color: '#333' },
+  
+  summaryRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, paddingHorizontal: 5 },
   summaryText: { fontSize: 14, fontWeight: '700', color: '#666' },
   selectAllBtn: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   selectAllText: { fontSize: 14, fontWeight: '600', color: '#1A237E' },
-  recordCard: { flexDirection: 'row', backgroundColor: '#FFF', borderRadius: 10, padding: 12, marginBottom: 10, elevation: 1, borderWidth: 1, borderColor: '#E0E0E0' },
+  
+  recordCard: { flexDirection: 'row', backgroundColor: '#FFF', borderRadius: 12, padding: 14, marginBottom: 12, elevation: 2, borderWidth: 1, borderColor: '#F0F0F0' },
   checkbox: { marginRight: 10, justifyContent: 'center' },
   recordInfo: { flex: 1 },
-  infoRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 6 },
+  infoRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
   periodBadge: { backgroundColor: '#1A237E', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, marginRight: 8 },
   periodText: { color: '#FFF', fontSize: 11, fontWeight: '700' },
   dateText: { fontSize: 12, color: '#666', fontWeight: '600', flex: 1 },
   timeText: { fontSize: 11, color: '#888' },
-  deptSemText: { fontSize: 14, fontWeight: '800', color: '#1A237E', marginBottom: 4 },
-  teacherText: { fontSize: 15, fontWeight: '700', color: '#333', marginBottom: 2 },
+  deptSemText: { fontSize: 13, fontWeight: '700', color: '#1A237E', marginBottom: 4 },
+  teacherText: { fontSize: 15, fontWeight: '700', color: '#333', marginBottom: 3 },
   subjectText: { fontSize: 12, color: '#555' },
   rightActions: { alignItems: 'flex-end', justifyContent: 'space-between', marginLeft: 10 },
-  statusBadge: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 20 },
+  statusBadge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 },
   statusText: { fontSize: 12, fontWeight: '700' },
-  editBtn: { padding: 5, marginTop: 10 },
-  emptyBox: { alignItems: 'center', paddingVertical: 40 },
-  emptyText: { fontSize: 15, color: '#999', marginTop: 10, textAlign: 'center' },
-  stickyBottom: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#FFF', padding: 15, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: '#E0E0E0', elevation: 10 },
+  editBtn: { padding: 8, marginTop: 10, backgroundColor: '#E3F2FD', borderRadius: 8 },
+  
+  emptyBox: { alignItems: 'center', paddingVertical: 60 },
+  emptyText: { fontSize: 15, color: '#999', marginTop: 12, textAlign: 'center', fontWeight: '500' },
+  
+  stickyBottom: { 
+    position: 'absolute', 
+    bottom: 0, 
+    left: 0, 
+    right: 0, 
+    backgroundColor: '#FFF', 
+    padding: 15, 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'space-between', 
+    borderTopWidth: 1, 
+    borderTopColor: '#E0E0E0', 
+    elevation: 10,
+    gap: 12
+  },
   selectedCount: { fontSize: 15, fontWeight: '700', color: '#1A237E' },
   generateBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#1A237E', paddingHorizontal: 20, paddingVertical: 12, borderRadius: 10, gap: 8 },
   generateBtnText: { color: '#FFF', fontSize: 15, fontWeight: '700' },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: '#FFF', borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '70%', padding: 20 },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
+  
+  // Centered Modal Styles
+  modalOverlay: { 
+    flex: 1, 
+    backgroundColor: 'rgba(0,0,0,0.5)', 
+    justifyContent: 'center', 
+    alignItems: 'center',
+    padding: 20
+  },
+  modalContent: { 
+    backgroundColor: '#FFF', 
+    borderRadius: 20, 
+    padding: 20, 
+    width: '100%', 
+    maxWidth: 400,
+    maxHeight: '85%'
+  },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15, paddingBottom: 15, borderBottomWidth: 1, borderBottomColor: '#E0E0E0' },
   modalTitle: { fontSize: 18, fontWeight: '800', color: '#1A237E' },
-  modalList: { maxHeight: 300 },
-  modalItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#F0F0F0' },
-  modalItemText: { fontSize: 15, color: '#333' },
-  searchBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F5F5F5', borderRadius: 8, paddingHorizontal: 12, marginBottom: 10 },
-  searchInput: { flex: 1, paddingVertical: 10, marginLeft: 8, fontSize: 14 },
-  editInfo: { backgroundColor: '#F5F5F5', padding: 15, borderRadius: 10, marginBottom: 15 },
-  editLabel: { fontSize: 13, color: '#666', marginBottom: 4 },
-  editValue: { fontWeight: '600', color: '#333' },
-  label: { fontSize: 15, fontWeight: '700', color: '#1A237E', marginBottom: 10 },
+  modalList: { maxHeight: 350 },
+  modalItem: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center', 
+    paddingVertical: 14, 
+    paddingHorizontal: 15,
+    backgroundColor: '#F5F5F5',
+    borderRadius: 10,
+    marginBottom: 8 
+  },
+  modalItemActive: { backgroundColor: '#1A237E' },
+  modalItemText: { fontSize: 15, color: '#333', fontWeight: '600' },
+  modalItemTextActive: { color: '#FFF' },
+  
+  searchBox: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    backgroundColor: '#F5F5F5', 
+    borderRadius: 10, 
+    paddingHorizontal: 12, 
+    marginBottom: 15,
+    borderWidth: 1,
+    borderColor: '#DDD'
+  },
+  searchInput: { flex: 1, paddingVertical: 12, marginLeft: 8, fontSize: 14, color: '#333' },
+  
+  emptyModal: { alignItems: 'center', paddingVertical: 30 },
+  emptyModalText: { fontSize: 14, color: '#999', fontWeight: '500' },
+  
+  editInfo: { backgroundColor: '#F5F5F5', padding: 15, borderRadius: 12, marginBottom: 20 },
+  editInfoRow: { flexDirection: 'row', marginBottom: 6 },
+  editLabel: { fontSize: 13, color: '#666', width: 80, fontWeight: '600' },
+  editValue: { fontSize: 13, fontWeight: '700', color: '#333', flex: 1 },
+  label: { fontSize: 15, fontWeight: '700', color: '#1A237E', marginBottom: 12 },
   statusOptions: { flexDirection: 'row', gap: 10, marginBottom: 20 },
-  statusOption: { flex: 1, paddingVertical: 12, borderRadius: 8, borderWidth: 2, alignItems: 'center' },
-  statusOptionActive: { backgroundColor: '#1A237E' },
-  statusOptionText: { fontSize: 14, fontWeight: '700', color: '#333' },
+  statusOption: { flex: 1, paddingVertical: 12, borderRadius: 10, borderWidth: 2, alignItems: 'center' },
+  statusOptionActive: {},
+  statusOptionText: { fontSize: 13, fontWeight: '700', color: '#333' },
   modalButtons: { flexDirection: 'row', gap: 12 },
   modalBtn: { flex: 1, paddingVertical: 14, borderRadius: 10, alignItems: 'center' },
   cancelBtn: { backgroundColor: '#E0E0E0' },

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   View, 
   Text, 
@@ -9,17 +9,26 @@ import {
   SafeAreaView, 
   Alert, 
   Modal,
-  KeyboardAvoidingView, // ✅ Keyboard fix ke liye import kiya
-  Platform              // ✅ Platform check ke liye import kiya
+  KeyboardAvoidingView,
+  Platform
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { AVAILABLE_DEPARTMENTS } from './SharedData';
 
-export default function AssignDutyDetailScreen({ onBack, official }: any) {
+export default function AssignDutyDetailScreen({ onBack, official, editData, onConfirm }: any) {
   const [selectedDepts, setSelectedDepts] = useState<string[]>([]);
   const [selectedShift, setSelectedShift] = useState('');
   const [date, setDate] = useState('');
   const [deptModalVisible, setDeptModalVisible] = useState(false);
+
+  // Load existing data if editing
+  useEffect(() => {
+    if (editData) {
+      setSelectedDepts(editData.departments || []);
+      setSelectedShift(editData.shift || '');
+      setDate(editData.date || '');
+    }
+  }, [editData]);
 
   const toggleDepartment = (dept: string) => {
     if (selectedDepts.includes(dept)) {
@@ -35,10 +44,20 @@ export default function AssignDutyDetailScreen({ onBack, official }: any) {
       return;
     }
 
+    const dutyData = {
+      id: editData?.id || Date.now(),
+      officialId: official.id,
+      officialName: official.name,
+      departments: selectedDepts,
+      shift: selectedShift,
+      date: date,
+      status: 'assigned'
+    };
+
     Alert.alert(
-      '✅ Duty Assigned Successfully',
+      `✅ Duty ${editData ? 'Updated' : 'Assigned'} Successfully`,
       `Official: ${official.name}\nDepartments: ${selectedDepts.join(', ')}\nShift: ${selectedShift}\nDate: ${date}`,
-      [{ text: 'OK', onPress: onBack }]
+      [{ text: 'OK', onPress: () => { onConfirm(dutyData); onBack(); }}]
     );
   };
 
@@ -48,18 +67,17 @@ export default function AssignDutyDetailScreen({ onBack, official }: any) {
         <TouchableOpacity onPress={onBack}>
           <MaterialCommunityIcons name="arrow-left" size={24} color="#1A237E" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Assign Duty</Text>
+        <Text style={styles.headerTitle}>{editData ? 'Edit Duty' : 'Assign Duty'}</Text>
         <View style={{ width: 24 }} />
       </View>
 
-      {/* ✅ KeyboardAvoidingView added to push screen up when keyboard opens */}
       <KeyboardAvoidingView 
         style={{ flex: 1 }} 
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <ScrollView 
           contentContainerStyle={styles.content}
-          keyboardShouldPersistTaps="handled" // ✅ Tap anywhere to dismiss keyboard
+          keyboardShouldPersistTaps="handled"
         >
           {/* Official Info Card */}
           <View style={styles.officialCard}>
@@ -68,7 +86,6 @@ export default function AssignDutyDetailScreen({ onBack, official }: any) {
             </View>
             <View style={styles.officialInfo}>
               <Text style={styles.officialName}>{official.name}</Text>
-              {/* ✅ Email yahan se hata diya gaya hai */}
             </View>
           </View>
 
@@ -130,14 +147,14 @@ export default function AssignDutyDetailScreen({ onBack, official }: any) {
               <Text style={styles.cancelText}>Cancel</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.confirmBtn} onPress={handleConfirm}>
-              <Text style={styles.confirmText}>Confirm</Text>
+              <Text style={styles.confirmText}>{editData ? 'Update' : 'Confirm'}</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
 
-      {/* Department Selection Modal */}
-      <Modal visible={deptModalVisible} transparent animationType="slide">
+      {/* Department Selection Modal - CENTERED */}
+      <Modal visible={deptModalVisible} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
@@ -194,7 +211,7 @@ const styles = StyleSheet.create({
     borderBottomColor: '#E0E0E0',
   },
   headerTitle: { fontSize: 20, fontWeight: '700', color: '#1A237E' },
-  content: { padding: 20, paddingBottom: 40 }, // ✅ Bottom padding increased for keyboard
+  content: { padding: 20, paddingBottom: 40 },
   officialCard: {
     backgroundColor: '#FFF',
     borderRadius: 12,
@@ -207,7 +224,6 @@ const styles = StyleSheet.create({
   officialIcon: { marginRight: 15 },
   officialInfo: { flex: 1 },
   officialName: { fontSize: 20, fontWeight: '700', color: '#1A237E', marginBottom: 4 },
-  // ✅ officialEmail style removed
   
   label: { fontSize: 16, fontWeight: '700', color: '#1A237E', marginBottom: 10, marginTop: 15 },
   
@@ -251,8 +267,22 @@ const styles = StyleSheet.create({
   confirmBtn: { flex: 1, backgroundColor: '#4CAF50', paddingVertical: 16, borderRadius: 12, alignItems: 'center' },
   confirmText: { color: '#FFF', fontSize: 16, fontWeight: '700' },
 
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: '#FFF', borderTopLeftRadius: 25, borderTopRightRadius: 25, padding: 20, maxHeight: '60%' },
+  // Modal Styles - CENTERED
+  modalOverlay: { 
+    flex: 1, 
+    backgroundColor: 'rgba(0,0,0,0.5)', 
+    justifyContent: 'center', 
+    alignItems: 'center',
+    padding: 20
+  },
+  modalContent: { 
+    backgroundColor: '#FFF', 
+    borderRadius: 20, 
+    padding: 20, 
+    width: '100%', 
+    maxWidth: 400,
+    maxHeight: '80%'
+  },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15, paddingBottom: 15, borderBottomWidth: 1, borderBottomColor: '#E0E0E0' },
   modalTitle: { fontSize: 18, fontWeight: '800', color: '#1A237E' },
   modalList: { maxHeight: 300, marginBottom: 15 },

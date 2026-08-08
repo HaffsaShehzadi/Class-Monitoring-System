@@ -59,18 +59,21 @@ export default function UserProfilesScreen({ onBack }: any) {
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
-        {/* Search Bar */}
+        {/* Search Bar - No Icon */}
         <View style={styles.searchContainer}>
-          <MaterialCommunityIcons name="magnify" size={22} color="#666" />
           <TextInput
             style={styles.searchInput}
             placeholder="Search by name..."
+            placeholderTextColor="#999"
             value={searchQuery}
             onChangeText={setSearchQuery}
           />
           {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => setSearchQuery('')}>
-              <MaterialCommunityIcons name="close-circle" size={22} color="#999" />
+            <TouchableOpacity 
+              onPress={() => setSearchQuery('')}
+              style={styles.clearBtn}
+            >
+              <Text style={styles.clearBtnText}>✕</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -96,19 +99,16 @@ export default function UserProfilesScreen({ onBack }: any) {
 
         {filteredUsers.length === 0 ? (
           <View style={styles.emptyBox}>
-            <MaterialCommunityIcons name="account-off" size={60} color="#CCC" />
+            <Text style={styles.emptyIcon}>👤</Text>
             <Text style={styles.emptyText}>No users found</Text>
           </View>
         ) : (
           filteredUsers.map(user => (
             <View key={user.id} style={styles.card}>
               <View style={styles.cardHeader}>
+                {/* Avatar with initials instead of icon */}
                 <View style={styles.avatar}>
-                  <MaterialCommunityIcons 
-                    name={user.role === 'Teacher' ? 'account-school' : 'eye-check'} 
-                    size={28} 
-                    color="#1A237E" 
-                  />
+                  <Text style={styles.avatarText}>{getInitials(user.name)}</Text>
                 </View>
                 <View style={styles.userInfo}>
                   <Text style={styles.name}>{user.name}</Text>
@@ -120,11 +120,9 @@ export default function UserProfilesScreen({ onBack }: any) {
 
               <View style={styles.cardActions}>
                 <TouchableOpacity style={styles.actionBtnView} onPress={() => handleViewProfile(user)}>
-                  <MaterialCommunityIcons name="eye" size={18} color="#1A237E" />
                   <Text style={styles.actionTextView}>View Profile</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.actionBtnDelete} onPress={() => handleDeleteUser(user.id, user.name)}>
-                  <MaterialCommunityIcons name="trash-can-outline" size={18} color="#F44336" />
                   <Text style={styles.actionTextDelete}>Remove</Text>
                 </TouchableOpacity>
               </View>
@@ -148,27 +146,24 @@ export default function UserProfilesScreen({ onBack }: any) {
               <ScrollView>
                 {/* Avatar with initials instead of icon */}
                 <View style={styles.profileAvatar}>
-                  <Text style={styles.avatarInitials}>{getInitials(selectedUser.name)}</Text>
+                  <Text style={styles.profileAvatarText}>{getInitials(selectedUser.name)}</Text>
                 </View>
                 <Text style={styles.profileName}>{selectedUser.name}</Text>
                 <Text style={styles.profileRole}>{selectedUser.role}</Text>
 
                 <View style={styles.profileSection}>
-                  {/* Role Row - No Icon */}
                   <View style={styles.profileRow}>
                     <Text style={styles.profileLabel}>Role:</Text>
                     <Text style={styles.profileValue}>{selectedUser.role}</Text>
                   </View>
 
                   {selectedUser.role === 'Teacher' && selectedUser.department !== '-' && (
-                    /* Department Row - No Icon */
                     <View style={styles.profileRow}>
                       <Text style={styles.profileLabel}>Department:</Text>
                       <Text style={styles.profileValue}>{selectedUser.department}</Text>
                     </View>
                   )}
 
-                  {/* Join Date Row - No Icon */}
                   <View style={styles.profileRow}>
                     <Text style={styles.profileLabel}>Join Date:</Text>
                     <Text style={styles.profileValue}>{selectedUser.joinDate}</Text>
@@ -217,7 +212,16 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E0E0E0',
   },
-  searchInput: { flex: 1, marginLeft: 10, fontSize: 15, color: '#333' },
+  searchInput: { flex: 1, fontSize: 15, color: '#333' },
+  clearBtn: { 
+    paddingHorizontal: 8, 
+    paddingVertical: 4,
+  },
+  clearBtnText: { 
+    fontSize: 16, 
+    color: '#999', 
+    fontWeight: '700' 
+  },
   
   filterRow: { flexDirection: 'row', marginBottom: 15, gap: 8 },
   filterTab: {
@@ -243,19 +247,47 @@ const styles = StyleSheet.create({
   
   card: { backgroundColor: '#FFF', borderRadius: 12, padding: 15, marginBottom: 12, elevation: 2 },
   cardHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
-  avatar: { width: 50, height: 50, borderRadius: 25, backgroundColor: '#E8EAF6', alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+  avatar: { 
+    width: 50, 
+    height: 50, 
+    borderRadius: 25, 
+    backgroundColor: '#E8EAF6', 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    marginRight: 12 
+  },
+  avatarText: { 
+    fontSize: 18, 
+    fontWeight: '800', 
+    color: '#1A237E' 
+  },
   userInfo: { flex: 1, minWidth: 0 },
   name: { fontSize: 16, fontWeight: '700', color: '#1A237E', marginBottom: 2 },
   roleDept: { fontSize: 13, color: '#666', flex: 1 },
   
   cardActions: { flexDirection: 'row', gap: 10, borderTopWidth: 1, borderTopColor: '#F0F0F0', paddingTop: 12 },
-  actionBtnView: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#E8EAF6', paddingVertical: 10, borderRadius: 8 },
-  actionTextView: { color: '#1A237E', fontSize: 14, fontWeight: '600', marginLeft: 6 },
-  actionBtnDelete: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFEBEE', paddingVertical: 10, borderRadius: 8 },
-  actionTextDelete: { color: '#F44336', fontSize: 14, fontWeight: '600', marginLeft: 6 },
+  actionBtnView: { 
+    flex: 1, 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    backgroundColor: '#E8EAF6', 
+    paddingVertical: 10, 
+    borderRadius: 8 
+  },
+  actionTextView: { color: '#1A237E', fontSize: 14, fontWeight: '600' },
+  actionBtnDelete: { 
+    flex: 1, 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    backgroundColor: '#FFEBEE', 
+    paddingVertical: 10, 
+    borderRadius: 8 
+  },
+  actionTextDelete: { color: '#F44336', fontSize: 14, fontWeight: '600' },
   
   emptyBox: { alignItems: 'center', paddingVertical: 40 },
-  emptyText: { fontSize: 16, color: '#999', marginTop: 10 },
+  emptyIcon: { fontSize: 50, marginBottom: 10 },
+  emptyText: { fontSize: 16, color: '#999' },
 
   // Modal Styles - Centered
   modalOverlay: { 
@@ -285,7 +317,7 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     marginBottom: 15 
   },
-  avatarInitials: { 
+  profileAvatarText: { 
     fontSize: 28, 
     fontWeight: '800', 
     color: '#1A237E' 
