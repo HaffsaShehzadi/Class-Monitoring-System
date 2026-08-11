@@ -4,10 +4,10 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 export default function MonitoringOfficialDashboard({ onNavigate, onLogout }: any) {
   const menuItems = [
-    { id: 'markAttendance', title: 'Mark Attendance', icon: 'clipboard-check', color: '#4CAF50' },
+    // ✅ Today's Attendance removed - sirf 3 options hain
     { id: 'viewAssignDuty', title: 'View Assign Duty', icon: 'calendar-check', color: '#2196F3' },
-    { id: 'todayAttendance', title: "Today's Attendance", icon: 'calendar-today', color: '#FF9800' },
-    { id: 'attendanceHistoryReport', title: 'Attendance History', icon: 'history', color: '#00BCD4' },
+    { id: 'markAttendance', title: 'Mark Attendance', icon: 'clipboard-check', color: '#4CAF50' },
+    { id: 'attendanceHistory', title: 'Attendance History', icon: 'history', color: '#00BCD4' },
   ];
 
   return (
@@ -25,6 +25,7 @@ export default function MonitoringOfficialDashboard({ onNavigate, onLogout }: an
               key={item.id} 
               style={styles.card} 
               onPress={() => onNavigate(item.id, { userRole: 'monitoring' })}
+              activeOpacity={0.7}
             >
               <View style={[styles.iconBox, { backgroundColor: item.color + '20' }]}>
                 <MaterialCommunityIcons name={item.icon} size={35} color={item.color} />

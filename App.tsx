@@ -24,7 +24,6 @@ import AddEditClassScreen from './AddEditClassScreen';
 
 // Shared screens
 import AttendanceHistoryReport from './AttendanceHistoryReport';
-import TodayAttendanceScreen from './TodayAttendanceScreen';
 
 // Teacher screens
 import SubmitComplaintScreen from './SubmitComplaintScreen';
@@ -167,8 +166,6 @@ export default function App() {
       case 'markAttendance': return <MarkAttendanceScreen onBack={goBack} />;
 
       // SHARED SCREENS
-      case 'todayAttendance': return <TodayAttendanceScreen onBack={goBack} currentUser={currentUser} />;
-      
       case 'history':
       case 'reports':
       case 'attendanceHistory': 
