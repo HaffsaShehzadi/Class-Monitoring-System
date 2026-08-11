@@ -5,33 +5,43 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { AVAILABLE_DEPARTMENTS } from './SharedData';
 const DEPTS = typeof AVAILABLE_DEPARTMENTS !== 'undefined' ? AVAILABLE_DEPARTMENTS : ['IT', 'BSCS', 'Math', 'Physics', 'English', 'Urdu'];
 
+const ALL_TEACHERS = ['Hafiz Abdul Rehman', 'Mohsin Raza', 'Hasan Raza', 'Asif Iqbal', 'Ahmad Ali', 'Hira Afzal', 'M. Kamran'];
+
 const PERIODS = [
   { id: 1, time: '08:30 - 09:15' },
   { id: 2, time: '09:30 - 10:15' },
   { id: 3, time: '10:30 - 11:15' },
   { id: 4, time: '11:30 - 12:15' },
   { id: 5, time: '12:30 - 01:15' },
-  { id: 6, time: '02:00 - 02:45' },
-  { id: 7, time: '03:00 - 03:45' },
+  { id: 6, time: '14:00 - 14:45' },
+  { id: 7, time: '15:00 - 15:45' },
 ];
 
 const SEMESTERS = ['2nd', '4th', '6th', '8th'];
+const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 // Mock Attendance Data
 const MOCK_ATTENDANCE = [
-  { id: 1, date: '2024-06-01', dept: 'IT', sem: '2nd', period: 1, teacher: 'Hafiz Abdul Rehman', code: 'UE-272', status: 'Present' },
-  { id: 2, date: '2024-06-01', dept: 'IT', sem: '2nd', period: 2, teacher: 'Mohsin Raza', code: 'GENG-201', status: 'Absent' },
-  { id: 3, date: '2024-06-01', dept: 'IT', sem: '4th', period: 1, teacher: 'Hasan Raza', code: 'CC-213L', status: 'Late' },
-  { id: 4, date: '2024-06-01', dept: 'BSCS', sem: '2nd', period: 1, teacher: 'Asif Iqbal', code: 'GISL-101', status: 'Present' },
-  { id: 5, date: '2024-06-01', dept: 'BSCS', sem: '4th', period: 2, teacher: 'Ahmad Ali', code: 'CS-202', status: 'Present' },
-  { id: 6, date: '2024-06-02', dept: 'IT', sem: '2nd', period: 1, teacher: 'Hafiz Abdul Rehman', code: 'UE-272', status: 'Present' },
+  { id: 1, date: '2024-06-01', dept: 'IT', sem: '2nd', day: 'Monday', period: 1, teacher: 'Hafiz Abdul Rehman', code: 'UE-272', status: 'Present' },
+  { id: 2, date: '2024-06-01', dept: 'IT', sem: '2nd', day: 'Monday', period: 2, teacher: 'Mohsin Raza', code: 'GENG-201', status: 'Absent' },
+  { id: 3, date: '2024-06-01', dept: 'IT', sem: '4th', day: 'Monday', period: 1, teacher: 'Hasan Raza', code: 'CC-213L', status: 'Late' },
+  { id: 4, date: '2024-06-01', dept: 'BSCS', sem: '2nd', day: 'Monday', period: 1, teacher: 'Asif Iqbal', code: 'GISL-101', status: 'Present' },
+  { id: 5, date: '2024-06-02', dept: 'IT', sem: '2nd', day: 'Tuesday', period: 1, teacher: 'Hafiz Abdul Rehman', code: 'UE-272', status: 'Present' },
+  { id: 6, date: '2024-06-03', dept: 'IT', sem: '2nd', day: 'Wednesday', period: 2, teacher: 'Mohsin Raza', code: 'GENG-201', status: 'Late' },
 ];
 
 export default function AttendanceHistoryReport({ onBack, userRole }: any) {
-  const [selectedDate, setSelectedDate] = useState('2024-06-01');
-  const [selectedDept, setSelectedDept] = useState('IT');
+  const [viewMode, setViewMode] = useState<'department' | 'teacher'>('department');
+  const [selectedDept, setSelectedDept] = useState('');
+  const [selectedTeacher, setSelectedTeacher] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [selectedDay, setSelectedDay] = useState('Monday');
+  
+  const [showHistory, setShowHistory] = useState(false);
   
   const [deptModalVisible, setDeptModalVisible] = useState(false);
+  const [teacherModalVisible, setTeacherModalVisible] = useState(false);
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [editingRecord, setEditingRecord] = useState<any>(null);
   const [editStatus, setEditStatus] = useState('');
@@ -39,13 +49,17 @@ export default function AttendanceHistoryReport({ onBack, userRole }: any) {
   const isAdmin = userRole === 'admin';
 
   const filteredAttendance = useMemo(() => {
-    return MOCK_ATTENDANCE.filter(item => 
-      item.date === selectedDate && item.dept === selectedDept
-    );
-  }, [selectedDate, selectedDept]);
+    return MOCK_ATTENDANCE.filter(item => {
+      const matchDept = viewMode === 'department' ? item.dept === selectedDept : true;
+      const matchTeacher = viewMode === 'teacher' ? item.teacher === selectedTeacher : true;
+      const matchStart = startDate ? item.date >= startDate : true;
+      const matchEnd = endDate ? item.date <= endDate : true;
+      return matchDept && matchTeacher && matchStart && matchEnd;
+    });
+  }, [selectedDept, selectedTeacher, startDate, endDate, viewMode]);
 
   const getAttendance = (sem: string, periodId: number) => {
-    return filteredAttendance.find(a => a.sem === sem && a.period === periodId);
+    return filteredAttendance.find(a => a.sem === sem && a.period === periodId && a.day === selectedDay);
   };
 
   const getStatusColor = (status: string) => {
@@ -55,15 +69,8 @@ export default function AttendanceHistoryReport({ onBack, userRole }: any) {
     return '#E0E0E0';
   };
 
-  const getStatusBgColor = (status: string) => {
-    if (status === 'Present') return '#E8F5E9';
-    if (status === 'Absent') return '#FFEBEE';
-    if (status === 'Late') return '#FFF3E0';
-    return '#FAFAFA';
-  };
-
   const handleCellPress = (record: any) => {
-    if (!record) return; // Empty cell
+    if (!record) return;
     if (!isAdmin) {
       Alert.alert('Info', `Status: ${record.status}\nTeacher: ${record.teacher}`);
       return;
@@ -79,8 +86,21 @@ export default function AttendanceHistoryReport({ onBack, userRole }: any) {
     ]);
   };
 
+  const handleShowHistory = () => {
+    if (viewMode === 'department' && !selectedDept) {
+      Alert.alert('⚠️ Error', 'Please select a department');
+      return;
+    }
+    if (viewMode === 'teacher' && !selectedTeacher) {
+      Alert.alert('⚠️ Error', 'Please select a teacher');
+      return;
+    }
+    setShowHistory(true);
+  };
+
   const handleExportPDF = () => {
-    Alert.alert('✅ Report Generated', `PDF report for ${selectedDept} on ${selectedDate} downloaded successfully.`);
+    const reportType = viewMode === 'department' ? selectedDept : selectedTeacher;
+    Alert.alert('✅ Report Generated', `PDF report for ${reportType} from ${startDate || 'all dates'} to ${endDate || 'all dates'} downloaded successfully.`);
   };
 
   return (
@@ -90,90 +110,159 @@ export default function AttendanceHistoryReport({ onBack, userRole }: any) {
           <MaterialCommunityIcons name="arrow-left" size={24} color="#FFF" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Attendance History</Text>
-        <TouchableOpacity onPress={handleExportPDF}>
-          <MaterialCommunityIcons name="file-pdf-box" size={28} color="#FFF" />
+        <View style={{ width: 24 }} />
+      </View>
+
+      {/* Mode Selector */}
+      <View style={styles.modeSelector}>
+        <TouchableOpacity 
+          style={[styles.modeBtn, viewMode === 'department' && styles.modeBtnActive]} 
+          onPress={() => { setViewMode('department'); setShowHistory(false); }}
+        >
+          <Text style={[styles.modeText, viewMode === 'department' && styles.modeTextActive]}>Department Wise</Text>
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={[styles.modeBtn, viewMode === 'teacher' && styles.modeBtnActive]} 
+          onPress={() => { setViewMode('teacher'); setShowHistory(false); }}
+        >
+          <Text style={[styles.modeText, viewMode === 'teacher' && styles.modeTextActive]}>Teacher Wise</Text>
         </TouchableOpacity>
       </View>
 
       {/* Filters */}
       <View style={styles.filterContainer}>
-        <TouchableOpacity style={styles.filterBtn} onPress={() => setDeptModalVisible(true)}>
-          <MaterialCommunityIcons name="school-outline" size={20} color="#1A237E" />
-          <Text style={styles.filterBtnText}>{selectedDept} Dept</Text>
-          <MaterialCommunityIcons name="chevron-down" size={20} color="#666" />
-        </TouchableOpacity>
+        {viewMode === 'department' ? (
+          <TouchableOpacity style={styles.filterBtn} onPress={() => setDeptModalVisible(true)}>
+            <MaterialCommunityIcons name="school-outline" size={20} color="#1A237E" />
+            <Text style={styles.filterBtnText}>{selectedDept || 'Select Department'}</Text>
+            <MaterialCommunityIcons name="chevron-down" size={20} color="#666" />
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity style={styles.filterBtn} onPress={() => setTeacherModalVisible(true)}>
+            <MaterialCommunityIcons name="account-tie" size={20} color="#1A237E" />
+            <Text style={styles.filterBtnText}>{selectedTeacher || 'Select Teacher'}</Text>
+            <MaterialCommunityIcons name="chevron-down" size={20} color="#666" />
+          </TouchableOpacity>
+        )}
         
-        <View style={styles.dateInputWrapper}>
-          <MaterialCommunityIcons name="calendar" size={20} color="#1A237E" />
-          <TextInput 
-            style={styles.dateInput} 
-            placeholder="YYYY-MM-DD" 
-            value={selectedDate} 
-            onChangeText={setSelectedDate} 
-          />
+        <View style={styles.dateRow}>
+          <View style={styles.dateInputWrapper}>
+            <MaterialCommunityIcons name="calendar-start" size={18} color="#1A237E" />
+            <TextInput 
+              style={styles.dateInput} 
+              placeholder="Start Date" 
+              value={startDate} 
+              onChangeText={setStartDate} 
+            />
+          </View>
+          <View style={styles.dateInputWrapper}>
+            <MaterialCommunityIcons name="calendar-end" size={18} color="#1A237E" />
+            <TextInput 
+              style={styles.dateInput} 
+              placeholder="End Date" 
+              value={endDate} 
+              onChangeText={setEndDate} 
+            />
+          </View>
         </View>
+
+        <TouchableOpacity style={styles.showBtn} onPress={handleShowHistory}>
+          <MaterialCommunityIcons name="magnify" size={20} color="#FFF" />
+          <Text style={styles.showBtnText}>Show History</Text>
+        </TouchableOpacity>
       </View>
 
-      {/* Grid View (Same as Timetable) */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.gridScrollView}>
-        <ScrollView showsVerticalScrollIndicator={true} style={styles.verticalScroll}>
-          <View style={styles.grid}>
-            {/* Header Row */}
-            <View style={styles.row}>
-              <View style={styles.cornerCell}>
-                <Text style={styles.cornerText}>Sem / Period</Text>
-              </View>
-              {PERIODS.map(p => (
-                <View key={p.id} style={styles.periodHeaderCell}>
-                  <Text style={styles.periodNum}>P{p.id}</Text>
-                  <Text style={styles.periodTime}>{p.time}</Text>
-                </View>
+      {/* History Grid - Only show after clicking Show History */}
+      {showHistory && (
+        <>
+          {/* Day Selector */}
+          <View style={styles.daySelectorWrapper}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              {DAYS.map(day => (
+                <TouchableOpacity 
+                  key={day} 
+                  style={[styles.dayBtn, selectedDay === day && styles.dayBtnActive]}
+                  onPress={() => setSelectedDay(day)}
+                >
+                  <Text style={[styles.dayText, selectedDay === day && styles.dayTextActive]}>
+                    {day}
+                  </Text>
+                </TouchableOpacity>
               ))}
-            </View>
-
-            {/* Data Rows */}
-            {SEMESTERS.map(sem => (
-              <View key={sem} style={styles.row}>
-                <View style={styles.deptSemCell}>
-                  <Text style={styles.deptText}>{selectedDept}</Text>
-                  <Text style={styles.semText}>{sem}</Text>
-                </View>
-                
-                {PERIODS.map(p => {
-                  const record = getAttendance(sem, p.id);
-                  return (
-                    <TouchableOpacity 
-                      key={p.id} 
-                      style={[
-                        styles.dataCell, 
-                        record ? { backgroundColor: getStatusBgColor(record.status) } : styles.emptyCell
-                      ]}
-                      onPress={() => handleCellPress(record)}
-                      activeOpacity={0.7}
-                      disabled={!record}
-                    >
-                      {record ? (
-                        <View style={styles.cellContent}>
-                          <Text style={styles.cellTeacher} numberOfLines={1}>{record.teacher}</Text>
-                          <Text style={styles.cellCode} numberOfLines={1}>{record.code}</Text>
-                          <View style={[styles.statusBadge, { backgroundColor: getStatusColor(record.status) }]}>
-                            <Text style={styles.statusText}>{record.status}</Text>
-                          </View>
-                          {isAdmin && (
-                            <MaterialCommunityIcons name="pencil" size={12} color="#1A237E" style={{ marginTop: 4 }} />
-                          )}
-                        </View>
-                      ) : (
-                        <Text style={styles.emptyText}>No Class</Text>
-                      )}
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            ))}
+            </ScrollView>
           </View>
-        </ScrollView>
-      </ScrollView>
+
+          {/* Grid View */}
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.gridScrollView}>
+            <ScrollView showsVerticalScrollIndicator={true} style={styles.verticalScroll}>
+              <View style={styles.grid}>
+                {/* Header Row */}
+                <View style={styles.row}>
+                  <View style={styles.cornerCell}>
+                    <Text style={styles.cornerText}>Sem / Period</Text>
+                  </View>
+                  {PERIODS.map(p => (
+                    <View key={p.id} style={styles.periodHeaderCell}>
+                      <Text style={styles.periodNum}>P{p.id}</Text>
+                      <Text style={styles.periodTime}>{p.time}</Text>
+                    </View>
+                  ))}
+                </View>
+
+                {/* Data Rows */}
+                {SEMESTERS.map(sem => (
+                  <View key={sem} style={styles.row}>
+                    <View style={styles.deptSemCell}>
+                      <Text style={styles.deptText}>{viewMode === 'department' ? selectedDept : 'All'}</Text>
+                      <Text style={styles.semText}>{sem}</Text>
+                    </View>
+                    
+                    {PERIODS.map(p => {
+                      const record = getAttendance(sem, p.id);
+                      return (
+                        <TouchableOpacity 
+                          key={p.id} 
+                          style={[
+                            styles.dataCell, 
+                            record ? { backgroundColor: '#FFF' } : styles.emptyCell
+                          ]}
+                          onPress={() => handleCellPress(record)}
+                          activeOpacity={0.7}
+                          disabled={!record}
+                        >
+                          {record ? (
+                            <View style={styles.cellContent}>
+                              <Text style={styles.cellTeacher} numberOfLines={1}>{record.teacher}</Text>
+                              <Text style={styles.cellCode} numberOfLines={1}>{record.code}</Text>
+                              <TouchableOpacity 
+                                style={[styles.statusButton, { backgroundColor: getStatusColor(record.status) }]}
+                                onPress={() => handleCellPress(record)}
+                              >
+                                <Text style={styles.statusText}>{record.status}</Text>
+                              </TouchableOpacity>
+                              {isAdmin && (
+                                <MaterialCommunityIcons name="pencil" size={12} color="#1A237E" style={{ marginTop: 4 }} />
+                              )}
+                            </View>
+                          ) : (
+                            <Text style={styles.emptyText}>No Class</Text>
+                          )}
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                ))}
+              </View>
+            </ScrollView>
+          </ScrollView>
+
+          {/* Generate PDF Button */}
+          <TouchableOpacity style={styles.exportBtn} onPress={handleExportPDF}>
+            <MaterialCommunityIcons name="file-pdf-box" size={24} color="#FFF" />
+            <Text style={styles.exportBtnText}>Generate PDF Report</Text>
+          </TouchableOpacity>
+        </>
+      )}
 
       {/* Department Modal */}
       <Modal visible={deptModalVisible} transparent animationType="fade">
@@ -201,6 +290,32 @@ export default function AttendanceHistoryReport({ onBack, userRole }: any) {
         </View>
       </Modal>
 
+      {/* Teacher Modal */}
+      <Modal visible={teacherModalVisible} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Select Teacher</Text>
+              <TouchableOpacity onPress={() => setTeacherModalVisible(false)}>
+                <MaterialCommunityIcons name="close" size={24} color="#1A237E" />
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={styles.modalList}>
+              {ALL_TEACHERS.map((teacher: string) => (
+                <TouchableOpacity 
+                  key={teacher} 
+                  style={[styles.modalItem, selectedTeacher === teacher && styles.modalItemActive]} 
+                  onPress={() => { setSelectedTeacher(teacher); setTeacherModalVisible(false); }}
+                >
+                  <Text style={[styles.modalItemText, selectedTeacher === teacher && styles.modalItemTextActive]}>{teacher}</Text>
+                  {selectedTeacher === teacher && <MaterialCommunityIcons name="check" size={20} color="#FFF" />}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
       {/* Edit Modal */}
       <Modal visible={editModalVisible} transparent animationType="fade">
         <View style={styles.modalOverlay}>
@@ -218,6 +333,8 @@ export default function AttendanceHistoryReport({ onBack, userRole }: any) {
                   <Text style={styles.editValue}>{editingRecord.teacher}</Text>
                   <Text style={styles.editLabel}>Subject:</Text>
                   <Text style={styles.editValue}>{editingRecord.code}</Text>
+                  <Text style={styles.editLabel}>Date:</Text>
+                  <Text style={styles.editValue}>{editingRecord.date}</Text>
                 </View>
                 <Text style={styles.label}>Update Status:</Text>
                 <View style={styles.statusOptions}>
@@ -265,39 +382,84 @@ const styles = StyleSheet.create({
   },
   headerTitle: { fontSize: 20, fontWeight: '800', color: '#FFF' },
   
-  filterContainer: { 
+  modeSelector: { 
     flexDirection: 'row', 
-    padding: 15, 
-    gap: 10, 
+    margin: 15, 
+    marginBottom: 10,
     backgroundColor: '#FFF', 
-    borderBottomWidth: 1, 
-    borderBottomColor: '#E0E0E0' 
+    borderRadius: 10, 
+    padding: 4, 
+    elevation: 2 
+  },
+  modeBtn: { flex: 1, paddingVertical: 12, borderRadius: 8, alignItems: 'center' },
+  modeBtnActive: { backgroundColor: '#1A237E' },
+  modeText: { fontSize: 14, fontWeight: '600', color: '#666' },
+  modeTextActive: { color: '#FFF', fontWeight: '700' },
+  
+  filterContainer: { 
+    padding: 15, 
+    paddingTop: 0,
+    gap: 10,
   },
   filterBtn: { 
-    flex: 1,
     flexDirection: 'row', 
     alignItems: 'center', 
-    backgroundColor: '#F5F5F5', 
+    backgroundColor: '#FFF', 
     borderWidth: 1, 
     borderColor: '#DDD', 
-    borderRadius: 8, 
+    borderRadius: 10, 
     paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingVertical: 12,
     gap: 8
   },
   filterBtnText: { fontSize: 14, color: '#1A237E', fontWeight: '700', flex: 1 },
+  
+  dateRow: { flexDirection: 'row', gap: 10 },
   dateInputWrapper: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F5F5F5',
+    backgroundColor: '#FFF',
     borderWidth: 1,
     borderColor: '#DDD',
-    borderRadius: 8,
+    borderRadius: 10,
     paddingHorizontal: 12,
     gap: 8
   },
-  dateInput: { flex: 1, paddingVertical: 8, fontSize: 14, color: '#333' },
+  dateInput: { flex: 1, paddingVertical: 10, fontSize: 14, color: '#333' },
+
+  showBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#1A237E',
+    paddingVertical: 14,
+    borderRadius: 10,
+    gap: 8,
+    elevation: 3,
+  },
+  showBtnText: { color: '#FFF', fontSize: 16, fontWeight: '700' },
+
+  daySelectorWrapper: { 
+    backgroundColor: '#FFF', 
+    paddingVertical: 12, 
+    paddingHorizontal: 10, 
+    borderBottomWidth: 1, 
+    borderBottomColor: '#E0E0E0',
+    marginTop: 10,
+  },
+  dayBtn: { 
+    paddingHorizontal: 22, 
+    paddingVertical: 10, 
+    borderRadius: 20, 
+    backgroundColor: '#ECEFF1', 
+    marginRight: 10, 
+    minWidth: 100, 
+    alignItems: 'center' 
+  },
+  dayBtnActive: { backgroundColor: '#1A237E' },
+  dayText: { fontSize: 13, fontWeight: '700', color: '#546E7A' },
+  dayTextActive: { color: '#FFF', fontWeight: '800' },
 
   gridScrollView: { flex: 1 },
   verticalScroll: { flex: 1 },
@@ -311,19 +473,38 @@ const styles = StyleSheet.create({
   periodNum: { fontSize: 13, fontWeight: '800', color: '#1A237E' },
   periodTime: { fontSize: 9, color: '#546E7A', textAlign: 'center', marginTop: 2 },
   
-  deptSemCell: { width: 90, minHeight: 90, backgroundColor: '#F5F5F5', justifyContent: 'center', alignItems: 'center', borderRightWidth: 1, borderBottomWidth: 1, borderColor: '#90A4AE' },
+  deptSemCell: { width: 90, minHeight: 100, backgroundColor: '#F5F5F5', justifyContent: 'center', alignItems: 'center', borderRightWidth: 1, borderBottomWidth: 1, borderColor: '#90A4AE' },
   deptText: { fontSize: 13, fontWeight: '800', color: '#1A237E' },
   semText: { fontSize: 11, color: '#546E7A', fontWeight: '600' },
   
-  dataCell: { width: 115, minHeight: 90, justifyContent: 'center', alignItems: 'center', borderRightWidth: 1, borderBottomWidth: 1, borderColor: '#90A4AE', padding: 6 },
+  dataCell: { width: 115, minHeight: 100, justifyContent: 'center', alignItems: 'center', borderRightWidth: 1, borderBottomWidth: 1, borderColor: '#90A4AE', padding: 6 },
   emptyCell: { backgroundColor: '#FAFAFA' },
   emptyText: { fontSize: 10, color: '#B0BEC5', fontWeight: '600' },
   
   cellContent: { alignItems: 'center', justifyContent: 'center', flex: 1 },
   cellTeacher: { fontSize: 10, fontWeight: '700', color: '#333', textAlign: 'center', marginBottom: 2 },
   cellCode: { fontSize: 9, color: '#546E7A', textAlign: 'center', marginBottom: 4 },
-  statusBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 },
-  statusText: { color: '#FFF', fontSize: 9, fontWeight: '800' },
+  
+  statusButton: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    marginTop: 4,
+  },
+  statusText: { color: '#FFF', fontSize: 10, fontWeight: '800' },
+  
+  exportBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#4CAF50',
+    margin: 15,
+    paddingVertical: 14,
+    borderRadius: 10,
+    gap: 8,
+    elevation: 3,
+  },
+  exportBtnText: { color: '#FFF', fontSize: 16, fontWeight: '700' },
   
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 },
   modalContent: { backgroundColor: '#FFF', borderRadius: 16, width: '100%', maxWidth: 400, padding: 20, elevation: 10 },
