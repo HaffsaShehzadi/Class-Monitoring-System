@@ -25,6 +25,15 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-sqlite",
+      "expo-font",
+      "expo-sharing",
+      "expo-status-bar"
+    ],
+    "extra": {
+      "backendUrl": "http://192.168.100.14:5000"
     }
   }
 }
