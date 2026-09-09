@@ -1,0 +1,60 @@
+import React from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView } from 'react-native';
+
+// ✅ LOCAL teacher info (App.tsx se nahi)
+const TEACHER_INFO = { name: 'Hassan Raza' };
+
+export default function TeacherDashboard({ onNavigate, onLogout }: any) {
+  const menuItems = [
+    { id: 'myTimetable', title: 'My Timetable', description: 'View your class schedule' },
+    { id: 'teacherAttendanceHistory', title: 'My Attendance History', description: 'View your attendance records' },
+    { id: 'submitComplaint', title: 'Submit Complaint', description: 'Report any issue' },
+  ];
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <View style={styles.header}>
+        <View>
+          <Text style={styles.headerTitle}>Teacher Dashboard</Text>
+          <Text style={styles.headerSubtitle}>Welcome, {TEACHER_INFO.name}</Text>
+        </View>
+        <TouchableOpacity onPress={onLogout} style={styles.logoutBtn}>
+          <Text style={styles.logoutText}>Logout</Text>
+        </TouchableOpacity>
+      </View>
+
+      <ScrollView contentContainerStyle={styles.content}>
+        {menuItems.map(item => (
+          <TouchableOpacity key={item.id} style={styles.menuCard} onPress={() => onNavigate(item.id)}>
+            <View style={styles.menuContent}>
+              <Text style={styles.menuTitle}>{item.title}</Text>
+              <Text style={styles.menuDescription}>{item.description}</Text>
+            </View>
+            <Text style={styles.arrow}>→</Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#F5F5F5' },
+  header: {
+    backgroundColor: '#1A237E', paddingTop: 50, paddingBottom: 20, paddingHorizontal: 20,
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start',
+  },
+  headerTitle: { fontSize: 22, fontWeight: '700', color: '#FFF' },
+  headerSubtitle: { fontSize: 13, color: '#B3B8FF', marginTop: 4 },
+  logoutBtn: { backgroundColor: '#FFF', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8 },
+  logoutText: { color: '#1A237E', fontWeight: '700', fontSize: 14 },
+  content: { padding: 15, paddingBottom: 30 },
+  menuCard: {
+    backgroundColor: '#FFF', borderRadius: 12, padding: 18, marginBottom: 12,
+    flexDirection: 'row', alignItems: 'center', elevation: 2,
+  },
+  menuContent: { flex: 1 },
+  menuTitle: { fontSize: 16, fontWeight: '700', color: '#1A237E', marginBottom: 4 },
+  menuDescription: { fontSize: 13, color: '#666' },
+  arrow: { fontSize: 22, color: '#1A237E', fontWeight: '700' },
+});

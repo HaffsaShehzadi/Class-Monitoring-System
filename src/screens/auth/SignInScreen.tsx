@@ -1,20 +1,83 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert, ActivityIndicator } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+
+interface SignInScreenProps {
+  onBack: () => void;
+  onLogin: (userData: any) => void;
+  onSignUp: () => void;
+  onForgotPassword: () => void;
+  onPendingStatus?: (userData: any) => void;
+}
+
+// ✅ MOCK USERS DATABASE
+const MOCK_USERS = [
+  {
+    id: 1,
+    name: 'Admin User',
+    email: 'admin@test.com',
+    password: '123456',
+    role: 'admin',
+    department: null,
+    status: 'approved',
+    joinDate: '2024-01-01',
+  },
+  {
+    id: 2,
+    name: 'Hassan Raza',
+    email: 'teacher@test.com',
+    password: '123456',
+    role: 'teacher',
+    department: 'IT',
+    status: 'approved',
+    joinDate: '2024-06-01',
+  },
+  {
+    id: 3,
+    name: 'Ali Hassan',
+    email: 'monitor@test.com',
+    password: '123456',
+    role: 'monitoring',
+    department: null,
+    status: 'approved',
+    joinDate: '2024-06-01',
+  },
+  {
+    id: 4,
+    name: 'Pending Teacher',
+    email: 'pending@test.com',
+    password: '123456',
+    role: 'teacher',
+    department: 'Math',
+    status: 'pending',
+    joinDate: '2024-08-15',
+  },
+  {
+    id: 5,
+    name: 'Rejected User',
+    email: 'rejected@test.com',
+    password: '123456',
+    role: 'teacher',
+    department: 'Physics',
+    status: 'rejected',
+    joinDate: '2024-08-10',
+  },
+];
 
 export default function SignInScreen({ 
   onBack, 
-  onAdminLogin, 
-  onTeacherLogin, 
-  onMonitoringLogin,
+  onLogin,
   onSignUp,
-  onForgotPassword 
-}: any) {
+  onForgotPassword,
+  onPendingStatus,
+}: SignInScreenProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const handleSignIn = () => {
+  const handleSignIn = async () => {
+    // ✅ Frontend validations
     if (!email || !password) {
       Alert.alert('⚠️ All Fields Required', 'Please enter email and password');
       return;
@@ -31,23 +94,78 @@ export default function SignInScreen({
       return;
     }
 
-    // ✅ Email ke basis pe role auto-detect
-    const lowerEmail = email.toLowerCase();
-    if (lowerEmail.includes('admin')) {
-      onAdminLogin();
-    } else if (lowerEmail.includes('teacher')) {
-      onTeacherLogin();
-    } else if (lowerEmail.includes('monitor')) {
-      onMonitoringLogin();
-    } else {
-      // Default: Admin Dashboard
-      onAdminLogin();
+    setLoading(true);
+
+    // TODO: Backend API call karna hai
+    // API: POST /api/auth/login
+    // Body: { email, password }
+    
+    // Mock delay (simulate API call)
+    await new Promise(resolve => setTimeout(resolve, 800));
+
+    try {
+      // ✅ Mock authentication
+      const user = MOCK_USERS.find(
+        u => u.email.toLowerCase() === email.toLowerCase() && u.password === password
+      );
+
+      if (!user) {
+        setLoading(false);
+        Alert.alert('❌ Login Failed', 'Invalid email or password');
+        return;
+      }
+
+      // ✅ Status check
+      if (user.status === 'pending') {
+        setLoading(false);
+        Alert.alert(
+          '⏳ Account Pending',
+          'Your account is pending admin approval. Please wait.',
+          [
+            {
+              text: 'Check Status',
+              onPress: () => {
+                if (onPendingStatus) {
+                  onPendingStatus(user);
+                }
+              }
+            },
+            { text: 'OK' }
+          ]
+        );
+        return;
+      }
+
+      if (user.status === 'rejected') {
+        setLoading(false);
+        Alert.alert(
+          '❌ Account Rejected',
+          'Your account request has been rejected by admin. Please contact support.',
+        );
+        return;
+      }
+
+      // ✅ Approved user - login successful
+      setLoading(false);
+      
+      onLogin({
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        department: user.department,
+        joinDate: user.joinDate,
+        token: 'mock_jwt_token_' + Date.now(),
+      });
+
+    } catch (error: any) {
+      setLoading(false);
+      Alert.alert('❌ Login Failed', error?.message || 'Something went wrong');
     }
   };
 
   return (
     <ScrollView style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={onBack} style={styles.backButton}>
           <MaterialCommunityIcons name="arrow-left" size={24} color="#1A237E" />
@@ -57,7 +175,6 @@ export default function SignInScreen({
       </View>
 
       <View style={styles.formContainer}>
-        {/* Logo/Icon */}
         <View style={styles.logoContainer}>
           <MaterialCommunityIcons name="account-circle" size={80} color="#1A237E" />
         </View>
@@ -65,7 +182,6 @@ export default function SignInScreen({
         <Text style={styles.title}>Welcome Back! 👋</Text>
         <Text style={styles.subtitle}>Sign in to continue</Text>
 
-        {/* Email */}
         <Text style={styles.label}>Email Address *</Text>
         <View style={styles.inputContainer}>
           <MaterialCommunityIcons name="email-outline" size={20} color="#666" style={styles.inputIcon} />
@@ -79,7 +195,6 @@ export default function SignInScreen({
           />
         </View>
 
-        {/* Password */}
         <Text style={styles.label}>Password *</Text>
         <View style={styles.inputContainer}>
           <MaterialCommunityIcons name="lock-outline" size={20} color="#666" style={styles.inputIcon} />
@@ -99,24 +214,28 @@ export default function SignInScreen({
           </TouchableOpacity>
         </View>
 
-        {/* Forgot Password */}
         <TouchableOpacity onPress={onForgotPassword} style={styles.forgotContainer}>
           <Text style={styles.forgotText}>Forgot Password?</Text>
         </TouchableOpacity>
 
-        {/* Sign In Button */}
-        <TouchableOpacity style={styles.signInButton} onPress={handleSignIn}>
-          <Text style={styles.signInButtonText}>Sign In</Text>
+        <TouchableOpacity 
+          style={styles.signInButton} 
+          onPress={handleSignIn}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator color="#FFF" />
+          ) : (
+            <Text style={styles.signInButtonText}>Sign In</Text>
+          )}
         </TouchableOpacity>
 
-        {/* Or Divider */}
         <View style={styles.divider}>
           <View style={styles.dividerLine} />
           <Text style={styles.dividerText}>OR</Text>
           <View style={styles.dividerLine} />
         </View>
 
-        {/* Sign Up Link */}
         <View style={styles.footer}>
           <Text style={styles.footerText}>Don't have an account? </Text>
           <TouchableOpacity onPress={onSignUp}>
@@ -124,13 +243,14 @@ export default function SignInScreen({
           </TouchableOpacity>
         </View>
 
-        {/* Demo Login Info */}
+        {/* ✅ Demo Login Info */}
         <View style={styles.demoBox}>
-          <Text style={styles.demoTitle}>📌 Demo Login Emails:</Text>
-          <Text style={styles.demoText}>• Admin: admin@test.com</Text>
-          <Text style={styles.demoText}>• Teacher: teacher@test.com</Text>
-          <Text style={styles.demoText}>• Monitoring: monitor@test.com</Text>
-          <Text style={styles.demoText}>• Password: 123456 (any 6+ chars)</Text>
+          <Text style={styles.demoTitle}>📌 Demo Credentials:</Text>
+          <Text style={styles.demoText}>👑 Admin: admin@test.com</Text>
+          <Text style={styles.demoText}>👨‍🏫 Teacher: teacher@test.com</Text>
+          <Text style={styles.demoText}>👁️ Monitor: monitor@test.com</Text>
+          <Text style={styles.demoText}>⏳ Pending: pending@test.com</Text>
+          <Text style={styles.demoText}>🔑 Password: 123456 (all users)</Text>
         </View>
       </View>
     </ScrollView>
@@ -171,7 +291,7 @@ const styles = StyleSheet.create({
   inputIcon: { marginRight: 10 },
   input: { flex: 1, paddingVertical: 14, fontSize: 16 },
   eyeIcon: { padding: 5 },
-  forgotContainer: { alignSelf: 'flex-end', marginBottom: 20, width: '100%' },
+  forgotContainer: { alignSelf: 'flex-end', marginBottom: 20, width: '100%', marginTop: 5 },
   forgotText: { fontSize: 14, color: '#1A237E', fontWeight: '500' },
   signInButton: {
     backgroundColor: '#1A237E',
@@ -179,6 +299,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 40,
     borderRadius: 12,
     alignItems: 'center',
+    justifyContent: 'center',
     width: '100%',
     marginTop: 10,
     elevation: 3,
@@ -186,6 +307,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
+    minHeight: 56,
   },
   signInButtonText: { color: '#FFFFFF', fontSize: 18, fontWeight: '700' },
   divider: { flexDirection: 'row', alignItems: 'center', marginVertical: 25, width: '100%' },
@@ -200,9 +322,10 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     width: '100%',
     marginTop: 10,
+    marginBottom: 30,
     borderLeftWidth: 4,
     borderLeftColor: '#1A237E',
   },
   demoTitle: { fontSize: 14, fontWeight: '700', color: '#1A237E', marginBottom: 8 },
-  demoText: { fontSize: 13, color: '#333', marginBottom: 4 },
+  demoText: { fontSize: 13, color: '#333', marginBottom: 4, fontWeight: '500' },
 });

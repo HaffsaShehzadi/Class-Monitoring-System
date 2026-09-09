@@ -14,56 +14,26 @@ const ASSIGNED_DUTIES = [
     id: 1,
     shift: '1st Shift',
     department: 'IT',
-    semester: '2nd',
-    day: 'Monday',
-    periods: '1, 2, 3',
-    assignedDate: '2024-06-01',
-    assignedBy: 'Admin',
-    status: 'Active',
   },
   {
     id: 2,
     shift: '1st Shift',
     department: 'BSCS',
-    semester: '4th',
-    day: 'Monday',
-    periods: '1, 2',
-    assignedDate: '2024-06-01',
-    assignedBy: 'Admin',
-    status: 'Active',
   },
   {
     id: 3,
     shift: '1st Shift',
     department: 'Math',
-    semester: '6th',
-    day: 'Tuesday',
-    periods: '4, 5, 6',
-    assignedDate: '2024-06-02',
-    assignedBy: 'Admin',
-    status: 'Active',
   },
   {
     id: 4,
     shift: '2nd Shift',
     department: 'Physics',
-    semester: '2nd',
-    day: 'Monday',
-    periods: '1, 2, 3',
-    assignedDate: '2024-06-01',
-    assignedBy: 'Admin',
-    status: 'Active',
   },
   {
     id: 5,
     shift: '2nd Shift',
     department: 'English',
-    semester: '4th',
-    day: 'Tuesday',
-    periods: '1, 2',
-    assignedDate: '2024-06-02',
-    assignedBy: 'Admin',
-    status: 'Active',
   },
 ];
 
@@ -74,7 +44,7 @@ export default function ViewAssignDutyScreen({ onBack }: any) {
     ? ASSIGNED_DUTIES.filter(d => d.shift === selectedShift)
     : [];
 
-  // Step 1: Select Shift
+  // Step 1: Select Shift (Icons removed)
   if (!selectedShift) {
     return (
       <SafeAreaView style={styles.container}>
@@ -98,7 +68,6 @@ export default function ViewAssignDutyScreen({ onBack }: any) {
             style={styles.shiftCard}
             onPress={() => setSelectedShift('1st Shift')}
           >
-            <MaterialCommunityIcons name="weather-sunny" size={50} color="#FF9800" />
             <Text style={styles.shiftTitle}>1st Shift</Text>
             <Text style={styles.shiftSubtext}>Morning Classes</Text>
             <Text style={styles.shiftCount}>
@@ -110,7 +79,6 @@ export default function ViewAssignDutyScreen({ onBack }: any) {
             style={styles.shiftCard}
             onPress={() => setSelectedShift('2nd Shift')}
           >
-            <MaterialCommunityIcons name="weather-night" size={50} color="#3F51B5" />
             <Text style={styles.shiftTitle}>2nd Shift</Text>
             <Text style={styles.shiftSubtext}>Evening Classes</Text>
             <Text style={styles.shiftCount}>
@@ -122,7 +90,7 @@ export default function ViewAssignDutyScreen({ onBack }: any) {
     );
   }
 
-  // Step 2: Show Assigned Departments
+  // Step 2: Show Assigned Departments (View Only)
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
@@ -161,44 +129,10 @@ export default function ViewAssignDutyScreen({ onBack }: any) {
           </View>
         ) : (
           filteredDuties.map(duty => (
-            <View key={duty.id} style={styles.dutyCard}>
-              <View style={styles.dutyHeader}>
-                <View style={styles.deptBadge}>
-                  <MaterialCommunityIcons name="school" size={20} color="#FFF" />
-                  <Text style={styles.deptText}>{duty.department}</Text>
-                </View>
-                <View style={styles.statusBadge}>
-                  <MaterialCommunityIcons name="check-circle" size={14} color="#FFF" />
-                  <Text style={styles.statusText}>{duty.status}</Text>
-                </View>
-              </View>
-
-              <View style={styles.dutyBody}>
-                <View style={styles.detailRow}>
-                  <MaterialCommunityIcons name="book-open-variant" size={18} color="#1A237E" />
-                  <Text style={styles.detailLabel}>Semester:</Text>
-                  <Text style={styles.detailValue}>{duty.semester}</Text>
-                </View>
-                <View style={styles.detailRow}>
-                  <MaterialCommunityIcons name="calendar" size={18} color="#1A237E" />
-                  <Text style={styles.detailLabel}>Day:</Text>
-                  <Text style={styles.detailValue}>{duty.day}</Text>
-                </View>
-                <View style={styles.detailRow}>
-                  <MaterialCommunityIcons name="clock-outline" size={18} color="#1A237E" />
-                  <Text style={styles.detailLabel}>Periods:</Text>
-                  <Text style={styles.detailValue}>{duty.periods}</Text>
-                </View>
-                <View style={styles.detailRow}>
-                  <MaterialCommunityIcons name="calendar-check" size={18} color="#1A237E" />
-                  <Text style={styles.detailLabel}>Assigned:</Text>
-                  <Text style={styles.detailValue}>{duty.assignedDate}</Text>
-                </View>
-              </View>
-
-              <View style={styles.dutyFooter}>
-                <MaterialCommunityIcons name="account-check" size={16} color="#4CAF50" />
-                <Text style={styles.footerText}>Assigned by: {duty.assignedBy}</Text>
+            <View key={duty.id} style={styles.deptCard}>
+              <View style={styles.deptBadge}>
+                <MaterialCommunityIcons name="school" size={24} color="#FFF" />
+                <Text style={styles.deptText}>{duty.department}</Text>
               </View>
             </View>
           ))
@@ -249,7 +183,7 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#E8EAF6',
   },
-  shiftTitle: { fontSize: 22, fontWeight: '800', color: '#1A237E', marginTop: 10, marginBottom: 5 },
+  shiftTitle: { fontSize: 22, fontWeight: '800', color: '#1A237E', marginBottom: 5 },
   shiftSubtext: { fontSize: 14, color: '#666', marginBottom: 10 },
   shiftCount: { fontSize: 13, color: '#1A237E', fontWeight: '700', backgroundColor: '#E8EAF6', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 15 },
   
@@ -292,59 +226,23 @@ const styles = StyleSheet.create({
   
   content: { padding: 15 },
   
-  dutyCard: {
+  // Simple Department Card (View Only)
+  deptCard: {
     backgroundColor: '#FFF',
     borderRadius: 12,
-    padding: 15,
+    padding: 20,
     marginBottom: 12,
     elevation: 2,
-  },
-  dutyHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
   },
   deptBadge: {
     backgroundColor: '#1A237E',
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderRadius: 20,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 25,
   },
-  deptText: { color: '#FFF', fontSize: 15, fontWeight: '700', marginLeft: 6 },
-  statusBadge: {
-    backgroundColor: '#4CAF50',
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: 12,
-    gap: 4,
-  },
-  statusText: { color: '#FFF', fontSize: 12, fontWeight: '700' },
-  dutyBody: {
-    backgroundColor: '#F9F9F9',
-    borderRadius: 10,
-    padding: 12,
-    marginBottom: 10,
-  },
-  detailRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E8EAF6',
-  },
-  detailLabel: { fontSize: 13, color: '#666', marginLeft: 10, marginRight: 10, width: 90, fontWeight: '600' },
-  detailValue: { fontSize: 14, color: '#333', fontWeight: '700', flex: 1 },
-  dutyFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingTop: 8,
-  },
-  footerText: { fontSize: 12, color: '#4CAF50', fontWeight: '600', marginLeft: 6 },
+  deptText: { color: '#FFF', fontSize: 16, fontWeight: '700', marginLeft: 10 },
   
   emptyBox: { alignItems: 'center', padding: 40 },
   emptyText: { fontSize: 16, color: '#666', marginTop: 15 },

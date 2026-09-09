@@ -1,53 +1,107 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, Alert } from 'react-native';
-import RequestStatusScreen from './RequestStatusScreen';
+import { View, StyleSheet, Alert, BackHandler } from 'react-native';
+import RequestStatusScreen from './src/screens/auth/RequestStatusScreen';
 
 // Auth screens
-import SplashScreen from './SplashScreen';
-import SignInScreen from './SignInScreen';
-import SignUpScreen from './SignUpScreen';
-import ForgotPasswordScreen from './ForgotPasswordScreen';
+import SplashScreen from './src/screens/auth/SplashScreen';
+import SignInScreen from './src/screens/auth/SignInScreen';
+import SignUpScreen from './src/screens/auth/SignUpScreen';
+import ForgotPasswordScreen from './src/screens/auth/ForgotPasswordScreen';
 
 // Dashboards
-import AdminDashboard from './AdminDashboard';
-import TeacherDashboard from './TeacherDashboard';
-import MonitoringOfficialDashboard from './MonitoringOfficialDashboard';
+import AdminDashboard from './src/screens/admin/AdminDashboard';
+import TeacherDashboard from './src/screens/teacher/TeacherDashboard';
+import MonitoringOfficialDashboard from './src/screens/monitoring/MonitoringOfficialDashboard';
 
 // Admin screens
-import PendingApprovalsScreen from './PendingApprovalsScreen';
-import UserProfilesScreen from './UserProfilesScreen';
-import AssignDutyScreen from './AssignDutyScreen';
-import AssignDutyDetailScreen from './AssignDutyDetailScreen';
-import ComplaintsScreen from './ComplaintsScreen';
-import TimetableManagementScreen from './TimetableManagementScreen';
-import AddEditClassScreen from './AddEditClassScreen';
-
-// Shared screens
-import AttendanceHistoryReport from './AttendanceHistoryReport';
+import PendingApprovalsScreen from './src/screens/admin/PendingApprovalsScreen';
+import UserProfilesScreen from './src/screens/admin/UserProfilesScreen';
+import AssignDutyScreen from './src/screens/admin/AssignDutyScreen';
+import ComplaintsScreen from './src/screens/admin/ComplaintsScreen';
+import TimetableManagementScreen from './src/screens/admin/TimetableManagementScreen';
+import AddClassInTimetable from './src/screens/admin/AddClassInTimetable';
+import AdminAttendanceHistory from './src/screens/admin/AdminAttendanceHistory';
 
 // Teacher screens
-import SubmitComplaintScreen from './SubmitComplaintScreen';
+import SubmitComplaintScreen from './src/screens/teacher/SubmitComplaintScreen';
+import TeacherAttendanceHistory from './src/screens/teacher/TeacherAttendanceHistory';
+import MyTimetableScreen from './src/screens/teacher/MyTimetableScreen';
 
 // Monitoring screens
-import ViewAssignDutyScreen from './ViewAssignDutyScreen';
-import MarkAttendanceScreen from './MarkAttendanceScreen';
+import ViewAssignDutyScreen from './src/screens/monitoring/ViewAssignDutyScreen';
+import MarkAttendanceScreen from './src/screens/monitoring/MarkAttendanceScreen';
+import MonitoringAttendanceHistory from './src/screens/monitoring/MonitoringAttendanceHistory';
 
 export default function App() {
   const [screen, setScreen] = useState('splash');
   const [params, setParams] = useState<any>({});
   const [role, setRole] = useState('');
+  
+  // User Management State
   const [pendingUsers, setPendingUsers] = useState<any[]>([]);
   const [approvedUsers, setApprovedUsers] = useState<any[]>([]);
   const [currentUser, setCurrentUser] = useState<any>(null);
 
+  // Complaints State
+  const [complaints, setComplaints] = useState<any[]>([
+    {
+      id: 1,
+      text: 'Attendance marked wrong for Monday Period 1. I was present but marked absent.',
+      date: '2024-06-01',
+      status: 'resolved',
+      resolvedDate: '2024-06-02',
+      submittedBy: 'Hassan Raza',
+    },
+    {
+      id: 2,
+      text: 'Room number is incorrect in timetable for BSCS 2nd semester.',
+      date: '2024-06-03',
+      status: 'pending',
+      resolvedDate: null,
+      submittedBy: 'Hassan Raza',
+    },
+  ]);
+
+  // Splash timer
   useEffect(() => {
     if (screen === 'splash') {
-      const timer = setTimeout(() => {
-        setScreen('signin');
-      }, 3000);
+      const timer = setTimeout(() => setScreen('signin'), 3000);
       return () => clearTimeout(timer);
     }
   }, [screen]);
+
+  // ✅ Hardware Back Button Handler
+  useEffect(() => {
+    const backAction = () => {
+      if (screen === 'splash' || screen === 'signin') {
+        BackHandler.exitApp();
+        return true;
+      }
+      
+      if (screen === 'signup' || screen === 'forgot' || screen === 'requestStatus') {
+        setScreen('signin');
+        return true;
+      }
+      
+      if (screen === 'admin' || screen === 'teacher' || screen === 'monitoring') {
+        Alert.alert(
+          'Logout',
+          'Are you sure you want to logout?',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Logout', onPress: logout }
+          ]
+        );
+        return true;
+      }
+      
+      goBack();
+      return true;
+    };
+
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
+    return () => backHandler.remove();
+  }, [screen, role]);
 
   const go = (name: string, p?: any) => {
     setScreen(name);
@@ -56,8 +110,8 @@ export default function App() {
 
   const goBack = () => {
     if (screen === 'requestStatus') { setScreen('signin'); return; }
-    if (screen === 'addEditClass') { setScreen('timetableManagement'); return; }
-    if (screen === 'assignDutyDetail') { setScreen('assignDuty'); return; }
+    if (screen === 'myTimetable') { setScreen('teacher'); return; }
+    if (screen === 'addClassInTimetable') { setScreen('timetableManagement'); return; }
     
     if (role === 'admin') setScreen('admin');
     else if (role === 'teacher') setScreen('teacher');
@@ -74,16 +128,28 @@ export default function App() {
 
   const splashDone = () => setScreen('signin');
 
-  const adminLogin = () => { setRole('admin'); setScreen('admin'); };
-  const teacherLogin = () => { setRole('teacher'); setScreen('teacher'); };
-  const monitoringLogin = () => { setRole('monitoring'); setScreen('monitoring'); };
+  const handleLogin = (userData: any) => {
+    setCurrentUser(userData);
+    setRole(userData.role);
+    
+    if (userData.role === 'admin') setScreen('admin');
+    else if (userData.role === 'teacher') setScreen('teacher');
+    else if (userData.role === 'monitoring') setScreen('monitoring');
+  };
 
-  const handleSignUp = (userRole: string, name: string, email: string, password: string, department: string) => {
+  const handlePendingStatus = (userData: any) => {
+    setCurrentUser(userData);
+    setScreen('requestStatus');
+  };
+
+  const handleSignUp = (userData: any) => {
     const newUser = {
-      id: Date.now(),
-      name, email, password,
-      role: userRole,
-      department: userRole === 'Teacher' ? department : '-',
+      id: userData.id || Date.now(),
+      name: userData.fullName,
+      email: userData.email,
+      password: userData.password,
+      role: userData.role,
+      department: userData.department || null,
       status: 'pending'
     };
     setPendingUsers([...pendingUsers, newUser]);
@@ -91,7 +157,7 @@ export default function App() {
     setScreen('requestStatus');
   };
 
-  const checkRequestStatus = () => {
+  const checkRequestStatus = (): { status: 'pending' | 'approved' | 'rejected' } => {
     if (!currentUser) return { status: 'pending' };
     const approved = approvedUsers.find(u => u.id === currentUser.id);
     if (approved) return { status: 'approved' };
@@ -105,7 +171,7 @@ export default function App() {
     if (user) {
       setApprovedUsers([...approvedUsers, { ...user, status: 'approved' }]);
       setPendingUsers(pendingUsers.filter(u => u.id !== userId));
-      Alert.alert('Approved', `${user.name} has been approved!`);
+      Alert.alert('✅ Approved', `${user.name} has been approved!`);
     }
   };
 
@@ -113,83 +179,151 @@ export default function App() {
     const user = pendingUsers.find(u => u.id === userId);
     if (user) {
       setPendingUsers(pendingUsers.map(u => u.id === userId ? { ...u, status: 'rejected' } : u));
-      Alert.alert('Rejected', `${user.name}'s request has been rejected`);
+      Alert.alert('🗑️ Removed', `${user.name}'s request has been rejected.`);
     }
   };
 
   const handleApproved = () => {
     if (currentUser) {
-      if (currentUser.role === 'Teacher') {
+      if (currentUser.role === 'teacher') {
         setRole('teacher');
         setScreen('teacher');
-      } else {
+      } else if (currentUser.role === 'monitoring') {
         setRole('monitoring');
         setScreen('monitoring');
       }
     }
   };
 
+  const submitComplaint = (text: string) => {
+    const newComplaint = {
+      id: Date.now(),
+      text,
+      date: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }),
+      status: 'pending',
+      resolvedDate: null,
+      submittedBy: currentUser?.name || 'Teacher',
+    };
+    setComplaints([newComplaint, ...complaints]);
+  };
+
+  const updateComplaintStatus = (id: number, status: 'resolved' | 'rejected') => {
+    setComplaints(complaints.map(c =>
+      c.id === id
+        ? { ...c, status, resolvedDate: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) }
+        : c
+    ));
+    Alert.alert('✅ Done', `Complaint marked as ${status}`);
+  };
+
   const renderScreen = () => {
     switch (screen) {
-      case 'splash': return <SplashScreen />;
+      case 'splash': 
+        return <SplashScreen />;
+      
       case 'signin':
         return (
-          <SignInScreen onBack={splashDone} onAdminLogin={adminLogin} onTeacherLogin={teacherLogin} onMonitoringLogin={monitoringLogin} onSignUp={() => go('signup')} onForgotPassword={() => go('forgot')} approvedUsers={approvedUsers} />
-        );
-      case 'signup': return <SignUpScreen onBack={() => go('signin')} onSignUp={handleSignUp} />;
-      case 'requestStatus':
-        return (
-          <RequestStatusScreen onBack={goBack} onApproved={handleApproved} userEmail={currentUser?.email || ''} userRole={currentUser?.role || ''} checkStatus={checkRequestStatus} />
-        );
-      case 'forgot': return <ForgotPasswordScreen onBack={() => go('signin')} onSent={() => go('signin')} />;
-
-      // ADMIN SCREENS
-      case 'admin': return <AdminDashboard onNavigate={go} onLogout={logout} />;
-      case 'pending': return <PendingApprovalsScreen onBack={goBack} pendingUsers={pendingUsers} onApprove={approveUser} onReject={rejectUser} />;
-      case 'users': return <UserProfilesScreen onBack={goBack} />;
-      case 'assignDuty': return <AssignDutyScreen onBack={goBack} onNavigate={go} />;
-      case 'assignDutyDetail': return <AssignDutyDetailScreen onBack={goBack} official={params.official} />;
-      case 'timetableManagement': return <TimetableManagementScreen onBack={goBack} onNavigate={go} />;
-      case 'addEditClass':
-        return (
-          <AddEditClassScreen onBack={goBack} onSave={(classData) => { Alert.alert('Success', 'Class saved successfully'); go('timetableManagement'); }} editData={params.editData} defaultDept={params.defaultDept} defaultSem={params.defaultSem} defaultDay={params.defaultDay} defaultPeriod={params.defaultPeriod} />
-        );
-      case 'complaints': return <ComplaintsScreen onBack={goBack} />;
-
-      // TEACHER SCREENS
-      case 'teacher': return <TeacherDashboard onNavigate={go} onLogout={logout} />;
-      case 'submitComplaint': return <SubmitComplaintScreen onBack={goBack} />;
-
-      // MONITORING SCREENS
-      case 'monitoring': return <MonitoringOfficialDashboard onNavigate={go} onLogout={logout} />;
-      case 'viewAssignDuty': return <ViewAssignDutyScreen onBack={goBack} />;
-      case 'markAttendance': return <MarkAttendanceScreen onBack={goBack} />;
-
-      // SHARED SCREENS
-      case 'history':
-      case 'reports':
-      case 'attendanceHistory': 
-        return (
-          <AttendanceHistoryReport 
-            onBack={goBack} 
-            userRole={role} 
-            currentUser={currentUser} 
+          <SignInScreen 
+            onBack={splashDone} 
+            onLogin={handleLogin}
+            onPendingStatus={handlePendingStatus}
+            onSignUp={() => go('signup')} 
+            onForgotPassword={() => go('forgot')} 
           />
         );
+      
+      case 'signup': 
+        return <SignUpScreen onBack={() => go('signin')} onSignUp={handleSignUp} />;
+      
+      case 'requestStatus':
+        return (
+          <RequestStatusScreen 
+            onBack={goBack} 
+            onApproved={handleApproved} 
+            userEmail={currentUser?.email || ''} 
+            userRole={currentUser?.role || ''} 
+            checkStatus={checkRequestStatus} 
+          />
+        );
+      
+      case 'forgot': 
+        return <ForgotPasswordScreen onBack={() => go('signin')} onSent={() => go('signin')} />;
+
+      // ADMIN SCREENS
+      case 'admin': 
+        return <AdminDashboard onNavigate={go} onLogout={logout} />;
+      
+      case 'pending': 
+        return <PendingApprovalsScreen onBack={goBack} />;
+
+      case 'users': 
+        return <UserProfilesScreen onBack={goBack} />;
+      
+      case 'assignDuty': 
+        return <AssignDutyScreen onBack={goBack} />;
+      
+      case 'timetableManagement': 
+        return <TimetableManagementScreen onBack={goBack} onNavigate={go} />;
+      
+      case 'addClassInTimetable': 
+        return <AddClassInTimetable onBack={goBack} onNavigate={go} params={params} />;
+      
+      case 'complaints': 
+        return <ComplaintsScreen onBack={goBack} />;
+
+      case 'adminAttendanceHistory': 
+        return <AdminAttendanceHistory onBack={goBack} />;
+
+      // TEACHER SCREENS
+      case 'teacher': 
+        return <TeacherDashboard onNavigate={go} onLogout={logout} />;
+      
+      case 'submitComplaint': 
+        return <SubmitComplaintScreen onBack={goBack} />;
+
+      case 'teacherAttendanceHistory': 
+        return <TeacherAttendanceHistory onBack={goBack} />;
+
+      case 'myTimetable':
+        return <MyTimetableScreen onBack={goBack} />;
+
+      // MONITORING SCREENS
+      case 'monitoring': 
+        return <MonitoringOfficialDashboard onNavigate={go} onLogout={logout} />;
+      
+      case 'viewAssignDuty': 
+        return <ViewAssignDutyScreen onBack={goBack} />;
+      
+      case 'markAttendance': 
+        return <MarkAttendanceScreen onBack={goBack} />;
+      
+      case 'monitoringAttendanceHistory': 
+        return <MonitoringAttendanceHistory onBack={goBack} />;
 
       default:
         if (role === 'admin') return <AdminDashboard onNavigate={go} onLogout={logout} />;
         if (role === 'teacher') return <TeacherDashboard onNavigate={go} onLogout={logout} />;
         if (role === 'monitoring') return <MonitoringOfficialDashboard onNavigate={go} onLogout={logout} />;
         return (
-          <SignInScreen onBack={splashDone} onAdminLogin={adminLogin} onTeacherLogin={teacherLogin} onMonitoringLogin={monitoringLogin} onSignUp={() => go('signup')} onForgotPassword={() => go('forgot')} approvedUsers={approvedUsers} />
+          <SignInScreen 
+            onBack={splashDone} 
+            onLogin={handleLogin}
+            onPendingStatus={handlePendingStatus}
+            onSignUp={() => go('signup')} 
+            onForgotPassword={() => go('forgot')} 
+          />
         );
     }
   };
 
-  return <View style={styles.container}>{renderScreen()}</View>;
+  // ✅ Simple return - no bottom bar
+  return (
+    <View style={styles.container}>
+      {renderScreen()}
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
+  container: { flex: 1, backgroundColor: '#F5F5F5' },
 });
