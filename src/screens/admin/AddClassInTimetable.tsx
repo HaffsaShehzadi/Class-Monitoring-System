@@ -22,7 +22,6 @@ export default function AddClassInTimetable({ onBack, onNavigate, params }: any)
     ? `${defaultDept} • ${defaultSem} Sem • ${defaultDay} • Period ${defaultPeriod}`
     : `${editData.dept} • ${editData.sem} Sem • ${editData.day} • Period ${editData.period}`;
 
-  // ✅ FIXED: Timetable screen par wapis jayen with refresh
   const goBackToTimetable = (msg: string) => {
     onNavigate('timetableManagement', {
       returnStep: 'timetable',
@@ -34,8 +33,6 @@ export default function AddClassInTimetable({ onBack, onNavigate, params }: any)
     });
   };
 
-  // ✅ FIXED: Proper error handling
-  // ✅ FIXED: Proper error handling and Auto-Navigation
   const handleSave = async () => {
     if (!classTeacher.trim() || !classCode.trim() || !classRoom.trim()) {
       Alert.alert('Error', 'Teacher, Code and Room are required');
@@ -52,19 +49,24 @@ export default function AddClassInTimetable({ onBack, onNavigate, params }: any)
         semester: mode === 'add' ? defaultSem : editData.sem,
         day: mode === 'add' ? defaultDay : editData.day,
         period_number: mode === 'add' ? defaultPeriod : editData.period,
+        shift: defaultShift, 
       };
 
       if (mode === 'add') {
         await timetableService.create(payload);
-        // ✅ YEH LINE CHANGE KI HAI: Ab add hone ke baad seedha timetable screen par refresh ke sath jayega
         goBackToTimetable('Class added successfully');
       } else {
         await timetableService.update(editData.id, payload);
         goBackToTimetable('Class updated successfully');
       }
     } catch (error: any) {
-      console.error("Save error:", error);
-      Alert.alert('Error', error.message || 'Failed to save class');
+      console.error("❌ Save error:", error);
+      
+      // ✅ FIXED: Ab backend ka EXACT error message UI par show hoga
+      // Chahe wo "Teacher busy" ho, "Room not found" ho, ya koi aur masla
+      const errorMsg = error.message || 'Failed to save class. Please check your inputs.';
+      Alert.alert('Error', errorMsg);
+      
     } finally {
       setIsLoading(false);
     }
@@ -95,7 +97,6 @@ export default function AddClassInTimetable({ onBack, onNavigate, params }: any)
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        {/* ✅ FIXED: Yeh button ab timetable screen par wapis layega */}
         <TouchableOpacity onPress={() => goBackToTimetable('')}>
           <Text style={styles.backArrow}>←</Text>
         </TouchableOpacity>

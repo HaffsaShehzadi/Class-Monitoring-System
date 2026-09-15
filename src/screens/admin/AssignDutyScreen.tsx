@@ -4,11 +4,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { monitoringDutyService } from '../../services/monitoringDutyService';
 
-const AVAILABLE_DEPARTMENTS = [
-  'IT', 'BSCS', 'Math', 'Physics', 'English', 'Urdu', 
-  'Islamiat', 'Zoology', 'Economics', 'Political Science'
-];
-
 interface OfficialData {
   id: number;
   name: string;
@@ -16,15 +11,23 @@ interface OfficialData {
   assignment?: { departments: string[]; shift: string; date: string; dutyIds: number[] };
 }
 
+interface Department {
+  id: number;
+  name: string;
+  dept_name?: string;
+}
+
 export default function AssignDutyScreen({ onBack }: any) {
   const [officials, setOfficials] = useState<OfficialData[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [allDuties, setAllDuties] = useState<any[]>([]); // ✅ NEW: Store all duties to check conflicts
   const [loading, setLoading] = useState(true);
 
   const [screen, setScreen] = useState<'list' | 'form' | 'view'>('list');
   const [activeOfficialId, setActiveOfficialId] = useState<number | null>(null);
   const [isEditing, setIsEditing] = useState(false);
 
-  const [selectedDepts, setSelectedDepts] = useState<string[]>([]);
+  const [selectedDeptIds, setSelectedDeptIds] = useState<number[]>([]);
   const [selectedShift, setSelectedShift] = useState('');
   const [date, setDate] = useState('');
   const [deptModalVisible, setDeptModalVisible] = useState(false);
@@ -36,23 +39,32 @@ export default function AssignDutyScreen({ onBack }: any) {
 
   const activeOfficial = officials.find(o => o.id === activeOfficialId) || null;
 
-  const fetchDuties = async () => {
+  const getDeptName = (id: number) => {
+    const dept = departments.find(d => d.id === id);
+    return dept ? (dept.dept_name || dept.name) : 'Unknown';
+  };
+
+  const fetchData = async () => {
     setLoading(true);
     try {
       const BACKEND_URL = await (await import('../../services/ipConfig')).detectBackend();
       const token = await (await import('../../services/tokenStorage')).tokenStorage.getToken();
+      const headers = { 'Authorization': `Bearer ${token}` };
 
-      const usersRes = await fetch(`${BACKEND_URL}/api/users/all`, { headers: { 'Authorization': `Bearer ${token}` } });
+      const deptsRes = await fetch(`${BACKEND_URL}/api/departments/all`, { headers });
+      const deptsData = await deptsRes.json();
+      setDepartments(deptsData);
+
+      const usersRes = await fetch(`${BACKEND_URL}/api/users/all`, { headers });
       const allUsers = await usersRes.json();
-      const mos = allUsers.filter((u: any) => String(u.role).toLowerCase() === 'monitoring' || String(u.role).toLowerCase() === 'monitoring official');
+      const mos = allUsers.filter((u: any) => String(u.role).toLowerCase().includes('monitor'));
 
+      // ✅ Fetch all duties to check for conflicts
       const dutiesData = await monitoringDutyService.getAllDuties();
+      setAllDuties(dutiesData);
 
       const now = new Date();
-      const year = now.getFullYear();
-      const month = String(now.getMonth() + 1).padStart(2, '0');
-      const day = String(now.getDate()).padStart(2, '0');
-      const today = `${year}-${month}-${day}`;
+      const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
       const formattedOfficials: OfficialData[] = mos.map((mo: any) => {
         const moDuties = dutiesData.filter((d: any) => {
@@ -61,10 +73,8 @@ export default function AssignDutyScreen({ onBack }: any) {
         });
 
         if (moDuties.length > 0) {
-          const uniqueDepts = [...new Set(moDuties.map((d: any) => d.dept_name))];
+          const uniqueDepts = [...new Set(moDuties.map((d: any) => d.dept_name || d.department))];
           const allDutyIds = moDuties.map((d: any) => d.id);
-          
-          // ✅ FIXED: Sirf tab "Both" dikhayein jab waqai 2 alag shifts hon
           const uniqueShifts = [...new Set(moDuties.map((d: any) => d.shift))];
           const displayShift = uniqueShifts.length > 1 ? 'Both' : uniqueShifts[0];
           
@@ -86,14 +96,15 @@ export default function AssignDutyScreen({ onBack }: any) {
 
       setOfficials(formattedOfficials);
     } catch (error: any) {
-      console.error("❌ FETCH DUTIES ERROR:", error);
+      console.error("❌ FETCH DATA ERROR:", error);
+      Alert.alert('Error', 'Failed to load data. Please check your connection.');
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchDuties();
+    fetchData();
   }, []);
 
   const showToast = (msg: string) => {
@@ -105,21 +116,16 @@ export default function AssignDutyScreen({ onBack }: any) {
     }, 1500);
   };
 
-  const toggleDepartment = (dept: string) => {
-    setSelectedDepts(prev => prev.includes(dept) ? prev.filter(d => d !== dept) : [...prev, dept]);
+  const toggleDepartment = (deptId: number) => {
+    setSelectedDeptIds(prev => prev.includes(deptId) ? prev.filter(id => id !== deptId) : [...prev, deptId]);
   };
 
   const openAssign = (official: OfficialData) => {
     setActiveOfficialId(official.id);
-    setSelectedDepts([]);
+    setSelectedDeptIds([]);
     setSelectedShift('');
-    
     const today = new Date();
-    const localDate = today.getFullYear() + '-' + 
-                      String(today.getMonth() + 1).padStart(2, '0') + '-' + 
-                      String(today.getDate()).padStart(2, '0');
-    setDate(localDate);
-    
+    setDate(`${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`);
     setIsEditing(false);
     setScreen('form');
   };
@@ -131,20 +137,22 @@ export default function AssignDutyScreen({ onBack }: any) {
 
   const openEdit = () => {
     if (!activeOfficial?.assignment) return;
-    setSelectedDepts([...activeOfficial.assignment.departments]);
     
-    // ✅ Edit mode mein actual shift use karein
+    const currentDeptIds = activeOfficial.assignment.departments.map(deptName => {
+      const found = departments.find(d => (d.dept_name || d.name) === deptName);
+      return found ? found.id : 0;
+    }).filter(id => id !== 0);
+
+    setSelectedDeptIds(currentDeptIds);
     setSelectedShift(activeOfficial.assignment.shift);
-    
     const rawDate = activeOfficial.assignment.date;
-    const formatted = rawDate && rawDate.includes('T') ? rawDate.split('T')[0] : rawDate;
-    setDate(formatted);
+    setDate(rawDate && rawDate.includes('T') ? rawDate.split('T')[0] : rawDate);
     setIsEditing(true);
     setScreen('form');
   };
 
   const handleSave = async () => {
-    if (selectedDepts.length === 0 || !selectedShift || !date) {
+    if (selectedDeptIds.length === 0 || !selectedShift || !date) {
       Alert.alert('Error', 'Please select at least one department, shift, and date.');
       return;
     }
@@ -152,30 +160,19 @@ export default function AssignDutyScreen({ onBack }: any) {
     setSaving(true);
     try {
       if (activeOfficialId) {
-        // ✅ Pehle purani duties delete karein (us official, date aur departments ke liye)
         const existingDuties = officials.find(o => o.id === activeOfficialId)?.assignment?.dutyIds || [];
         for (const dutyId of existingDuties) {
           await monitoringDutyService.removeDuty(dutyId);
         }
 
-        // ✅ Ab nayi duties create karein
-        const deptNameToId: Record<string, number> = {
-          'IT': 1, 'BSCS': 2, 'Math': 3, 'Physics': 4, 'English': 5, 
-          'Urdu': 6, 'Islamiat': 7, 'Zoology': 8, 'Economics': 9, 'Political Science': 10 
-        };
-
-        const deptIds = selectedDepts.map(name => deptNameToId[name] || 1);
-
-        // ✅ Agar "Both" hai, toh 2 alag entries banayein
         if (selectedShift === 'Both') {
-          await monitoringDutyService.assignDuty(activeOfficialId, deptIds, '1st Shift', date);
-          await monitoringDutyService.assignDuty(activeOfficialId, deptIds, '2nd Shift', date);
+          await monitoringDutyService.assignDuty(activeOfficialId, selectedDeptIds, '1st Shift', date);
+          await monitoringDutyService.assignDuty(activeOfficialId, selectedDeptIds, '2nd Shift', date);
         } else {
-          // ✅ Warna sirf ek entry (1st ya 2nd)
-          await monitoringDutyService.assignDuty(activeOfficialId, deptIds, selectedShift, date);
+          await monitoringDutyService.assignDuty(activeOfficialId, selectedDeptIds, selectedShift, date);
         }
         
-        await fetchDuties();
+        await fetchData();
         setScreen('list');
         showToast(isEditing ? 'Duty updated successfully' : 'Duty assigned successfully');
       }
@@ -198,7 +195,7 @@ export default function AssignDutyScreen({ onBack }: any) {
             for (const dutyId of dutyIds) {
               await monitoringDutyService.removeDuty(dutyId);
             }
-            await fetchDuties();
+            await fetchData();
             setScreen('list');
             showToast('All duties removed successfully');
           } catch (error: any) {
@@ -214,12 +211,7 @@ export default function AssignDutyScreen({ onBack }: any) {
     const cleanDate = dateStr.includes('T') ? dateStr.split('T')[0] : dateStr;
     const d = new Date(cleanDate);
     if (isNaN(d.getTime())) return cleanDate;
-    return d.toLocaleDateString('en-US', { 
-      weekday: 'long', 
-      year: 'numeric', 
-      month: 'long', 
-      day: 'numeric' 
-    });
+    return d.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
   };
 
   const renderToast = () => toast && (
@@ -230,8 +222,48 @@ export default function AssignDutyScreen({ onBack }: any) {
     </View>
   );
 
-  // FORM SCREEN
+  // ✅ NEW LOGIC: Filter departments based on selected Date and Shift
+  const getAvailableDepartments = () => {
+    if (!selectedShift || !date) return departments;
+
+    // Find duties that conflict with the selected shift on the selected date
+    const conflictingDuties = allDuties.filter((d: any) => {
+      const dDate = d.duty_date ? String(d.duty_date).split('T')[0] : '';
+      if (dDate !== date) return false;
+
+      const deptName = d.dept_name || d.department;
+      
+      // If duty is 'Both', it conflicts with everything
+      if (d.shift === 'Both') return true;
+      
+      // If duty is '1st Shift', it conflicts with '1st Shift' and 'Both'
+      if (d.shift === '1st Shift' && (selectedShift === '1st Shift' || selectedShift === 'Both')) return true;
+      
+      // If duty is '2nd Shift', it conflicts with '2nd Shift' and 'Both'
+      if (d.shift === '2nd Shift' && (selectedShift === '2nd Shift' || selectedShift === 'Both')) return true;
+
+      return false;
+    });
+
+    const assignedDeptNames = new Set(conflictingDuties.map((d: any) => d.dept_name || d.department));
+
+    // If editing, allow the departments currently assigned to THIS official to remain selectable
+    let currentOfficialDepts: string[] = [];
+    if (isEditing && activeOfficial?.assignment) {
+      currentOfficialDepts = activeOfficial.assignment.departments;
+    }
+
+    return departments.filter(dept => {
+      const deptName = dept.dept_name || dept.name;
+      // Keep if NOT assigned to someone else, OR if it's currently assigned to this official (for editing)
+      return !assignedDeptNames.has(deptName) || currentOfficialDepts.includes(deptName);
+    });
+  };
+
+  // ==================== FORM SCREEN ====================
   if (screen === 'form' && activeOfficial) {
+    const availableDepts = getAvailableDepartments();
+
     return (
       <SafeAreaView edges={['bottom']} style={styles.container}>
         <View style={styles.header}>
@@ -250,35 +282,59 @@ export default function AssignDutyScreen({ onBack }: any) {
             </View>
 
             <View style={styles.formCard}>
-              <Text style={styles.label}>Departments *</Text>
-              <TouchableOpacity style={styles.selectBtn} onPress={() => setDeptModalVisible(true)}>
-                <Text style={[styles.selectBtnText, selectedDepts.length === 0 && styles.placeholderText]}>
-                  {selectedDepts.length ? `${selectedDepts.length} department(s) selected` : 'Select Departments'}
-                </Text>
-                <MaterialCommunityIcons name="chevron-down" size={20} color="#666" />
-              </TouchableOpacity>
-              {selectedDepts.length > 0 && (
-                <View style={styles.chipRow}>
-                  {selectedDepts.map((d, index) => (
-                    <View key={`${d}-${index}`} style={styles.chip}>
-                      <Text style={styles.chipText}>{d}</Text>
-                    </View>
-                  ))}
-                </View>
-              )}
-
+              {/* 1. SHIFT PEHLE */}
               <Text style={styles.label}>Shift *</Text>
               <View style={styles.shiftContainer}>
                 {['1st Shift', '2nd Shift', 'Both'].map(shift => (
-                  <TouchableOpacity key={shift} style={[styles.shiftBtn, selectedShift === shift && styles.shiftBtnActive]} onPress={() => setSelectedShift(shift)}>
+                  <TouchableOpacity 
+                    key={shift} 
+                    style={[styles.shiftBtn, selectedShift === shift && styles.shiftBtnActive]} 
+                    onPress={() => setSelectedShift(shift)}
+                  >
                     <Text style={[styles.shiftText, selectedShift === shift && styles.shiftTextActive]}>{shift}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
 
+              {/* 2. DATE */}
               <Text style={styles.label}>Date *</Text>
-              <TextInput style={styles.dateInput} placeholder="YYYY-MM-DD" value={date} onChangeText={setDate} placeholderTextColor="#999" />
+              <TextInput 
+                style={styles.dateInput} 
+                placeholder="YYYY-MM-DD" 
+                value={date} 
+                onChangeText={setDate} 
+                placeholderTextColor="#999" 
+              />
 
+              {/* 3. DEPARTMENTS BAAD MEIN (Filtered) */}
+              <Text style={styles.label}>Departments *</Text>
+              <TouchableOpacity 
+                style={[styles.selectBtn, (!selectedShift || !date) && { opacity: 0.5 }]} 
+                onPress={() => {
+                  if (!selectedShift || !date) {
+                    Alert.alert('Select Shift & Date First', 'Please select a shift and date to see available departments.');
+                    return;
+                  }
+                  setDeptModalVisible(true);
+                }}
+              >
+                <Text style={[styles.selectBtnText, selectedDeptIds.length === 0 && styles.placeholderText]}>
+                  {selectedDeptIds.length ? `${selectedDeptIds.length} department(s) selected` : 'Select Departments'}
+                </Text>
+                <MaterialCommunityIcons name="chevron-down" size={20} color="#666" />
+              </TouchableOpacity>
+              
+              {selectedDeptIds.length > 0 && (
+                <View style={styles.chipRow}>
+                  {selectedDeptIds.map((id) => (
+                    <View key={id} style={styles.chip}>
+                      <Text style={styles.chipText}>{getDeptName(id)}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+
+              {/* 4. SAVE BUTTON */}
               <TouchableOpacity style={styles.confirmBtn} onPress={handleSave} disabled={saving}>
                 <Text style={styles.confirmText}>{saving ? 'Saving...' : (isEditing ? 'Save Changes' : 'Assign Duty')}</Text>
               </TouchableOpacity>
@@ -296,15 +352,21 @@ export default function AssignDutyScreen({ onBack }: any) {
                 </TouchableOpacity>
               </View>
               <ScrollView style={styles.modalList}>
-                {AVAILABLE_DEPARTMENTS.map(dept => {
-                  const sel = selectedDepts.includes(dept);
-                  return (
-                    <TouchableOpacity key={dept} style={[styles.modalItem, sel && styles.modalItemActive]} onPress={() => toggleDepartment(dept)}>
-                      <Text style={[styles.modalItemText, sel && styles.modalItemTextActive]}>{dept}</Text>
-                      {sel && <MaterialCommunityIcons name="check" size={20} color="#FFF" />}
-                    </TouchableOpacity>
-                  );
-                })}
+                {availableDepts.length === 0 ? (
+                  <Text style={styles.emptyModalText}>All departments are already assigned for this shift.</Text>
+                ) : (
+                  availableDepts.map(dept => {
+                    const deptId = dept.id;
+                    const deptName = dept.dept_name || dept.name;
+                    const sel = selectedDeptIds.includes(deptId);
+                    return (
+                      <TouchableOpacity key={deptId} style={[styles.modalItem, sel && styles.modalItemActive]} onPress={() => toggleDepartment(deptId)}>
+                        <Text style={[styles.modalItemText, sel && styles.modalItemTextActive]}>{deptName}</Text>
+                        {sel && <MaterialCommunityIcons name="check" size={20} color="#FFF" />}
+                      </TouchableOpacity>
+                    );
+                  })
+                )}
               </ScrollView>
               <TouchableOpacity style={styles.doneBtn} onPress={() => setDeptModalVisible(false)}>
                 <Text style={styles.doneBtnText}>Done</Text>
@@ -318,7 +380,7 @@ export default function AssignDutyScreen({ onBack }: any) {
     );
   }
 
-  // VIEW SCREEN
+  // ==================== VIEW SCREEN ====================
   if (screen === 'view' && activeOfficial && activeOfficial.assignment) {
     const a = activeOfficial.assignment;
     return (
@@ -358,21 +420,17 @@ export default function AssignDutyScreen({ onBack }: any) {
             <TouchableOpacity style={styles.editBtn} onPress={openEdit}>
               <Text style={styles.editBtnText}>Edit Duty</Text>
             </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.removeBtn} 
-              onPress={() => handleRemoveDuty(activeOfficial.name, a.dutyIds)}
-            >
+            <TouchableOpacity style={styles.removeBtn} onPress={() => handleRemoveDuty(activeOfficial.name, a.dutyIds)}>
               <Text style={styles.removeBtnText}>Remove Duty</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
-
         {renderToast()}
       </SafeAreaView>
     );
   }
 
-  // LIST SCREEN
+  // ==================== LIST SCREEN ====================
   return (
     <SafeAreaView edges={['bottom']} style={styles.container}>
       <View style={styles.header}>
@@ -402,20 +460,13 @@ export default function AssignDutyScreen({ onBack }: any) {
                   {official.status === 'assigned' ? 'Duty Assigned' : 'Available'}
                 </Text>
               </View>
-              
-              <TouchableOpacity 
-                style={styles.viewBtn} 
-                onPress={() => official.status === 'assigned' ? openView(official) : openAssign(official)}
-              >
-                <Text style={styles.viewBtnText}>
-                  {official.status === 'assigned' ? 'View Duty' : 'Assign Duty'}
-                </Text>
+              <TouchableOpacity style={styles.viewBtn} onPress={() => official.status === 'assigned' ? openView(official) : openAssign(official)}>
+                <Text style={styles.viewBtnText}>{official.status === 'assigned' ? 'View Duty' : 'Assign Duty'}</Text>
               </TouchableOpacity>
             </View>
           ))
         )}
       </ScrollView>
-
       {renderToast()}
     </SafeAreaView>
   );
@@ -432,8 +483,6 @@ const styles = StyleSheet.create({
   officialName: { fontSize: 17, fontWeight: '700', color: '#1A237E' },
   statusText: { fontSize: 13, color: '#2E7D32', fontWeight: '600', backgroundColor: '#E8F5E9', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
   statusTextAssigned: { color: '#FFF', backgroundColor: '#4CAF50' },
-  assignBtn: { backgroundColor: '#1A237E', paddingVertical: 12, borderRadius: 10, alignItems: 'center' },
-  assignBtnText: { color: '#FFF', fontSize: 15, fontWeight: '700' },
   viewBtn: { backgroundColor: '#1A237E', paddingVertical: 12, borderRadius: 10, alignItems: 'center' },
   viewBtnText: { color: '#FFF', fontSize: 15, fontWeight: '700' },
   formContent: { padding: 15, paddingBottom: 40 },
@@ -479,4 +528,17 @@ const styles = StyleSheet.create({
   toastOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, justifyContent: 'center', alignItems: 'center' },
   toast: { paddingHorizontal: 30, paddingVertical: 16, borderRadius: 12, alignItems: 'center', elevation: 10, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, maxWidth: '80%', backgroundColor: '#FFF' },
   toastText: { color: '#333', fontSize: 16, fontWeight: '700', textAlign: 'center' },
+  
+  // ✅ NEW STYLES FOR INFO BOX AND EMPTY STATE
+  infoBox: {
+    backgroundColor: '#E8EAF6',
+    borderRadius: 8,
+    padding: 10,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    marginBottom: 15,
+  },
+  infoText: { flex: 1, fontSize: 12, color: '#1A237E', lineHeight: 16 },
+  emptyModalText: { fontSize: 14, color: '#999', textAlign: 'center', marginTop: 20, fontStyle: 'italic' }
 });

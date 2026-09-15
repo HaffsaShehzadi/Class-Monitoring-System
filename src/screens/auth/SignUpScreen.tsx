@@ -23,11 +23,14 @@ export default function SignUpScreen({ onBack, onSignUp }: SignUpScreenProps) {
   const [showDeptDropdown, setShowDeptDropdown] = useState(false);
 
   const [step, setStep] = useState<'form' | 'otp' | 'success'>('form');
-  const [otp, setOtp] = useState(['', '', '', '', '', '']);
-  const [generatedOtp, setGeneratedOtp] = useState('');
+  
+  // ✅ CHANGED: 6 digits se 4 digits kar diye
+  const [otp, setOtp] = useState(['', '', '', '']);
   const [otpLoading, setOtpLoading] = useState(false);
   const [resendTimer, setResendTimer] = useState(0);
-  const otpRefs = [useRef<any>(null), useRef<any>(null), useRef<any>(null), useRef<any>(null), useRef<any>(null), useRef<any>(null)];
+  
+  // ✅ CHANGED: 4 refs for 4 inputs
+  const otpRefs = [useRef<any>(null), useRef<any>(null), useRef<any>(null), useRef<any>(null)];
 
   const validateForm = () => {
     if (!fullName || !email || !password || !role) {
@@ -59,7 +62,7 @@ export default function SignUpScreen({ onBack, onSignUp }: SignUpScreenProps) {
       const roleBackend = role.toLowerCase().includes('monitor') ? 'monitoring' : 'teacher';
       
       // ✅ REAL backend signup call
-      const response = await authService.signup({
+      await authService.signup({
         name: fullName,
         email,
         password,
@@ -67,16 +70,12 @@ export default function SignUpScreen({ onBack, onSignUp }: SignUpScreenProps) {
         department: role === 'Teacher' ? department : undefined,
       });
       
-      // ✅ OTP save karo (Internal logic ke liye)
-      setGeneratedOtp(response.demo_otp || '');
-      
-      // ✅ OTP screen pe jao
+      // ✅ OTP screen pe jao (demo_otp logic hata di)
       setStep('otp');
       
-      // ✅ CORRECTION: Demo OTP text hata diya gaya hai professional look ke liye
       Alert.alert(
         '✅ Account Created - Verify Email',
-        `Account created successfully!\n\nA 6-digit OTP has been sent to:\n${email}`
+        `Account created successfully!\n\nA 4-digit OTP has been sent to:\n${email}`
       );
       
       setResendTimer(30);
@@ -106,14 +105,12 @@ export default function SignUpScreen({ onBack, onSignUp }: SignUpScreenProps) {
     
     try {
       setOtpLoading(true);
-      const response = await authService.resendOTP(email);
+      await authService.resendOTP(email);
       setOtpLoading(false);
-      setGeneratedOtp(response.demo_otp || '');
       
-      // ✅ CORRECTION: Demo OTP text hata diya gaya hai
       Alert.alert(
         '✅ OTP Resent', 
-        `New OTP sent to ${email}`
+        `New 4-digit OTP sent to ${email}`
       );
       
       startResendTimer();
@@ -129,7 +126,8 @@ export default function SignUpScreen({ onBack, onSignUp }: SignUpScreenProps) {
     newOtp[index] = value;
     setOtp(newOtp);
 
-    if (value && index < 5) {
+    // ✅ CHANGED: index < 3 (kyunke ab 4 boxes hain, max index 3 hai)
+    if (value && index < 3) {
       otpRefs[index + 1].current?.focus();
     }
   };
@@ -143,8 +141,9 @@ export default function SignUpScreen({ onBack, onSignUp }: SignUpScreenProps) {
   const handleVerifyOtp = async () => {
     const enteredOtp = otp.join('');
     
-    if (enteredOtp.length !== 6) {
-      Alert.alert('Invalid Code', 'Please enter the 6-digit verification code');
+    // ✅ CHANGED: 6 ki jagah 4 check karein
+    if (enteredOtp.length !== 4) {
+      Alert.alert('Invalid Code', 'Please enter the 4-digit verification code');
       return;
     }
 
@@ -175,7 +174,7 @@ export default function SignUpScreen({ onBack, onSignUp }: SignUpScreenProps) {
     } catch (error: any) {
       setOtpLoading(false);
       Alert.alert('❌ Verification Failed', error?.message || 'Invalid OTP. Please try again.');
-      setOtp(['', '', '', '', '', '']);
+      setOtp(['', '', '', '']); // ✅ 4 empty strings
       otpRefs[0].current?.focus();
     }
   };
@@ -207,7 +206,7 @@ export default function SignUpScreen({ onBack, onSignUp }: SignUpScreenProps) {
 
             <Text style={styles.otpTitle}>Enter Verification Code</Text>
             <Text style={styles.otpSubtitle}>
-              We've sent a 6-digit code to{'\n'}
+              We've sent a 4-digit code to{'\n'}
               <Text style={styles.otpEmail}>{email}</Text>
             </Text>
 

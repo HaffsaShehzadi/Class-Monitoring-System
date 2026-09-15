@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, Alert, BackHandler, Platform, TouchableOpacity, Text, ScrollView } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { initDatabase } from './src/services/database';
-import { startAutoSync, setAuthToken } from './src/services/syncService';
+//import { initDatabase } from './src/services/database';
+//import { startAutoSync, setAuthToken } from './src/services/syncService';
 import { tokenStorage } from './src/services/tokenStorage';
 import RequestStatusScreen from './src/screens/auth/RequestStatusScreen';
 
@@ -107,7 +107,7 @@ export default function App() {
         const savedUser = await tokenStorage.getUser();
         
         if (savedToken && savedUser) {
-          setAuthToken(savedToken);
+          //setAuthToken(savedToken);
           setCurrentUser(savedUser);
           setRole(savedUser.role);
           
@@ -123,7 +123,7 @@ export default function App() {
     }
   }, [screen]);
 
-  useEffect(() => {
+  /*useEffect(() => {
     initDatabase().then(async (db) => {
       try {
         await db.execAsync(`
@@ -136,7 +136,7 @@ export default function App() {
       console.log('✅ SQLite Database initialized');
     });
     startAutoSync();
-  }, []);
+  }, []);*/
 
   useEffect(() => {
     if (Platform.OS === 'web') return;

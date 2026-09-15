@@ -27,7 +27,6 @@ export const authService = {
     console.log('\n [authService] Starting login request...');
     const BACKEND_URL = await detectBackend();
     console.log(' [authService] Backend URL:', BACKEND_URL);
-    console.log(' [authService] Sending Payload:', { email, password: '***' });
 
     const response = await fetch(`${BACKEND_URL}/api/auth/login`, {
       method: 'POST',
@@ -35,139 +34,90 @@ export const authService = {
       body: JSON.stringify({ email, password }),
     });
 
-    console.log(' [authService] Response status:', response.status);
     const data = await response.json();
-    console.log(' [authService] Response data:', data);
-
-    if (!response.ok) {
-      console.log(' [authService] Login API failed:', data.message);
-      throw new Error(data.message || 'Login failed');
-    }
-
-    console.log(' [authService] Login successful!');
+    if (!response.ok) throw new Error(data.message || 'Login failed');
     return data;
   },
 
   // POST /api/auth/signup
-  signup: async (data: SignupData): Promise<{ message: string; demo_otp?: string }> => {
-    console.log('\n [authService] Starting signup request...');
+  signup: async (data: SignupData): Promise<{ message: string }> => {
     const BACKEND_URL = await detectBackend();
-    console.log(' [authService] Backend URL:', BACKEND_URL);
-    console.log(' [authService] Sending Payload:', { ...data, password: '***' });
-
     const response = await fetch(`${BACKEND_URL}/api/auth/signup`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     });
-
-    console.log(' [authService] Response status:', response.status);
     const result = await response.json();
-    console.log(' [authService] Response data:', result);
-
-    if (!response.ok) {
-      console.log(' [authService] Signup API failed:', result.message);
-      throw new Error(result.message || 'Signup failed');
-    }
-
-    console.log(' [authService] Signup successful!');
+    if (!response.ok) throw new Error(result.message || 'Signup failed');
     return result;
   },
 
   // POST /api/auth/verify-otp
   verifyOTP: async (email: string, otp: string): Promise<{ message: string }> => {
-    console.log('\n📡 [authService] Starting verify OTP request...');
     const BACKEND_URL = await detectBackend();
-    console.log(' [authService] Sending Payload:', { email, otp });
-
     const response = await fetch(`${BACKEND_URL}/api/auth/verify-otp`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, otp }),
     });
-
-    console.log(' [authService] Response status:', response.status);
     const data = await response.json();
-    console.log(' [authService] Response data:', data);
-
-    if (!response.ok) {
-      console.log(' [authService] Verify OTP API failed:', data.message);
-      throw new Error(data.message || 'Invalid OTP');
-    }
-
-    console.log(' [authService] OTP verified successfully!');
+    if (!response.ok) throw new Error(data.message || 'Invalid OTP');
     return data;
   },
 
   // POST /api/auth/resend-otp
-  resendOTP: async (email: string): Promise<{ message: string; demo_otp?: string }> => {
-    console.log('\n [authService] Starting resend OTP request...');
+  resendOTP: async (email: string): Promise<{ message: string }> => {
     const BACKEND_URL = await detectBackend();
-    console.log(' [authService] Sending Payload:', { email });
-
     const response = await fetch(`${BACKEND_URL}/api/auth/resend-otp`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email }),
     });
-
-    console.log(' [authService] Response status:', response.status);
     const data = await response.json();
-    console.log(' [authService] Response data:', data);
-
-    if (!response.ok) {
-      console.log('❌ [authService] Resend OTP API failed:', data.message);
-      throw new Error(data.message || 'Failed to resend OTP');
-    }
-
-    console.log(' [authService] OTP resent successfully!');
+    if (!response.ok) throw new Error(data.message || 'Failed to resend OTP');
     return data;
   },
 
-  // POST /api/auth/forgot-password
+  // POST /api/auth/forgot-password (OTP bhejne ke liye)
   forgotPassword: async (email: string): Promise<{ message: string }> => {
-    console.log('\n📡 [authService] Starting forgot password request...');
     const BACKEND_URL = await detectBackend();
-    console.log(' [authService] Sending Payload:', { email });
-
     const response = await fetch(`${BACKEND_URL}/api/auth/forgot-password`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email }),
     });
-
-    console.log('[authService] Response status:', response.status);
     const data = await response.json();
-    console.log(' [authService] Response data:', data);
+    if (!response.ok) throw new Error(data.message || 'Failed to send OTP');
+    return data;
+  },
 
+  // ✅ NEW: POST /api/auth/reset-password (OTP verify kar ke password change karne ke liye)
+  resetPassword: async (email: string, otp: string, newPassword: string): Promise<{ message: string }> => {
+    console.log('\n📡 [authService] Starting reset password request...');
+    const BACKEND_URL = await detectBackend();
+    
+    const response = await fetch(`${BACKEND_URL}/api/auth/reset-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, otp, newPassword }),
+    });
+
+    const data = await response.json();
     if (!response.ok) {
-      console.log(' [authService] Forgot Password API failed:', data.message);
-      throw new Error(data.message || 'Failed to send reset link');
+      throw new Error(data.message || 'Failed to reset password');
     }
-
-    console.log('✅ [authService] Forgot password request successful!');
     return data;
   },
 
   // GET /api/auth/profile
   getProfile: async (token: string): Promise<any> => {
-    console.log('\n [authService] Starting get profile request...');
     const BACKEND_URL = await detectBackend();
-
     const response = await fetch(`${BACKEND_URL}/api/auth/profile`, {
       method: 'GET',
       headers: { 'Authorization': `Bearer ${token}` },
     });
-
-    console.log('📥 [authService] Response status:', response.status);
-
-    if (!response.ok) {
-      console.log(' [authService] Get Profile API failed');
-      throw new Error('Failed to fetch profile');
-    }
-
     const data = await response.json();
-    console.log('✅ [authService] Profile fetched successfully:', data);
+    if (!response.ok) throw new Error('Failed to fetch profile');
     return data;
   },
 };

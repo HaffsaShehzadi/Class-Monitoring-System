@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, Platform, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Modal, Alert, Platform, ActivityIndicator, KeyboardAvoidingView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { tokenStorage } from '../../services/tokenStorage';
-import { attendanceService } from '../../services/attendanceService'; // ✅ Real API import
+import { attendanceService } from '../../services/attendanceService';
 
 const PERIODS = [
   { id: 1, time: '08:30 - 09:15' },
@@ -17,17 +18,16 @@ const PERIODS = [
 ];
 
 export default function TeacherAttendanceHistory({ onBack }: any) {
-  const [step, setStep] = useState<'shift' | 'range' | 'history'>('shift');
   const [selectedShift, setSelectedShift] = useState('');
-  const [startDate, setStartDate] = useState('2026-08-01');
-  const [endDate, setEndDate] = useState('2026-08-04');
-  const [filteredDates, setFilteredDates] = useState<any[]>([]);
+  const [shiftModalVisible, setShiftModalVisible] = useState(false);
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [showHistory, setShowHistory] = useState(false);
   
-  // ✅ NEW: Real data states
+  const [filteredDates, setFilteredDates] = useState<any[]>([]);
   const [teacherInfo, setTeacherInfo] = useState({ name: 'Teacher', department: 'N/A' });
   const [loading, setLoading] = useState(false);
 
-  // ✅ Fetch real user info on mount
   useEffect(() => {
     const loadUser = async () => {
       const user = await tokenStorage.getUser();
@@ -42,6 +42,7 @@ export default function TeacherAttendanceHistory({ onBack }: any) {
   const teacherDept = teacherInfo.department;
 
   const formatDisplayDate = (dateStr: string) => {
+    if (!dateStr) return '';
     const d = new Date(dateStr);
     if (isNaN(d.getTime())) return dateStr;
     return d.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
@@ -169,9 +170,12 @@ export default function TeacherAttendanceHistory({ onBack }: any) {
 
   const formatRoom = (room: string) => room ? `R#${room.replace('R', '')}` : 'N/A';
 
-  // ✅ UPDATED: Real backend API call ke sath
   const handleSearch = async () => {
-    if (!startDate || !endDate) {
+    if (!selectedShift) {
+      Alert.alert('Error', 'Please select a shift');
+      return;
+    }
+    if (!startDate.trim() || !endDate.trim()) {
       Alert.alert('Error', 'Please enter both start and end dates (YYYY-MM-DD)');
       return;
     }
@@ -182,20 +186,11 @@ export default function TeacherAttendanceHistory({ onBack }: any) {
 
     setLoading(true);
     try {
-      // ✅ Fetch real history from backend
       const history = await attendanceService.getMyHistory();
       
-      // ✅ Filter by date range (and shift if backend returns it)
       const myAttendance = history.filter((a: any) => 
         a.date >= startDate && a.date <= endDate
-        // Note: Agar backend shift return karta hai toh: && a.shift === selectedShift
       );
-
-      if (myAttendance.length === 0) {
-        Alert.alert('No Records', 'No attendance records found for this date range');
-        setLoading(false);
-        return;
-      }
 
       const dateMap: any = {};
       myAttendance.forEach((record: any) => {
@@ -212,7 +207,7 @@ export default function TeacherAttendanceHistory({ onBack }: any) {
         }));
 
       setFilteredDates(sortedDates);
-      setStep('history');
+      setShowHistory(true);
     } catch (error: any) {
       Alert.alert('Error', error.message || 'Failed to fetch attendance history');
     } finally {
@@ -221,84 +216,125 @@ export default function TeacherAttendanceHistory({ onBack }: any) {
   };
 
   const handleBack = () => {
-    if (step === 'history') setStep('range');
-    else if (step === 'range') setStep('shift');
-    else onBack();
+    if (showHistory) {
+      setShowHistory(false);
+      setFilteredDates([]);
+    } else {
+      onBack();
+    }
   };
 
-  // STEP 1: Select Shift
-  if (step === 'shift') {
+  // ✅ SEARCH SCREEN WITH CENTERED CARD
+  if (!showHistory) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
           <TouchableOpacity onPress={onBack}>
             <Text style={styles.backArrow}>←</Text>
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Select Shift</Text>
+          <Text style={styles.headerTitle}>Attendance History</Text>
           <View style={{ width: 24 }} />
         </View>
 
-        <View style={styles.shiftContainer}>
-          <TouchableOpacity
-            style={styles.shiftCard}
-            onPress={() => { setSelectedShift('1st Shift'); setStep('range'); }}
+        <KeyboardAvoidingView 
+          style={{ flex: 1 }} 
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+        >
+          <ScrollView 
+            contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
           >
-            <Text style={styles.shiftTitle}>1st Shift</Text>
-            <Text style={styles.shiftSubtext}>Morning Classes</Text>
-          </TouchableOpacity>
+            {/* ✅ CENTERED WHITE CARD */}
+            <View style={styles.searchCard}>
+              
+              {/* 1. Shift Dropdown */}
+              <Text style={styles.label}>Shift</Text>
+              <TouchableOpacity style={styles.dropdownWrapper} onPress={() => setShiftModalVisible(true)}>
+                <Text style={[styles.dropdownText, !selectedShift && styles.placeholderText]}>
+                  {selectedShift || 'Select Shift'}
+                </Text>
+                <MaterialCommunityIcons name="chevron-down" size={20} color="#999" />
+              </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.shiftCard}
-            onPress={() => { setSelectedShift('2nd Shift'); setStep('range'); }}
-          >
-            <Text style={styles.shiftTitle}>2nd Shift</Text>
-            <Text style={styles.shiftSubtext}>Evening Classes</Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
-  // STEP 2: Date Range
-  if (step === 'range') {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={handleBack}>
-            <Text style={styles.backArrow}>←</Text>
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>My Attendance History</Text>
-          <View style={{ width: 24 }} />
-        </View>
-
-        <View style={styles.rangeContainer}>
-          <View style={styles.filterCard}>
-            <Text style={styles.filterTitle}>Select Date Range</Text>
-            <Text style={styles.filterSubtitle}>Enter dates in YYYY-MM-DD format</Text>
-
-            <View style={styles.dateRow}>
-              <View style={styles.dateInputWrapper}>
-                <TextInput style={styles.dateInput} placeholder="Start Date" value={startDate} onChangeText={setStartDate} placeholderTextColor="#999" />
+              {/* 2. Date Range */}
+              <Text style={styles.label}>Date Range</Text>
+              <View style={styles.dateRow}>
+                <View style={styles.dateCol}>
+                  <Text style={styles.dateColLabel}>Start Date</Text>
+                  <View style={styles.dateInputWrapper}>
+                    <TextInput 
+                      style={styles.dateInput} 
+                      placeholder="YYYY-MM-DD" 
+                      value={startDate} 
+                      onChangeText={setStartDate} 
+                      placeholderTextColor="#999" 
+                    />
+                  </View>
+                </View>
+                <View style={styles.dateCol}>
+                  <Text style={styles.dateColLabel}>End Date</Text>
+                  <View style={styles.dateInputWrapper}>
+                    <TextInput 
+                      style={styles.dateInput} 
+                      placeholder="YYYY-MM-DD" 
+                      value={endDate} 
+                      onChangeText={setEndDate} 
+                      placeholderTextColor="#999" 
+                    />
+                  </View>
+                </View>
               </View>
-              <View style={styles.dateInputWrapper}>
-                <TextInput style={styles.dateInput} placeholder="End Date" value={endDate} onChangeText={setEndDate} placeholderTextColor="#999" />
-              </View>
+
+              {/* 3. Search Button */}
+              <TouchableOpacity style={styles.searchBtn} onPress={handleSearch} disabled={loading}>
+                {loading ? (
+                  <ActivityIndicator color="#FFF" />
+                ) : (
+                  <>
+                    <MaterialCommunityIcons name="magnify" size={20} color="#FFF" />
+                    <Text style={styles.searchBtnText}>Search History</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+
             </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
 
-            <TouchableOpacity style={styles.searchBtn} onPress={handleSearch} disabled={loading}>
-              {loading ? (
-                <ActivityIndicator color="#FFF" />
-              ) : (
-                <Text style={styles.searchBtnText}>Search History</Text>
-              )}
-            </TouchableOpacity>
+        {/* Shift Selection Modal */}
+        <Modal visible={shiftModalVisible} transparent animationType="fade">
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Select Shift</Text>
+                <TouchableOpacity onPress={() => setShiftModalVisible(false)}>
+                  <Text style={styles.closeIcon}>✕</Text>
+                </TouchableOpacity>
+              </View>
+              <ScrollView style={styles.modalList}>
+                {['1st Shift', '2nd Shift'].map(shift => (
+                  <TouchableOpacity 
+                    key={shift} 
+                    style={[styles.modalItem, selectedShift === shift && styles.modalItemActive]} 
+                    onPress={() => { setSelectedShift(shift); setShiftModalVisible(false); }}
+                  >
+                    <Text style={[styles.modalItemText, selectedShift === shift && styles.modalItemTextActive]}>
+                      {shift}
+                    </Text>
+                    {selectedShift === shift && <MaterialCommunityIcons name="check" size={20} color="#FFF" />}
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
           </View>
-        </View>
+        </Modal>
       </SafeAreaView>
     );
   }
 
-  // STEP 3: History Table
+  // ✅ HISTORY TABLE SCREEN (Same as before)
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
@@ -324,6 +360,38 @@ export default function TeacherAttendanceHistory({ onBack }: any) {
           <View style={{ alignItems: 'center', marginTop: 40 }}>
             <ActivityIndicator size="large" color="#1A237E" />
             <Text style={{ marginTop: 10, color: '#666' }}>Loading history...</Text>
+          </View>
+        ) : filteredDates.length === 0 ? (
+          <View style={styles.dateSection}>
+            <View style={styles.dateHeader}>
+              <Text style={styles.dateHeaderText}>No Attendance Records Found</Text>
+            </View>
+
+            <ScrollView horizontal showsHorizontalScrollIndicator={true}>
+              <View style={styles.sketchTable}>
+                <View style={styles.sketchHeader}>
+                  <View style={styles.colPeriod}><Text style={styles.sketchTh}>Period</Text></View>
+                  <View style={styles.colTiming}><Text style={styles.sketchTh}>Timing</Text></View>
+                  <View style={styles.colLectures}><Text style={styles.sketchTh}>Lectures</Text></View>
+                  <View style={styles.colStatus}><Text style={styles.sketchTh}>Status</Text></View>
+                </View>
+
+                {PERIODS.map(p => (
+                  <View key={p.id} style={styles.sketchRow}>
+                    <View style={styles.colPeriod}><Text style={styles.sketchPeriodNum}>{p.id}</Text></View>
+                    <View style={styles.colTiming}>
+                      <Text style={styles.sketchTimeText}>{p.time}</Text>
+                    </View>
+                    <View style={styles.colLectures}>
+                      <Text style={styles.sketchFree}>— No Record —</Text>
+                    </View>
+                    <View style={styles.colStatus}>
+                      <Text style={styles.freeStatus}>—</Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            </ScrollView>
           </View>
         ) : (
           filteredDates.map((dateData) => (
@@ -382,7 +450,7 @@ export default function TeacherAttendanceHistory({ onBack }: any) {
   );
 }
 
-// ✅ STYLES: Bilkul same jaise aapke original code mein the
+// ✅ STYLES WITH CENTERED CARD DESIGN
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F5F5' },
   header: {
@@ -395,6 +463,55 @@ const styles = StyleSheet.create({
   resultBadge: { backgroundColor: '#1A237E', paddingHorizontal: 12, paddingVertical: 5, borderRadius: 12 },
   resultBadgeText: { color: '#FFF', fontSize: 12, fontWeight: '700' },
 
+  // ✅ CENTERED CARD LAYOUT
+  scrollContent: { 
+    padding: 20, 
+    paddingBottom: 40, 
+    flexGrow: 1, 
+    justifyContent: 'center',
+  },
+  searchCard: {
+    backgroundColor: '#FFF',
+    borderRadius: 16,
+    padding: 24,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+  },
+  
+  label: { fontSize: 14, fontWeight: '700', color: '#1A237E', marginBottom: 8 },
+  
+  dropdownWrapper: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    backgroundColor: '#F5F5F5', borderWidth: 1, borderColor: '#E0E0E0',
+    borderRadius: 10, paddingHorizontal: 14, paddingVertical: 14,
+    marginBottom: 20,
+  },
+  dropdownText: { fontSize: 14, color: '#1A237E', fontWeight: '600' },
+  placeholderText: { color: '#999', fontWeight: '400' },
+
+  dateLabel: { fontSize: 14, fontWeight: '700', color: '#1A237E', marginBottom: 10 },
+  dateRow: { flexDirection: 'row', gap: 12, width: '100%', marginBottom: 24 },
+  dateCol: { flex: 1 },
+  dateColLabel: { fontSize: 11, color: '#666', fontWeight: '600', marginBottom: 6 },
+  dateInputWrapper: { 
+    flexDirection: 'row', alignItems: 'center', 
+    backgroundColor: '#F5F5F5', borderWidth: 1, borderColor: '#E0E0E0', 
+    borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10,
+    minHeight: 44,
+  },
+  dateInput: { flex: 1, fontSize: 13, color: '#333', paddingVertical: 0 },
+
+  searchBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: '#1A237E', paddingVertical: 14, borderRadius: 10, gap: 8,
+    elevation: 3, width: '100%', marginTop: 8,
+  },
+  searchBtnText: { color: '#FFF', fontSize: 16, fontWeight: '700' },
+
+  // History Screen Styles (Same as before)
   teacherTopCard: {
     backgroundColor: '#FFF', borderRadius: 12, padding: 15, marginBottom: 15,
     elevation: 2, borderLeftWidth: 4, borderLeftColor: '#1A237E',
@@ -406,37 +523,6 @@ const styles = StyleSheet.create({
     borderTopWidth: 1, borderTopColor: '#E8EAF6',
   },
   dateRangeText: { fontSize: 13, color: '#1A237E', fontWeight: '700' },
-
-  shiftContainer: { flex: 1, justifyContent: 'center', padding: 30, gap: 20 },
-  shiftCard: {
-    backgroundColor: '#FFF', borderRadius: 16, padding: 30, alignItems: 'center',
-    elevation: 3, borderWidth: 2, borderColor: '#E8EAF6',
-  },
-  shiftTitle: { fontSize: 22, fontWeight: '800', color: '#1A237E', marginBottom: 5 },
-  shiftSubtext: { fontSize: 14, color: '#666' },
-
-  rangeContainer: { flex: 1, justifyContent: 'center', padding: 15 },
-  filterCard: {
-    backgroundColor: '#FFF', borderRadius: 16, padding: 20,
-    elevation: 3, alignItems: 'center',
-  },
-  filterTitle: { fontSize: 20, fontWeight: '800', color: '#1A237E', marginBottom: 5 },
-  filterSubtitle: { fontSize: 13, color: '#666', marginBottom: 20, textAlign: 'center' },
-
-  dateRow: { flexDirection: 'row', gap: 10, width: '100%', marginBottom: 20 },
-  dateInputWrapper: {
-    flex: 1, flexDirection: 'row', alignItems: 'center',
-    backgroundColor: '#F5F5F5', borderWidth: 1.5, borderColor: '#DDD',
-    borderRadius: 10, paddingHorizontal: 10,
-  },
-  dateInput: { flex: 1, paddingVertical: 12, fontSize: 13, color: '#333' },
-
-  searchBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    backgroundColor: '#1A237E', paddingVertical: 14, borderRadius: 12, gap: 8,
-    elevation: 3, width: '100%',
-  },
-  searchBtnText: { color: '#FFF', fontSize: 16, fontWeight: '700' },
 
   dateSection: { marginBottom: 20 },
   dateHeader: {
@@ -475,4 +561,16 @@ const styles = StyleSheet.create({
     elevation: 3, marginTop: 10,
   },
   exportBtnText: { color: '#FFF', fontSize: 16, fontWeight: '700' },
+
+  // Modal Styles
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 },
+  modalContent: { backgroundColor: '#FFF', borderRadius: 16, width: '100%', maxWidth: 400, maxHeight: '70%', elevation: 10 },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, borderBottomWidth: 1, borderBottomColor: '#E0E0E0' },
+  modalTitle: { fontSize: 16, fontWeight: '800', color: '#1A237E', flex: 1 },
+  closeIcon: { fontSize: 22, color: '#1A237E', fontWeight: '700' },
+  modalList: { maxHeight: 300, padding: 20 },
+  modalItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 15, backgroundColor: '#F5F5F5', borderRadius: 8, marginBottom: 8 },
+  modalItemActive: { backgroundColor: '#1A237E' },
+  modalItemText: { fontSize: 15, fontWeight: '600', color: '#333' },
+  modalItemTextActive: { color: '#FFF' },
 });

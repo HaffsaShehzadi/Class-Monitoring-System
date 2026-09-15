@@ -6,19 +6,60 @@ import { timetableService } from '../../services/timetableService';
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
-// ✅ YEH NAYA FUNCTION ADD KIYA HAI: 24-hour time ko 12-hour (AM/PM) mein convert karne ke liye
+// ✅ Convert 24-hour (13:00) to 12-hour (1:00 PM) for Display
 const formatTime12Hour = (timeStr: string): string => {
   if (!timeStr || !timeStr.includes(' - ')) return timeStr || 'N/A';
   const [start, end] = timeStr.split(' - ');
   
   const formatSingle = (t: string) => {
-    const [h, m] = t.split(':').map(Number);
-    const ampm = h >= 12 ? 'PM' : 'AM';
-    const h12 = h % 12 || 12;
-    return `${h12}:${m.toString().padStart(2, '0')} ${ampm}`;
+    if (!t) return 'N/A';
+    const parts = t.trim().split(':');
+    if (parts.length < 2) return t;
+    
+    let hours = parseInt(parts[0], 10);
+    const minutes = parts[1].padStart(2, '0');
+    if (isNaN(hours)) return t;
+    
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    const h12 = hours % 12 || 12;
+    return `${h12}:${minutes} ${ampm}`;
   };
-  
   return `${formatSingle(start)} - ${formatSingle(end)}`;
+};
+
+// ✅ Convert 12-hour input (1:00 PM) to 24-hour (13:00) for Backend
+const convertTo24Hour = (time12: string): string => {
+  if (!time12) return '00:00';
+  const clean = time12.trim().toUpperCase();
+  const hasPM = clean.includes('PM');
+  const hasAM = clean.includes('AM');
+  
+  const timePart = clean.replace('AM', '').replace('PM', '').trim();
+  const parts = timePart.split(':');
+  let hours = parseInt(parts[0], 10);
+  const minutes = parts[1] || '00';
+  
+  if (isNaN(hours)) return '00:00';
+  
+  if (hasPM && hours < 12) hours += 12;
+  if (hasAM && hours === 12) hours = 0;
+  
+  return `${String(hours).padStart(2, '0')}:${minutes}`;
+};
+
+// ✅ Convert 24-hour (13:00) to 12-hour (1:00 PM) for Input Field
+const convertTo12Hour = (time24: string): string => {
+  if (!time24) return '00:00';
+  const parts = time24.split(':');
+  const hours = parseInt(parts[0], 10);
+  const minutes = parts[1] || '00';
+  
+  if (isNaN(hours)) return time24;
+  
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  const h12 = hours % 12 || 12;
+  
+  return `${h12}:${minutes} ${ampm}`;
 };
 
 export default function TimetableManagementScreen({ onBack, onNavigate, params }: any) {
@@ -61,7 +102,6 @@ export default function TimetableManagementScreen({ onBack, onNavigate, params }
     if (params?.toastMessage) showToast(params.toastMessage);
   }, []);
 
-  // ✅ FIXED: Jab bhi step change ho, uske mutabiq data load karein
   useEffect(() => {
     if (currentStep === 'timetable') {
       fetchConfig();
@@ -69,7 +109,7 @@ export default function TimetableManagementScreen({ onBack, onNavigate, params }
     } else if (currentStep === 'department') {
       fetchConfig();
     }
-  }, [currentStep, selectedShift, selectedDay]);
+  }, [currentStep, selectedShift, selectedDay, params?.refreshKey]);
 
   const fetchConfig = async () => {
     setLoadingConfig(true);
@@ -91,10 +131,9 @@ export default function TimetableManagementScreen({ onBack, onNavigate, params }
       setLoadingConfig(false);
     }
   };
-  // ✅ FIXED: Timetable data fetch karne ka function
+
   const fetchTimetable = async () => {
     if (!selectedDepartment || !selectedDay) return;
-    
     setLoadingTimetable(true);
     try {
       const data = await timetableService.getAll();
@@ -104,7 +143,7 @@ export default function TimetableManagementScreen({ onBack, onNavigate, params }
         sem: item.semester, 
         day: item.day,
         period: item.period_number, 
-        shift: item.shift, // ✅ YEH LINE ADD KAREIN: Shift ko bhi save karein
+        shift: item.shift,
         teacher: item.teacher_name, 
         code: item.subject_code,
         room: item.room_no, 
@@ -118,7 +157,7 @@ export default function TimetableManagementScreen({ onBack, onNavigate, params }
   };
 
   const getClass = (dept: string, sem: string, periodId: number) => {
-    return timetable.find(c => c.dept === dept && c.sem === sem && c.day === selectedDay && c.period === periodId);
+    return timetable.find(c => c.dept === dept && c.sem === sem && c.day === selectedDay && c.period === periodId && c.shift === selectedShift);
   };
 
   const handleCellPress = (dept: string, sem: string, periodId: number, existingClass: any) => {
@@ -130,29 +169,40 @@ export default function TimetableManagementScreen({ onBack, onNavigate, params }
     });
   };
 
+  // ✅ FIXED: Edit karte waqt 24-hour ko 12-hour mein convert kar ke dikhayein
   const handleEditPeriod = (period: any) => {
     setEditingPeriod(period);
     if (period.time && period.time.includes(' - ')) {
-      const [start, end] = period.time.split(' - ');
-      setPeriodStartTime(start);
-      setPeriodEndTime(end);
-    } else {
-      setPeriodStartTime('');
-      setPeriodEndTime('');
-    }
+    const [start, end] = period.time.split(' - ');
+       // ✅ Direct backend se jo 12-hour format aa raha hai, wahi input mein dalein
+       // Koi conversion nahi karni!
+       setPeriodStartTime(start.trim());
+       setPeriodEndTime(end.trim());
+      } else {
+       setPeriodStartTime('');
+       setPeriodEndTime('');
+      }
     setShowPeriodModal(true);
   };
 
+  // ✅ FIXED: Save karte waqt 12-hour ko 24-hour mein convert kar ke backend ko bhejein
   const handleSavePeriod = async () => {
     if (!periodStartTime.trim() || !periodEndTime.trim()) {
       Alert.alert('Error', 'Please fill both start and end time');
       return;
     }
+    
+    const start24 = convertTo24Hour(periodStartTime);
+    const end24 = convertTo24Hour(periodEndTime);
+
     try {
       const targetDay = selectedDay === 'Friday' ? 'Friday' : 'Regular';
-      await timetableService.updatePeriod(editingPeriod.id, periodStartTime, periodEndTime, selectedShift!, targetDay);
+      await timetableService.updatePeriod(editingPeriod.id, start24, end24, selectedShift!, targetDay);
       
-      setPeriods(periods.map(p => (p.id === editingPeriod.id) ? { ...p, time: `${periodStartTime} - ${periodEndTime}`, day: targetDay } : p).sort((a, b) => (a.period_number || 0) - (b.period_number || 0)));
+      const displayStart = convertTo12Hour(start24);
+      const displayEnd = convertTo12Hour(end24);
+      
+      setPeriods(periods.map(p => (p.id === editingPeriod.id) ? { ...p, time: `${displayStart} - ${displayEnd}`, day: targetDay } : p).sort((a, b) => (a.period_number || 0) - (b.period_number || 0)));
       setShowPeriodModal(false);
       setEditingPeriod(null);
       setPeriodStartTime('');
@@ -168,7 +218,7 @@ export default function TimetableManagementScreen({ onBack, onNavigate, params }
     setPeriodStartTime('');
     setPeriodEndTime('');
     
-    let defaultStartTime = '08:00';
+    let defaultStartTime = '08:00 AM';
     if (periods.length > 0) {
       const sortedPeriods = [...periods].sort((a, b) => (a.period_number || 0) - (b.period_number || 0));
       const lastPeriod = sortedPeriods[sortedPeriods.length - 1];
@@ -180,18 +230,27 @@ export default function TimetableManagementScreen({ onBack, onNavigate, params }
     setShowPeriodModal(true);
   };
 
+  // ✅ FIXED: Create karte waqt bhi 12-hour ko 24-hour mein convert kar ke bhejein
   const handleCreatePeriod = async () => {
     if (!periodStartTime.trim() || !periodEndTime.trim()) {
       Alert.alert('Error', 'Please fill both start and end time');
       return;
     }
+    
+    const start24 = convertTo24Hour(periodStartTime);
+    const end24 = convertTo24Hour(periodEndTime);
+
     const maxPeriodNum = periods.length > 0 ? Math.max(...periods.map(p => p.period_number || 0)) : 0;
     const newPeriodNum = maxPeriodNum + 1;
     const targetDay = selectedDay === 'Friday' ? 'Friday' : 'Regular';
     
     try {
-      await timetableService.addPeriod(newPeriodNum, periodStartTime, periodEndTime, selectedShift!, targetDay);
-      setPeriods([...periods, { id: Date.now(), period_number: newPeriodNum, time: `${periodStartTime} - ${periodEndTime}`, day: targetDay, shift: selectedShift }].sort((a, b) => (a.period_number || 0) - (b.period_number || 0)));
+      await timetableService.addPeriod(newPeriodNum, start24, end24, selectedShift!, targetDay);
+      
+      const displayStart = convertTo12Hour(start24);
+      const displayEnd = convertTo12Hour(end24);
+      
+      setPeriods([...periods, { id: Date.now(), period_number: newPeriodNum, time: `${displayStart} - ${displayEnd}`, day: targetDay, shift: selectedShift }].sort((a, b) => (a.period_number || 0) - (b.period_number || 0)));
       setShowPeriodModal(false);
       setPeriodStartTime('');
       setPeriodEndTime('');
@@ -255,7 +314,6 @@ export default function TimetableManagementScreen({ onBack, onNavigate, params }
     }
   };
 
-  // ✅ FIXED: Step-by-step back navigation
   const handleBackFromTimetable = () => {
     setCurrentStep('department');
   };
@@ -265,9 +323,6 @@ export default function TimetableManagementScreen({ onBack, onNavigate, params }
     setCurrentStep('shift'); 
   };
 
-  // ==========================================
-  // STEP 1: Select Shift
-  // ==========================================
   if (currentStep === 'shift') {
     return (
       <SafeAreaView edges={['bottom']} style={styles.container}>
@@ -297,9 +352,6 @@ export default function TimetableManagementScreen({ onBack, onNavigate, params }
     );
   }
 
-  // ==========================================
-  // STEP 2: Select Department
-  // ==========================================
   if (currentStep === 'department') {
     return (
       <SafeAreaView edges={['bottom']} style={styles.container}>
@@ -334,9 +386,6 @@ export default function TimetableManagementScreen({ onBack, onNavigate, params }
     );
   }
 
-  // ==========================================
-  // STEP 3: Timetable Grid
-  // ==========================================
   return (
     <SafeAreaView edges={['bottom']} style={styles.container}>
       <View style={styles.header}>
@@ -371,8 +420,7 @@ export default function TimetableManagementScreen({ onBack, onNavigate, params }
                 {periods.map(p => (
                   <TouchableOpacity key={p.id} style={styles.periodHeaderCell} onPress={() => handleEditPeriod(p)} activeOpacity={0.7}>
                     <Text style={styles.periodNum}>P{p.period_number}</Text>
-                    {/* ✅ YAHAN CHANGE KIYA HAI: Ab time 1:00 PM - 1:45 PM format mein show hoga */}
-                    <Text style={styles.periodTime}>{formatTime12Hour(p.time) || 'Not Set'}</Text>
+                    <Text style={styles.periodTime}>{p.time || 'Not Set'}</Text>
                     <View style={styles.cellEditIcon}><MaterialCommunityIcons name="pencil" size={12} color="#1A237E" /></View>
                   </TouchableOpacity>
                 ))}
@@ -439,8 +487,11 @@ export default function TimetableManagementScreen({ onBack, onNavigate, params }
               <Text style={styles.modalTitle}>{editingPeriod ? 'Edit Period Time' : 'Add New Period'}</Text>
               <TouchableOpacity onPress={() => setShowPeriodModal(false)}><Text style={styles.modalCloseIcon}>✕</Text></TouchableOpacity>
             </View>
+            
+            {/* ✅ Placeholders "00:00" aur labels clean kar diye gaye hain */}
             <Text style={styles.inputLabel}>Start Time</Text>
-            <TextInput style={styles.periodInput} placeholder="08:30" placeholderTextColor="#999" value={periodStartTime} onChangeText={setPeriodStartTime} />
+            <TextInput style={styles.periodInput} placeholder="00:00" placeholderTextColor="#999" value={periodStartTime} onChangeText={setPeriodStartTime} />
+            
             <Text style={styles.inputLabel}>End Time</Text>
             <TextInput 
               style={styles.periodInput} 
@@ -449,6 +500,7 @@ export default function TimetableManagementScreen({ onBack, onNavigate, params }
               value={periodEndTime} 
               onChangeText={setPeriodEndTime} 
             />
+            
             {editingPeriod && (
               <TouchableOpacity style={styles.deletePeriodBtn} onPress={() => { handleDeletePeriod(editingPeriod.id); setShowPeriodModal(false); }}>
                 <Text style={styles.deletePeriodText}>Delete Period</Text>

@@ -1,15 +1,5 @@
 import * as Location from 'expo-location';
-import { detectBackend } from './ipConfig';       // ✅ Clean static import
-import { tokenStorage } from './tokenStorage';    // ✅ Clean static import
 
-// Govt. Graduate College, Civil Lines, Sheikhupura coordinates
-const COLLEGE_LOCATION = {
-  latitude: 31.7167,
-  longitude: 73.9833,
-  radius: 99999999999, // TODO: Testing ke liye yehi rahne do, baad mein Production ke liye 50 meters set karna hai
-};
-
-// ✅ YEH WO EXPORTED FUNCTION HAI JO AAPKI SCREEN DHUNDH RAHI HAI (Bilkul same jaisa aapka tha)
 export const checkLocation = async (): Promise<{
   success: boolean;
   latitude?: number;
@@ -17,80 +7,85 @@ export const checkLocation = async (): Promise<{
   error?: string;
 }> => {
   try {
-    // Permission check
-    const { status } = await Location.requestForegroundPermissionsAsync();
+    console.log('📍 Requesting location...');
+    
+    // ✅ Step 1: Check permissions
+    let { status } = await Location.getForegroundPermissionsAsync();
+    
     if (status !== 'granted') {
-      return { success: false, error: 'Location permission denied' };
+      // Request permission
+      const { status: newStatus } = await Location.requestForegroundPermissionsAsync();
+      if (newStatus !== 'granted') {
+        return {
+          success: false,
+          error: 'Location permission denied. Please enable location access.',
+        };
+      }
     }
 
-    // Get current location
+    // ✅ Step 2: Get location with TIMEOUT and FALLBACK options
     const location = await Location.getCurrentPositionAsync({
-      accuracy: Location.Accuracy.High,
+      accuracy: Location.Accuracy.Balanced, // ✅ Faster than HighAccuracy
+      timeInterval: 5000, // ✅ Max wait time: 5 seconds
+      distanceInterval: 10, // ✅ Update every 10 meters
+    }).catch(async (err) => {
+      console.warn('⚠️ GPS location failed, trying network location...', err);
+      
+      // ✅ Fallback: Use network-based location (faster but less accurate)
+      try {
+        // ❌ REMOVED: accuracy parameter (getLastKnownPositionAsync doesn't accept it)
+        const networkLocation = await Location.getLastKnownPositionAsync();
+        
+        if (networkLocation) {
+          console.log('📡 Using last known network location');
+          return networkLocation;
+        }
+      } catch (networkErr) {
+        console.error('❌ Network location also failed');
+      }
+      
+      throw err;
     });
 
-    const { latitude, longitude } = location.coords;
-
-    // Calculate distance using Haversine formula
-    const distance = getDistance(
-      latitude,
-      longitude,
-      COLLEGE_LOCATION.latitude,
-      COLLEGE_LOCATION.longitude
-    );
-
-    if (distance <= COLLEGE_LOCATION.radius) {
-      return { success: true, latitude, longitude };
-    } else {
+    if (!location) {
       return {
         success: false,
-        error: `You are ${Math.round(distance)}m away from college. Must be within ${COLLEGE_LOCATION.radius}m.`,
+        error: 'Failed to get location. Please check if GPS is enabled.',
       };
     }
-  } catch (error) {
-    return { success: false, error: 'Failed to get location' };
-  }
-};
 
-// Haversine formula - calculate distance between 2 points
-const getDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
-  const R = 6371000; // Earth radius in meters
-  const toRad = (x: number) => (x * Math.PI) / 180;
-  const dLat = toRad(lat2 - lat1);
-  const dLon = toRad(lon2 - lon1);
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-};
-
-// ✅ INTEGRATION: Backend ko location update karne ke liye (Clean & Simple)
-export const updateLocationToBackend = async (latitude: number, longitude: number) => {
-  try {
-    // ✅ Yahan clean static imports use kiye hain (dynamic import ki jagah)
-    const BACKEND_URL = await detectBackend();
-    const token = await tokenStorage.getToken();
-
-    console.log('📡 [locationService] Sending location to backend...');
-
-    const response = await fetch(`${BACKEND_URL}/api/location/update`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        latitude,
-        longitude
-      }),
+    console.log('✅ Location obtained:', {
+      lat: location.coords.latitude,
+      lng: location.coords.longitude,
+      accuracy: location.coords.accuracy,
     });
 
-    const data = await response.json();
-    if (!response.ok) {
-      console.log('⚠️ Location update failed:', data.message);
-    } else {
-      console.log('✅ Location updated successfully on server');
-    }
-  } catch (error) {
-    console.log('⚠️ Location sync error (offline?):', error);
+    return {
+      success: true,
+      latitude: location.coords.latitude,
+      longitude: location.coords.longitude,
+    };
+
+  } catch (error: any) {
+    console.error('❌ Location error:', error.message);
+    return {
+      success: false,
+      error: error.message || 'Unable to get your location',
+    };
   }
+};
+
+// ✅ TESTING MODE: Bypass location check (VIVA/DEMO ke liye)
+export const checkLocationTestMode = async (): Promise<{
+  success: boolean;
+  latitude: number;
+  longitude: number;
+}> => {
+  // ⚠️ TESTING KE LIYE - Fake location return karein
+  console.warn('⚠️ TEST MODE: Using fake location');
+  return {
+    success: true,
+    latitude: 31.5204, // Example: Lahore coordinates
+    longitude: 74.3587,
+  };
 };

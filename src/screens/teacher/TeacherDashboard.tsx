@@ -1,18 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { tokenStorage } from '../../services/tokenStorage'; // ✅ Real user data ke liye import
+import { tokenStorage } from '../../services/tokenStorage';
 
 export default function TeacherDashboard({ onNavigate, onLogout }: any) {
-  const [teacherName, setTeacherName] = useState('Teacher'); // ✅ Dynamic name state
+  const [teacherName, setTeacherName] = useState('Teacher');
 
-  // ✅ Screen load hone par real user data fetch karein
   useEffect(() => {
     const loadUser = async () => {
       try {
         const user = await tokenStorage.getUser();
         if (user && user.name) {
-          setTeacherName(user.name);
+          setTeacherName(String(user.name));
         }
       } catch (error) {
         console.log('Error loading user data:', error);
@@ -32,7 +31,7 @@ export default function TeacherDashboard({ onNavigate, onLogout }: any) {
       <View style={styles.header}>
         <View>
           <Text style={styles.headerTitle}>Teacher Dashboard</Text>
-          <Text style={styles.headerSubtitle}>Welcome, {teacherName}</Text> {/* ✅ Dynamic name */}
+          <Text style={styles.headerSubtitle}>Welcome, {teacherName}</Text>
         </View>
         <TouchableOpacity onPress={onLogout} style={styles.logoutBtn}>
           <Text style={styles.logoutText}>Logout</Text>

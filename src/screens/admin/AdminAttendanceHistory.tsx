@@ -5,7 +5,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { adminReportService } from '../../services/adminReportService';
-import { attendanceService } from '../../services/attendanceService'; // Edit ke liye
+import { attendanceService } from '../../services/attendanceService';
 
 const PERIODS = [
   { id: 1, time: '08:30 - 09:15' }, { id: 2, time: '09:15 - 10:00' }, { id: 3, time: '10:00 - 10:45' },
@@ -13,40 +13,34 @@ const PERIODS = [
 ];
 
 export default function AdminAttendanceHistory({ onBack }: any) {
-  const [selectedShift, setSelectedShift] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'department' | 'teacher'>('department');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [selectedShift, setSelectedShift] = useState<string | null>(null);
+  const [shiftModalVisible, setShiftModalVisible] = useState(false);
   const [selectedDept, setSelectedDept] = useState('');
   const [selectedDeptId, setSelectedDeptId] = useState<number | null>(null);
   const [selectedTeacher, setSelectedTeacher] = useState('');
   const [selectedTeacherId, setSelectedTeacherId] = useState<number | null>(null);
   const [selectedTeacherDept, setSelectedTeacherDept] = useState('');
   const [teacherSearch, setTeacherSearch] = useState('');
-  const [startDate, setStartDate] = useState('2026-08-01');
-  const [endDate, setEndDate] = useState('2026-08-05');
-  
   const [showHistory, setShowHistory] = useState(false);
   const [filteredData, setFilteredData] = useState<any[]>([]);
   const [attendanceData, setAttendanceData] = useState<any[]>([]);
-  
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [editingRecord, setEditingRecord] = useState<any>(null);
   const [editStatus, setEditStatus] = useState('');
   const [editSubstitute, setEditSubstitute] = useState('');
   const [savingEdit, setSavingEdit] = useState(false);
-  
   const [deptModalVisible, setDeptModalVisible] = useState(false);
   const [teacherModalVisible, setTeacherModalVisible] = useState(false);
   const [loading, setLoading] = useState(false);
-
-  // Real data states
   const [departments, setDepartments] = useState<any[]>([]);
   const [teachers, setTeachers] = useState<any[]>([]);
 
-  useEffect(() => {
-    if (selectedShift) {
-      fetchInitialData();
-    }
-  }, [selectedShift]);
+  useEffect(() => { 
+    fetchInitialData(); 
+  }, []);
 
   const fetchInitialData = async () => {
     setLoading(true);
@@ -64,17 +58,9 @@ export default function AdminAttendanceHistory({ onBack }: any) {
     }
   };
 
-  const getShiftDepartments = () => {
-    // Filhal sab departments dikhayenge, shift ka filter backend timetable se aata hai
-    return departments.map((d: any) => d.dept_name || d.name);
-  };
-
-  const getShiftTeachers = () => {
-    // Shift ke mutabiq teachers filter karna (agar duty_assignments se link karna ho toh baad mein enhance ho sakta hai)
-    // Filhal sab approved teachers dikhayenge
-    return teachers.map((t: any) => ({ name: t.name, dept: t.department, id: t.id }));
-  };
-
+  const getShiftDepartments = () => departments.map((d: any) => d.dept_name || d.name);
+  const getShiftTeachers = () => teachers.map((t: any) => ({ name: t.name, dept: t.department, id: t.id }));
+  
   const getFilteredTeachers = () => {
     const teachersList = getShiftTeachers();
     if (!teacherSearch.trim()) return teachersList;
@@ -90,49 +76,98 @@ export default function AdminAttendanceHistory({ onBack }: any) {
   const formatRoom = (room: string) => `R#${room.replace('R', '')}`;
   const uniqueDaysCount = new Set(filteredData.map((r: any) => r.date)).size;
 
+  // ✅ 100% FIXED & FORMATTED PDF DOWNLOAD FUNCTION
   const handleDownload = async () => {
     try {
-      if (filteredData.length === 0) {
-        Alert.alert('No Data', 'No attendance records to download');
-        return;
+      if (filteredData.length === 0) { 
+        Alert.alert('No Data', 'No attendance records to download'); 
+        return; 
       }
-
-      const title = viewMode === 'department'
-        ? `${selectedDept} Department - ${selectedShift}`
+      
+      const title = viewMode === 'department' 
+        ? `${selectedDept} Department - ${selectedShift}` 
         : `${selectedTeacher} - ${selectedShift}`;
+      
+      const formatDate = (dateStr: string) => {
+        if (!dateStr) return 'N/A';
+        const d = new Date(dateStr);
+        if (isNaN(d.getTime())) return dateStr;
+        return d.toISOString().split('T')[0];
+      };
 
       const rows = filteredData.map((r: any) => `
         <tr>
-          <td>${r.date}</td><td>${r.dept} (${r.sem})</td><td>P${r.period}</td>
-          <td>${r.teacher}</td><td>${r.code}</td><td>${r.status}</td><td>${r.substitute || '-'}</td>
+          <td>${formatDate(r.date)}</td>
+          <td>${r.dept || 'N/A'} (${r.sem || 'N/A'})</td>
+          <td>P${r.period || 'N/A'}</td>
+          <td>${r.teacher || 'N/A'}</td>
+          <td>${r.code || 'N/A'}</td>
+          <td style="color: ${r.status?.toLowerCase() === 'present' ? 'green' : 'red'}; font-weight: bold;">${r.status || 'N/A'}</td>
+          <td>${r.substitute || '-'}</td>
         </tr>
       `).join('');
-
+      
       const html = `
-        <html><head><style>
-          body { font-family: sans-serif; padding: 20px; }
-          h1 { font-size: 18px; color: #1A237E; } p { font-size: 12px; color: #555; }
-          table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-          th, td { border: 1px solid #999; padding: 6px 8px; font-size: 10px; text-align: left; }
-          th { background-color: #1A237E; color: #ffffff; }
-        </style></head><body>
-          <h1>Attendance Report - Class Monitoring System</h1>
-          <p><b>${title}</b></p><p>Date Range: ${startDate} to ${endDate}</p>
-          <p>Total Records: ${filteredData.length}</p>
-          <table><tr><th>Date</th><th>Class</th><th>Period</th><th>Teacher</th><th>Code</th><th>Status</th><th>Substitute</th></tr>
-          ${rows}</table>
-        </body></html>
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="UTF-8">
+            <style>
+              body { font-family: Arial, sans-serif; padding: 20px; margin: 0; }
+              h1 { font-size: 20px; color: #1A237E; text-align: center; margin-bottom: 5px; }
+              .subtitle { font-size: 14px; color: #333; text-align: center; font-weight: bold; margin-bottom: 3px; }
+              .info { font-size: 11px; color: #555; text-align: center; margin-bottom: 3px; }
+              table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 11px; }
+              th { background-color: #1A237E; color: #ffffff; padding: 8px 6px; text-align: left; border: 1px solid #1A237E; }
+              td { border: 1px solid #999; padding: 6px; text-align: left; }
+              tr:nth-child(even) { background-color: #f9f9f9; }
+            </style>
+          </head>
+          <body>
+            <h1>Attendance Report - Class Monitoring System</h1>
+            <p class="subtitle">${title}</p>
+            <p class="info">Date Range: ${startDate} to ${endDate}</p>
+            <p class="info">Total Records: ${filteredData.length}</p>
+            <table>
+              <thead>
+                <tr>
+                  <th>Date</th><th>Class</th><th>Period</th><th>Teacher</th><th>Code</th><th>Status</th><th>Substitute</th>
+                </tr>
+              </thead>
+              <tbody>${rows}</tbody>
+            </table>
+          </body>
+        </html>
       `;
-
-      if (Platform.OS === 'web') {
-        await Print.printAsync({ html });
+      
+      // 1. PDF ko cache folder mein banao
+      const { uri: cacheUri } = await Print.printToFileAsync({ html });
+      console.log('PDF created in cache:', cacheUri);
+      
+      // 2. PDF ko cache se Documents folder mein copy karo (Permission issue fix)
+      const fileName = `Attendance_Report_${Date.now()}.pdf`;
+      const fileUri = (FileSystem as any).documentDirectory + fileName;
+      
+      await FileSystem.copyAsync({
+        from: cacheUri,
+        to: fileUri
+      });
+      console.log('PDF copied to:', fileUri);
+      
+      // 3. Ab Documents folder se share karo
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(fileUri, {
+          mimeType: 'application/pdf',
+          dialogTitle: 'Save Attendance Report'
+        });
+        Alert.alert('Success', 'PDF saved successfully!');
       } else {
-        const { uri } = await Print.printToFileAsync({ html });
-        if (await Sharing.isAvailableAsync()) await Sharing.shareAsync(uri);
+        Alert.alert('Error', 'Sharing not available on this device');
       }
-      Alert.alert('Success', 'PDF report generated successfully');
-    } catch (e) {
-      Alert.alert('Error', 'Failed to generate PDF report');
+      
+    } catch (e: any) { 
+      console.error('❌ PDF Error:', e);
+      Alert.alert('Error', `Failed: ${e.message}`); 
     }
   };
 
@@ -173,20 +208,16 @@ export default function AdminAttendanceHistory({ onBack }: any) {
     setEditModalVisible(true);
   };
 
-  // ✅ UPDATED: Real backend update ke sath
   const handleSaveEdit = async () => {
     if (!editingRecord) return;
     setSavingEdit(true);
     try {
-      // Backend update call
       await attendanceService.updateAttendance(editingRecord.id, editStatus.toLowerCase(), editSubstitute);
-      
-      // Local state update for smooth UI
-      const updatedData = attendanceData.map(item =>
+      const updatedData = attendanceData.map(item => 
         item.id === editingRecord.id ? { ...item, status: editStatus, substitute: editStatus === 'Absent' ? editSubstitute : '' } : item
       );
       setAttendanceData(updatedData);
-      const updatedFiltered = filteredData.map((r: any) =>
+      const updatedFiltered = filteredData.map((r: any) => 
         r.id === editingRecord.id ? { ...r, status: editStatus, substitute: editStatus === 'Absent' ? editSubstitute : '' } : r
       );
       setFilteredData(updatedFiltered);
@@ -199,11 +230,11 @@ export default function AdminAttendanceHistory({ onBack }: any) {
     }
   };
 
-  // ✅ UPDATED: Real backend search ke sath
   const handleSearch = async () => {
+    if (!selectedShift) { Alert.alert('Error', 'Please select a shift'); return; }
     if (!startDate || !endDate) { Alert.alert('Error', 'Please enter both start and end dates'); return; }
     if (startDate > endDate) { Alert.alert('Error', 'Start date cannot be after end date'); return; }
-
+    
     setLoading(true);
     try {
       let records = [];
@@ -214,15 +245,6 @@ export default function AdminAttendanceHistory({ onBack }: any) {
         if (!selectedTeacherId) { Alert.alert('Error', 'Please select a teacher'); setLoading(false); return; }
         records = await adminReportService.getTeacherAttendance(selectedTeacherId, startDate, endDate);
       }
-
-      if (records.length === 0) { 
-        Alert.alert('No Records', 'No attendance records found for this range'); 
-        setFilteredData([]);
-        setShowHistory(true);
-        setLoading(false);
-        return; 
-      }
-
       setAttendanceData(records);
       setFilteredData(records);
       setShowHistory(true);
@@ -233,7 +255,8 @@ export default function AdminAttendanceHistory({ onBack }: any) {
     }
   };
 
-  if (!selectedShift) {
+  if (!showHistory) {
+    const availableDepts = getShiftDepartments();
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
@@ -241,61 +264,39 @@ export default function AdminAttendanceHistory({ onBack }: any) {
           <Text style={styles.headerTitle}>Attendance History</Text>
           <View style={{ width: 24 }} />
         </View>
-        <View style={styles.shiftContainer}>
-          <TouchableOpacity style={styles.shiftCard} onPress={() => setSelectedShift('1st Shift')}>
-            <Text style={styles.shiftTitle}>1st Shift</Text>
-            <Text style={styles.shiftSubtext}>Morning Classes</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.shiftCard} onPress={() => setSelectedShift('2nd Shift')}>
-            <Text style={styles.shiftTitle}>2nd Shift</Text>
-            <Text style={styles.shiftSubtext}>Evening Classes</Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
-  if (!showHistory) {
-    const availableDepts = getShiftDepartments();
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => { setSelectedShift(null); setSelectedDept(''); setSelectedTeacher(''); }}>
-            <Text style={styles.backArrow}>←</Text>
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>{selectedShift} - History</Text>
-          <View style={{ width: 24 }} />
-        </View>
-
-        <View style={styles.modeSelector}>
-          <TouchableOpacity style={[styles.modeBtn, viewMode === 'department' && styles.modeBtnActive]} onPress={() => { setViewMode('department'); setSelectedTeacher(''); setTeacherSearch(''); }}>
-            <Text style={[styles.modeText, viewMode === 'department' && styles.modeTextActive]}>Department Wise</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.modeBtn, viewMode === 'teacher' && styles.modeBtnActive]} onPress={() => { setViewMode('teacher'); setSelectedDept(''); }}>
-            <Text style={[styles.modeText, viewMode === 'teacher' && styles.modeTextActive]}>Teacher Wise</Text>
-          </TouchableOpacity>
-        </View>
-
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'} keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}>
-          <ScrollView contentContainerStyle={{ padding: 15, paddingBottom: 40 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+          <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
             <View style={styles.filterCard}>
-              <View style={styles.filterIcon}>
-                <MaterialCommunityIcons name={viewMode === 'department' ? 'school' : 'account-tie'} size={40} color="#1A237E" />
+              <View style={styles.modeSelector}>
+                <TouchableOpacity style={[styles.modeBtn, viewMode === 'department' && styles.modeBtnActive]} onPress={() => { setViewMode('department'); setSelectedTeacher(''); setTeacherSearch(''); setSelectedDeptId(null); setSelectedDept(''); }}>
+                  <Text style={[styles.modeText, viewMode === 'department' && styles.modeTextActive]}>Department</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.modeBtn, viewMode === 'teacher' && styles.modeBtnActive]} onPress={() => { setViewMode('teacher'); setSelectedDept(''); setSelectedDeptId(null); setSelectedTeacherId(null); setSelectedTeacher(''); setSelectedTeacherDept(''); }}>
+                  <Text style={[styles.modeText, viewMode === 'teacher' && styles.modeTextActive]}>Teacher</Text>
+                </TouchableOpacity>
               </View>
-              <Text style={styles.filterTitle}>Search by {viewMode === 'department' ? 'Department' : 'Teacher'}</Text>
-
+              <Text style={styles.label}>Shift</Text>
+              <TouchableOpacity style={styles.inputWrapper} onPress={() => setShiftModalVisible(true)}>
+                <Text style={[styles.inputText, !selectedShift && styles.placeholderText]}>{selectedShift || 'Select Shift'}</Text>
+                <MaterialCommunityIcons name="chevron-down" size={20} color="#666" />
+              </TouchableOpacity>
               {viewMode === 'department' ? (
-                <TouchableOpacity style={styles.selectBtn} onPress={() => setDeptModalVisible(true)}>
-                  <Text style={styles.selectBtnText}>{selectedDept || 'Select Department'}</Text>
-                  <MaterialCommunityIcons name="chevron-down" size={20} color="#666" />
-                </TouchableOpacity>
+                <>
+                  <Text style={styles.label}>Department</Text>
+                  <TouchableOpacity style={styles.inputWrapper} onPress={() => setDeptModalVisible(true)}>
+                    <Text style={[styles.inputText, !selectedDept && styles.placeholderText]}>{selectedDept || 'Select Department'}</Text>
+                    <MaterialCommunityIcons name="chevron-down" size={20} color="#666" />
+                  </TouchableOpacity>
+                </>
               ) : (
-                <TouchableOpacity style={styles.selectBtn} onPress={() => { setTeacherModalVisible(true); setTeacherSearch(''); }}>
-                  <Text style={styles.selectBtnText}>{selectedTeacher || 'Select Teacher (Searchable)'}</Text>
-                  <MaterialCommunityIcons name="chevron-down" size={20} color="#666" />
-                </TouchableOpacity>
+                <>
+                  <Text style={styles.label}>Teacher</Text>
+                  <TouchableOpacity style={styles.inputWrapper} onPress={() => { setTeacherModalVisible(true); setTeacherSearch(''); }}>
+                    <Text style={[styles.inputText, !selectedTeacher && styles.placeholderText]}>{selectedTeacher || 'Select Teacher'}</Text>
+                    <MaterialCommunityIcons name="chevron-down" size={20} color="#666" />
+                  </TouchableOpacity>
+                </>
               )}
-
               <Text style={styles.dateLabel}>Date Range</Text>
               <View style={styles.dateRow}>
                 <View style={styles.dateCol}>
@@ -311,7 +312,6 @@ export default function AdminAttendanceHistory({ onBack }: any) {
                   </View>
                 </View>
               </View>
-
               <TouchableOpacity style={styles.searchBtn} onPress={handleSearch} disabled={loading}>
                 {loading ? <ActivityIndicator color="#FFF" /> : (
                   <>
@@ -324,6 +324,25 @@ export default function AdminAttendanceHistory({ onBack }: any) {
           </ScrollView>
         </KeyboardAvoidingView>
 
+        <Modal visible={shiftModalVisible} transparent animationType="fade">
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Select Shift</Text>
+                <TouchableOpacity onPress={() => setShiftModalVisible(false)}><MaterialCommunityIcons name="close" size={24} color="#1A237E" /></TouchableOpacity>
+              </View>
+              <ScrollView style={styles.modalList}>
+                {['1st Shift', '2nd Shift'].map(shift => (
+                  <TouchableOpacity key={shift} style={[styles.modalItem, selectedShift === shift && styles.modalItemActive]} onPress={() => { setSelectedShift(shift); setShiftModalVisible(false); }}>
+                    <Text style={[styles.modalItemText, selectedShift === shift && styles.modalItemTextActive]}>{shift}</Text>
+                    {selectedShift === shift && <MaterialCommunityIcons name="check" size={20} color="#FFF" />}
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
+
         <Modal visible={deptModalVisible} transparent animationType="fade">
           <View style={styles.modalOverlay}>
             <View style={styles.modalContent}>
@@ -332,14 +351,14 @@ export default function AdminAttendanceHistory({ onBack }: any) {
                 <TouchableOpacity onPress={() => setDeptModalVisible(false)}><MaterialCommunityIcons name="close" size={24} color="#1A237E" /></TouchableOpacity>
               </View>
               <ScrollView style={styles.modalList}>
-                {availableDepts.map((dept: string) => {
-                  const deptObj = departments.find((d: any) => (d.dept_name || d.name) === dept);
+                {availableDepts.map((dept: string) => { 
+                  const deptObj = departments.find((d: any) => (d.dept_name || d.name) === dept); 
                   return (
                     <TouchableOpacity key={dept} style={[styles.modalItem, selectedDept === dept && styles.modalItemActive]} onPress={() => { setSelectedDept(dept); setSelectedDeptId(deptObj?.id || null); setDeptModalVisible(false); }}>
                       <Text style={[styles.modalItemText, selectedDept === dept && styles.modalItemTextActive]}>{dept} Department</Text>
                       {selectedDept === dept && <MaterialCommunityIcons name="check" size={20} color="#FFF" />}
                     </TouchableOpacity>
-                  );
+                  ); 
                 })}
               </ScrollView>
             </View>
@@ -386,50 +405,53 @@ export default function AdminAttendanceHistory({ onBack }: any) {
       if (status.toLowerCase() === 'absent') return '#F44336';
       return '#E0E0E0';
     };
-
     const dateMap: any = {};
-    filteredData.forEach(record => {
-      if (!dateMap[record.date]) dateMap[record.date] = [];
-      dateMap[record.date].push(record);
+    filteredData.forEach(record => { 
+      if (!dateMap[record.date]) dateMap[record.date] = []; 
+      dateMap[record.date].push(record); 
     });
-
-    const sortedDates = Object.keys(dateMap)
-      .sort((a, b) => b.localeCompare(a))
-      .map(date => ({ date, records: dateMap[date], markedBy: dateMap[date][0].markedBy }));
-
+    const sortedDates = Object.keys(dateMap).sort((a, b) => b.localeCompare(a)).map(date => ({ date, records: dateMap[date], markedBy: dateMap[date][0].markedBy }));
     const displaySemesters = ['2nd', '4th', '6th', '8th'];
+
+    if (sortedDates.length === 0) {
+      return (
+        <View style={styles.dateSection}>
+          <View style={styles.dateHeader}><Text style={styles.dateHeaderText}>No Attendance Records Found</Text></View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <View style={styles.grid}>
+              <View style={styles.row}>
+                <View style={styles.cornerCell}><Text style={styles.cornerText}>Sem / Period</Text></View>
+                {PERIODS.map(p => (<View key={p.id} style={styles.periodHeaderCell}><Text style={styles.periodNum}>P{p.id}</Text><Text style={styles.periodTime}>{p.time}</Text></View>))}
+              </View>
+              {displaySemesters.map(sem => (
+                <View key={sem} style={styles.row}>
+                  <View style={styles.deptSemCell}><Text style={styles.deptText}>{selectedDept}</Text><Text style={styles.semText}>{sem} sem</Text></View>
+                  {PERIODS.map(p => (<View key={p.id} style={styles.dataCell}><Text style={styles.emptyText}>— No Record —</Text></View>))}
+                </View>
+              ))}
+            </View>
+          </ScrollView>
+        </View>
+      );
+    }
 
     return (
       <View style={styles.historyContainer}>
         {sortedDates.map((dateData) => (
           <View key={dateData.date} style={styles.dateSection}>
             <View style={styles.dateHeader}>
-              <View style={styles.dateHeaderLeft}>
-                <Text style={styles.dateHeaderText}>{formatDisplayDate(dateData.date)}</Text>
-              </View>
-              <View style={styles.markedByBadge}>
-                <Text style={styles.markedByText}>Marked by {dateData.markedBy}</Text>
-              </View>
+              <View style={styles.dateHeaderLeft}><Text style={styles.dateHeaderText}>{formatDisplayDate(dateData.date)}</Text></View>
+              <View style={styles.markedByBadge}><Text style={styles.markedByText}>Marked by {dateData.markedBy}</Text></View>
             </View>
-
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               <View style={styles.grid}>
                 <View style={styles.row}>
                   <View style={styles.cornerCell}><Text style={styles.cornerText}>Sem / Period</Text></View>
-                  {PERIODS.map(p => (
-                    <View key={p.id} style={styles.periodHeaderCell}>
-                      <Text style={styles.periodNum}>P{p.id}</Text>
-                      <Text style={styles.periodTime}>{p.time}</Text>
-                    </View>
-                  ))}
+                  {PERIODS.map(p => (<View key={p.id} style={styles.periodHeaderCell}><Text style={styles.periodNum}>P{p.id}</Text><Text style={styles.periodTime}>{p.time}</Text></View>))}
                 </View>
-
                 {displaySemesters.map(sem => (
                   <View key={sem} style={styles.row}>
-                    <View style={styles.deptSemCell}>
-                      <Text style={styles.deptText}>{selectedDept}</Text>
-                      <Text style={styles.semText}>{sem} sem</Text>
-                    </View>
+                    <View style={styles.deptSemCell}><Text style={styles.deptText}>{selectedDept}</Text><Text style={styles.semText}>{sem} sem</Text></View>
                     {PERIODS.map(p => {
                       const record = dateData.records.find((r: any) => r.sem === sem && r.period === p.id);
                       return (
@@ -438,17 +460,11 @@ export default function AdminAttendanceHistory({ onBack }: any) {
                             <View style={styles.cellContent}>
                               <Text style={styles.cellTeacher} numberOfLines={1}>{record.teacher}</Text>
                               <Text style={styles.cellCode} numberOfLines={1}>{record.code}</Text>
-                              <View style={[styles.statusButton, { backgroundColor: getStatusColor(record.status) }]}>
-                                <Text style={styles.statusText}>{record.status}</Text>
-                              </View>
-                              {record.status.toLowerCase() === 'absent' && record.substitute ? (
-                                <Text style={styles.substituteText}>→ {record.substitute}</Text>
-                              ) : null}
+                              <View style={[styles.statusButton, { backgroundColor: getStatusColor(record.status) }]}><Text style={styles.statusText}>{record.status}</Text></View>
+                              {record.status.toLowerCase() === 'absent' && record.substitute ? (<Text style={styles.substituteText}>→ {record.substitute}</Text>) : null}
                               <View style={styles.cellEditIcon}><MaterialCommunityIcons name="pencil" size={10} color="#1A237E" /></View>
                             </View>
-                          ) : (
-                            <Text style={styles.emptyText}>No Class</Text>
-                          )}
+                          ) : (<Text style={styles.emptyText}>No Class</Text>)}
                         </TouchableOpacity>
                       );
                     })}
@@ -464,25 +480,45 @@ export default function AdminAttendanceHistory({ onBack }: any) {
 
   const renderTeacherHistory = () => {
     const dateMap: any = {};
-    filteredData.forEach(record => {
-      if (!dateMap[record.date]) dateMap[record.date] = [];
-      dateMap[record.date].push(record);
+    filteredData.forEach(record => { 
+      if (!dateMap[record.date]) dateMap[record.date] = []; 
+      dateMap[record.date].push(record); 
     });
+    const sortedDates = Object.keys(dateMap).sort((a, b) => b.localeCompare(a)).map(date => ({ date, records: dateMap[date] }));
 
-    const sortedDates = Object.keys(dateMap)
-      .sort((a, b) => b.localeCompare(a))
-      .map(date => ({ date, records: dateMap[date] }));
+    if (sortedDates.length === 0) {
+      return (
+        <View style={styles.dateSection}>
+          <View style={styles.dateHeader}><Text style={styles.dateHeaderText}>No Attendance Records Found</Text></View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={true}>
+            <View style={styles.sketchTable}>
+              <View style={styles.sketchHeader}>
+                <View style={styles.colPeriod}><Text style={styles.sketchTh}>Period</Text></View>
+                <View style={styles.colTiming}><Text style={styles.sketchTh}>Timing</Text></View>
+                <View style={styles.colLectures}><Text style={styles.sketchTh}>Lectures</Text></View>
+                <View style={styles.colStatus}><Text style={styles.sketchTh}>Status</Text></View>
+              </View>
+              {PERIODS.map(p => (
+                <View key={p.id} style={styles.sketchRow}>
+                  <View style={styles.colPeriod}><Text style={styles.sketchPeriodNum}>{p.id}</Text></View>
+                  <View style={styles.colTiming}><Text style={styles.sketchTimeText}>{p.time}</Text></View>
+                  <View style={styles.colLectures}><Text style={styles.sketchFree}>— No Record —</Text></View>
+                  <View style={styles.colStatus}><Text style={styles.freeStatus}>—</Text></View>
+                </View>
+              ))}
+            </View>
+          </ScrollView>
+        </View>
+      );
+    }
 
     return (
       <View style={styles.historyContainer}>
         {sortedDates.map((dateData) => (
           <View key={dateData.date} style={styles.dateSection}>
             <View style={styles.dateHeader}>
-              <View style={styles.dateHeaderLeft}>
-                <Text style={styles.dateHeaderText}>{formatDisplayDate(dateData.date)}</Text>
-              </View>
+              <View style={styles.dateHeaderLeft}><Text style={styles.dateHeaderText}>{formatDisplayDate(dateData.date)}</Text></View>
             </View>
-
             <ScrollView horizontal showsHorizontalScrollIndicator={true}>
               <View style={styles.sketchTable}>
                 <View style={styles.sketchHeader}>
@@ -504,9 +540,7 @@ export default function AdminAttendanceHistory({ onBack }: any) {
                             <Text style={styles.sketchVal}>{lecture.code}</Text>
                             <Text style={styles.sketchVal}>{lecture.dept} {lecture.sem} sem</Text>
                           </View>
-                        ) : (
-                          <Text style={styles.sketchFree}>— Free —</Text>
-                        )}
+                        ) : (<Text style={styles.sketchFree}>— Free —</Text>)}
                       </View>
                       <View style={styles.colStatus}>
                         {renderStatus(lecture)}
@@ -526,37 +560,23 @@ export default function AdminAttendanceHistory({ onBack }: any) {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => setShowHistory(false)}>
-          <Text style={styles.backArrow}>←</Text>
-        </TouchableOpacity>
+        <TouchableOpacity onPress={() => { setShowHistory(false); setFilteredData([]); }}><Text style={styles.backArrow}>←</Text></TouchableOpacity>
         <Text style={styles.headerTitle}>{selectedShift} - History</Text>
-        <View style={styles.resultBadge}>
-          <Text style={styles.resultBadgeText}>{uniqueDaysCount} Days</Text>
-        </View>
+        <View style={styles.resultBadge}><Text style={styles.resultBadgeText}>{uniqueDaysCount} Days</Text></View>
       </View>
-
       <ScrollView contentContainerStyle={{ padding: 15, paddingBottom: 30 }}>
         <View style={styles.adminInfoCard}>
           <Text style={styles.adminName}>{viewMode === 'department' ? `${selectedDept} Department` : selectedTeacher}</Text>
-          <Text style={styles.adminSub}>
-            {viewMode === 'department' ? `${selectedShift}` : `${selectedTeacherDept} Department • ${selectedShift}`}
-          </Text>
-          <View style={styles.dateRangeLine}>
-            <Text style={styles.dateRangeText}>
-              {startDate === endDate ? formatDisplayDate(startDate) : `${startDate} to ${endDate}`}
-            </Text>
-          </View>
+          <Text style={styles.adminSub}>{viewMode === 'department' ? `${selectedShift}` : `${selectedTeacherDept} Department • ${selectedShift}`}</Text>
+          <View style={styles.dateRangeLine}><Text style={styles.dateRangeText}>{startDate === endDate ? formatDisplayDate(startDate) : `${startDate} to ${endDate}`}</Text></View>
         </View>
-
         {loading && filteredData.length === 0 ? (
           <View style={{ padding: 40, alignItems: 'center' }}>
             <ActivityIndicator size="large" color="#1A237E" />
             <Text style={{ marginTop: 10, color: '#666' }}>Loading records...</Text>
           </View>
-        ) : (
-          viewMode === 'department' ? renderDepartmentHistory() : renderTeacherHistory()
-        )}
-
+        ) : (viewMode === 'department' ? renderDepartmentHistory() : renderTeacherHistory())}
+        
         {filteredData.length > 0 && (
           <TouchableOpacity style={styles.exportBtn} onPress={handleDownload}>
             <MaterialCommunityIcons name="download" size={24} color="#FFF" />
@@ -576,18 +596,12 @@ export default function AdminAttendanceHistory({ onBack }: any) {
               {editingRecord && (
                 <ScrollView style={styles.editModalFullBody} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={true}>
                   <View style={styles.editInfo}>
-                    <Text style={styles.editLabel}>Teacher:</Text>
-                    <Text style={styles.editValue}>{editingRecord.teacher}</Text>
-                    <Text style={styles.editLabel}>Subject:</Text>
-                    <Text style={styles.editValue}>{editingRecord.code}</Text>
-                    <Text style={styles.editLabel}>Date:</Text>
-                    <Text style={styles.editValue}>{formatDisplayDate(editingRecord.date)}</Text>
-                    <Text style={styles.editLabel}>Period:</Text>
-                    <Text style={styles.editValue}>Period {editingRecord.period}</Text>
-                    <Text style={styles.editLabel}>Department:</Text>
-                    <Text style={styles.editValue}>{editingRecord.dept} - {editingRecord.sem} sem</Text>
-                    <Text style={styles.editLabel}>Marked By:</Text>
-                    <Text style={styles.editValue}>{editingRecord.markedBy}</Text>
+                    <Text style={styles.editLabel}>Teacher:</Text><Text style={styles.editValue}>{editingRecord.teacher}</Text>
+                    <Text style={styles.editLabel}>Subject:</Text><Text style={styles.editValue}>{editingRecord.code}</Text>
+                    <Text style={styles.editLabel}>Date:</Text><Text style={styles.editValue}>{formatDisplayDate(editingRecord.date)}</Text>
+                    <Text style={styles.editLabel}>Period:</Text><Text style={styles.editValue}>Period {editingRecord.period}</Text>
+                    <Text style={styles.editLabel}>Department:</Text><Text style={styles.editValue}>{editingRecord.dept} - {editingRecord.sem} sem</Text>
+                    <Text style={styles.editLabel}>Marked By:</Text><Text style={styles.editValue}>{editingRecord.markedBy}</Text>
                   </View>
                   <Text style={styles.editSectionTitle}>Update Status</Text>
                   <View style={styles.statusOptions}>
@@ -598,7 +612,7 @@ export default function AdminAttendanceHistory({ onBack }: any) {
                     <TouchableOpacity style={[styles.statusOption, editStatus.toLowerCase() === 'absent' && styles.statusOptionAbsent]} onPress={() => setEditStatus('Absent')}>
                       <MaterialCommunityIcons name="close-circle" size={24} color={editStatus.toLowerCase() === 'absent' ? '#FFF' : '#F44336'} />
                       <Text style={[styles.statusOptionText, editStatus.toLowerCase() === 'absent' && { color: '#FFF' }]}>Absent</Text>
-    </TouchableOpacity>
+                    </TouchableOpacity>
                   </View>
                   {editStatus.toLowerCase() === 'absent' && (
                     <View style={styles.substituteSection}>
@@ -607,7 +621,9 @@ export default function AdminAttendanceHistory({ onBack }: any) {
                     </View>
                   )}
                   <View style={styles.modalButtons}>
-                    <TouchableOpacity style={[styles.modalBtn, styles.cancelBtn]} onPress={() => setEditModalVisible(false)}><Text style={styles.cancelBtnText}>Cancel</Text></TouchableOpacity>
+                    <TouchableOpacity style={[styles.modalBtn, styles.cancelBtn]} onPress={() => setEditModalVisible(false)}>
+                      <Text style={styles.cancelBtnText}>Cancel</Text>
+                    </TouchableOpacity>
                     <TouchableOpacity style={[styles.modalBtn, styles.saveBtn]} onPress={handleSaveEdit} disabled={savingEdit}>
                       {savingEdit ? <ActivityIndicator color="#FFF" /> : <Text style={styles.saveBtnText}>Save Changes</Text>}
                     </TouchableOpacity>
@@ -623,7 +639,6 @@ export default function AdminAttendanceHistory({ onBack }: any) {
   );
 }
 
-// ✅ STYLES: Bilkul same jaise aapke original code mein the (Zero UI changes)
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F5F5' },
   header: { backgroundColor: '#FFF', paddingTop: 50, paddingBottom: 15, paddingHorizontal: 15, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: 2, borderBottomColor: '#1A237E' },
@@ -631,27 +646,24 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 18, fontWeight: '800', color: '#1A237E', flex: 1, textAlign: 'center' },
   resultBadge: { backgroundColor: '#1A237E', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 15 },
   resultBadgeText: { color: '#FFF', fontSize: 12, fontWeight: '700' },
-  shiftContainer: { flex: 1, justifyContent: 'center', padding: 30, gap: 20 },
-  shiftCard: { backgroundColor: '#FFF', borderRadius: 16, padding: 30, alignItems: 'center', elevation: 3, borderWidth: 2, borderColor: '#E8EAF6' },
-  shiftTitle: { fontSize: 22, fontWeight: '800', color: '#1A237E', marginBottom: 5 },
-  shiftSubtext: { fontSize: 14, color: '#666' },
-  modeSelector: { flexDirection: 'row', margin: 15, marginBottom: 10, backgroundColor: '#FFF', borderRadius: 10, padding: 4, elevation: 2 },
-  modeBtn: { flex: 1, paddingVertical: 12, borderRadius: 8, alignItems: 'center' },
+  scrollContent: { padding: 15, paddingBottom: 40, flexGrow: 1, justifyContent: 'center' },
+  modeSelector: { flexDirection: 'row', marginBottom: 20, backgroundColor: '#F5F5F5', borderRadius: 10, padding: 4 },
+  modeBtn: { flex: 1, paddingVertical: 10, borderRadius: 8, alignItems: 'center' },
   modeBtnActive: { backgroundColor: '#1A237E' },
   modeText: { fontSize: 14, fontWeight: '600', color: '#666' },
   modeTextActive: { color: '#FFF', fontWeight: '700' },
-  filterCard: { backgroundColor: '#FFF', borderRadius: 16, padding: 20, elevation: 3, alignItems: 'center' },
-  filterIcon: { width: 80, height: 80, borderRadius: 40, backgroundColor: '#E8EAF6', alignItems: 'center', justifyContent: 'center', marginBottom: 15 },
-  filterTitle: { fontSize: 18, fontWeight: '800', color: '#1A237E', marginBottom: 20 },
-  selectBtn: { flexDirection: 'row', alignItems: 'center', width: '100%', backgroundColor: '#F5F5F5', borderWidth: 1.5, borderColor: '#DDD', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 12, marginBottom: 15 },
-  selectBtnText: { flex: 1, fontSize: 14, color: '#1A237E', fontWeight: '700' },
-  dateLabel: { fontSize: 14, fontWeight: '700', color: '#1A237E', marginBottom: 10, alignSelf: 'flex-start' },
+  filterCard: { backgroundColor: '#FFF', borderRadius: 16, padding: 20, elevation: 3 },
+  label: { fontSize: 14, fontWeight: '700', color: '#1A237E', marginBottom: 6, marginTop: 12 },
+  inputWrapper: { flexDirection: 'row', alignItems: 'center', width: '100%', minHeight: 50, backgroundColor: '#F5F5F5', borderWidth: 1.5, borderColor: '#DDD', borderRadius: 10, paddingHorizontal: 12, marginBottom: 12 },
+  inputText: { flex: 1, fontSize: 14, color: '#1A237E', fontWeight: '600' },
+  placeholderText: { color: '#999', fontWeight: '400' },
+  dateLabel: { fontSize: 14, fontWeight: '700', color: '#1A237E', marginBottom: 10, marginTop: 8 },
   dateRow: { flexDirection: 'row', gap: 10, width: '100%', marginBottom: 20 },
   dateCol: { flex: 1 },
   dateColLabel: { fontSize: 11, color: '#666', fontWeight: '600', marginBottom: 4 },
-  dateInputWrapper: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F5F5F5', borderWidth: 1.5, borderColor: '#DDD', borderRadius: 10, paddingHorizontal: 10 },
-  dateInput: { flex: 1, paddingVertical: 12, fontSize: 13, color: '#333' },
-  searchBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#1A237E', paddingVertical: 14, borderRadius: 12, gap: 8, elevation: 3, width: '100%' },
+  dateInputWrapper: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F5F5F5', borderWidth: 1.5, borderColor: '#DDD', borderRadius: 10, paddingHorizontal: 10, minHeight: 50 },
+  dateInput: { flex: 1, fontSize: 13, color: '#333' },
+  searchBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#1A237E', paddingVertical: 14, borderRadius: 12, gap: 8, elevation: 3, width: '100%', marginTop: 10 },
   searchBtnText: { color: '#FFF', fontSize: 16, fontWeight: '700' },
   adminInfoCard: { backgroundColor: '#FFF', borderRadius: 12, padding: 15, marginBottom: 15, elevation: 2, borderLeftWidth: 4, borderLeftColor: '#1A237E' },
   adminName: { fontSize: 18, fontWeight: '800', color: '#1A237E' },
@@ -705,7 +717,7 @@ const styles = StyleSheet.create({
   exportBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#4CAF50', paddingVertical: 14, borderRadius: 12, gap: 8, elevation: 3, marginTop: 10 },
   exportBtnText: { color: '#FFF', fontSize: 16, fontWeight: '700' },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 },
-  modalContent: { backgroundColor: '#FFF', borderRadius: 16, width: '100%', maxWidth: 400, maxHeight: '85%', elevation: 10 },
+  modalContent: { backgroundColor: '#FFF', borderRadius: 16, width: '100%', maxWidth: 400, maxHeight: '70%', elevation: 10 },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, borderBottomWidth: 1, borderBottomColor: '#E0E0E0' },
   modalTitle: { fontSize: 16, fontWeight: '800', color: '#1A237E', flex: 1 },
   modalList: { maxHeight: 300, padding: 20 },
@@ -714,7 +726,7 @@ const styles = StyleSheet.create({
   modalItemText: { fontSize: 15, fontWeight: '600', color: '#333' },
   modalItemTextActive: { color: '#FFF' },
   emptyModalText: { textAlign: 'center', color: '#999', padding: 20, fontSize: 14 },
-  searchInputWrapper: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F5F5F5', borderWidth: 1.5, borderColor: '#DDD', borderRadius: 10, paddingHorizontal: 12, margin: 20, marginBottom: 10, gap: 8 },
+  searchInputWrapper: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F5F5F5', borderWidth: 1.5, borderColor: '#DDD', borderRadius: 10, paddingHorizontal: 12, marginBottom: 10, gap: 8 },
   searchInput: { flex: 1, paddingVertical: 10, fontSize: 14, color: '#333' },
   editModalFullOverlay: { flex: 1, backgroundColor: '#F5F5F5' },
   editModalFullContent: { flex: 1 },

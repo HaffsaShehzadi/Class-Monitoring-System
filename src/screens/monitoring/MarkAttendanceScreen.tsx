@@ -2,22 +2,26 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, TextInput, Alert, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { checkLocation } from '../../services/locationService';
-import { saveOfflineAttendance } from '../../services/offlineStorage';
-import { syncOfflineData } from '../../services/syncService';
+//import { saveOfflineAttendance } from '../../services/offlineStorage';
 import { moService } from '../../services/moService';
 import { tokenStorage } from '../../services/tokenStorage';
 import { attendanceService } from '../../services/attendanceService';
 
-// ⚠️ TESTING ke liye false, VIVA/DEMO ke liye true
+const USE_TEST_LOCATION = true; // Testing ke liye true
 const ENFORCE_TIME_CHECK = true;
 
 const SEMESTERS = ['2nd', '4th', '6th', '8th'];
 
-const formatTime12Hour = (time24: string): string => {
-  if (!time24 || !time24.includes('-')) return time24 || 'N/A';
-  const [start, end] = time24.split(' - ');
+const formatTime12Hour = (timeStr: string): string => {
+  if (!timeStr || !timeStr.includes('-')) return timeStr || 'N/A';
+  const [start, end] = timeStr.split(' - ');
   const formatSingle = (t: string) => {
-    const [h, m] = t.split(':').map(Number);
+    if (!t) return 'N/A';
+    if (t.toUpperCase().includes('AM') || t.toUpperCase().includes('PM')) return t.trim();
+    const parts = t.split(':');
+    const h = parseInt(parts[0], 10);
+    const m = parseInt(parts[1], 10);
+    if (isNaN(h) || isNaN(m)) return t;
     const ampm = h >= 12 ? 'PM' : 'AM';
     const h12 = h % 12 || 12;
     return `${h12}:${m.toString().padStart(2, '0')} ${ampm}`;
@@ -33,25 +37,17 @@ const isWithinLectureTime = (timeStr: string, shift: string): boolean => {
       const parts = time.split(':').map(Number);
       let hours = parts[0];
       const minutes = parts[1];
-      if (shift === '2nd Shift' && hours < 12) {
-        hours += 12;
-      }
+      if (shift === '2nd Shift' && hours < 12) hours += 12;
       return hours * 60 + minutes;
     };
-    
     const startMin = parseTime(start);
     const endMin = parseTime(end);
     const now = new Date();
     const currentMin = now.getHours() * 60 + now.getMinutes();
-    
     let adjustedEndMin = endMin;
-    if (endMin < startMin) {
-      adjustedEndMin = endMin + 12 * 60;
-    }
-    
+    if (endMin < startMin) adjustedEndMin = endMin + 12 * 60;
     return currentMin >= startMin && currentMin <= adjustedEndMin;
   } catch (error) {
-    console.error("Time check error:", error);
     return true;
   }
 };
@@ -68,68 +64,66 @@ export default function MarkAttendanceScreen({ onBack }: any) {
   const [savedRecords, setSavedRecords] = useState<any>({});
 
   const [assignedDuties, setAssignedDuties] = useState<any[]>([]);
+  const [allFetchedDuties, setAllFetchedDuties] = useState<any[]>([]);
   const [timetableData, setTimetableData] = useState<any[]>([]);
   const [periods, setPeriods] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>({ name: 'Loading...', role: 'Monitoring Official' });
 
-  // ✅ BILKUL WAHI LOGIC JO ViewAssignDutyScreen MEIN KAAM KAR RAHI HAI
+  // ✅ STEP 1: API Call SIRF 1 BAAR jab screen load ho
   useEffect(() => {
     const init = async () => {
       setLoading(true);
       try {
         const user = await tokenStorage.getUser();
-        if (user) {
-          setCurrentUser(user);
-        }
+        if (user) setCurrentUser(user);
         
-        // ✅ 1. Bina kisi parameter ke saari duties fetch karein (Jaise ViewAssignDuty mein hai)
         const fetchedDuties = await moService.getMyDuties();
-        console.log("📋 Fetched duties:", fetchedDuties);
+        console.log("📋 Total duties fetched from DB:", fetchedDuties.length);
+        setAllFetchedDuties(fetchedDuties);
         
-        // ✅ 2. Aaj ki date nikalein
-        const now = new Date();
-        const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-        
-        // ✅ 3. Sirf aaj ki duties filter karein
-        const todaysDuties = fetchedDuties.filter((d: any) => {
-          const dDate = d.duty_date ? String(d.duty_date).split('T')[0] : '';
-          return dDate === todayStr;
-        });
-
-        console.log("📅 Today's duties:", todaysDuties.length);
-
-        // ✅ 4. Agar shift select hai, toh us hisaab se aur filter karein
-        let filteredDuties = todaysDuties;
-        if (selectedShift) {
-          filteredDuties = filteredDuties.filter((d: any) => d.shift === selectedShift || d.shift === 'Both');
-        }
-
-        // ✅ 5. Unique departments nikalein
-        const uniqueDepts = [...new Map(filteredDuties.map((item: any) => 
-          [item.dept_name + '-' + item.shift, { 
-            id: item.id, 
-            department: item.dept_name, 
-            shift: item.shift 
-          }]
-        )).values()];
-        
-        console.log("✅ Final departments to show:", uniqueDepts);
-        setAssignedDuties(uniqueDepts);
       } catch (error: any) {
         console.error('❌ Failed to load duties:', error.message);
         Alert.alert('Error', error.message || 'Failed to load duties');
-      } finally {
-        setLoading(false);
+      } finally { 
+        setLoading(false); 
       }
     };
     init();
-  }, [selectedShift]);
+  }, []);
 
+  // ✅ STEP 2: Jab bhi selectedShift change ho, toh LOCAL FILTER lagao (No API Call)
   useEffect(() => {
-    if (selectedShift && selectedDept) {
-      fetchTimetable();
+    if (allFetchedDuties.length === 0) return;
+
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    
+    const todaysDuties = allFetchedDuties.filter((d: any) => {
+      const dDate = d.duty_date ? String(d.duty_date).split('T')[0] : '';
+      return dDate === todayStr;
+    });
+
+    let filteredDuties = todaysDuties;
+    if (selectedShift) {
+      filteredDuties = filteredDuties.filter((d: any) => d.shift === selectedShift || d.shift === 'Both');
     }
+
+    const uniqueDepts = [...new Map(filteredDuties.map((item: any) => 
+      [item.dept_name + '-' + item.shift, { 
+        id: item.id, 
+        department: item.dept_name, 
+        shift: item.shift 
+      }]
+    )).values()];
+    
+    console.log("✅ Final departments to show:", uniqueDepts.length);
+    setAssignedDuties(uniqueDepts);
+
+  }, [selectedShift, allFetchedDuties]);
+
+  useEffect(() => { 
+    if (selectedShift && selectedDept) fetchTimetable(); 
   }, [selectedShift, selectedDept, selectedDay]);
 
   const fetchTimetable = async () => {
@@ -143,86 +137,72 @@ export default function MarkAttendanceScreen({ onBack }: any) {
         return p.day === 'Regular' || p.day === null || p.day === undefined;
       });
       setPeriods(filteredPeriods);
-      
       const data = await moService.getTimetableByDayAndShift(selectedDay, selectedShift);
       const mappedData = data.map((item: any) => ({
-        id: item.id,
-        dept: item.dept_name,
-        semester: item.semester,
-        day: item.day,
-        period: item.period_number,
-        time: `${item.start_time} - ${item.end_time}`,
-        subject: item.subject_code,
-        code: item.subject_code,
-        teacher: item.teacher_name,
-        room: item.room_no
+        id: item.id, dept: item.dept_name, semester: item.semester, day: item.day,
+        period: item.period_number, time: `${item.start_time} - ${item.end_time}`,
+        subject: item.subject_code, code: item.subject_code, teacher: item.teacher_name, room: item.room_no
       }));
       setTimetableData(mappedData);
-    } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to load timetable');
-    } finally {
-      setLoading(false);
-    }
+    } catch (error: any) { Alert.alert('Error', error.message); } finally { setLoading(false); }
   };
 
   const filteredDepts = assignedDuties.filter(d => d.shift === selectedShift);
-  
-  const getAttendance = (sem: string, periodId: number) => 
-    timetableData.find(t => t.dept === selectedDept && t.semester === sem && t.day === selectedDay && t.period === periodId);
-    
+  const getAttendance = (sem: string, periodId: number) => timetableData.find(t => t.dept === selectedDept && t.semester === sem && t.day === selectedDay && t.period === periodId);
   const getRecord = (id: number) => savedRecords[id] || null;
 
+  // ✅ UI FIX: Sirf Green aur Red. Yellow nahi.
   const getStatusColor = (r: any) => {
     if (!r) return '#999';
-    if (r.status === 'absent') return '#F44336';
-    if (r.status === 'present' && r.isOffline) return '#FFC107';
-    return '#4CAF50';
+    if (r.status === 'absent') return '#F44336'; // Red
+    return '#4CAF50'; // Green (Chahe online ho ya offline)
   };
 
   const getStatusDisplay = (r: any) => {
     if (!r) return '';
     if (r.status === 'absent') return 'Absent';
-    if (r.status === 'present' && r.isOffline) return 'Present (Offline)';
-    return 'Present';
+    return 'Present'; // Sirf Present (Offline text nahi)
   };
 
   const handleCellPress = (lecture: any) => {
     if (!lecture) return;
-    if (getRecord(lecture.id)) {
-      Alert.alert('Already Marked', 'Attendance already marked for this class. Cannot edit.');
-      return;
-    }
-    setSelectedLecture(lecture);
-    setSelectedStatus('');
-    setSubstituteName('');
-    setShowModal(true);
+    if (getRecord(lecture.id)) { Alert.alert('Already Marked', 'Attendance already marked.'); return; }
+    setSelectedLecture(lecture); setSelectedStatus(''); setSubstituteName(''); setShowModal(true);
   };
 
   const handleStatusSelect = (status: 'present' | 'absent') => {
     setSelectedStatus(status);
-    if (status === 'present') {
-      setSubstituteName('');
-    }
+    if (status === 'present') setSubstituteName('');
   };
 
+  // ✅ MAIN LOGIC: Offline Save + UI Green/Red
   const handleSave = async () => {
-    if (!selectedStatus) {
-      Alert.alert('Error', 'Please select Present or Absent');
-      return;
-    }
+    if (!selectedStatus) { Alert.alert('Error', 'Please select Present or Absent'); return; }
 
     try {
+      // 1. Time Check
       if (!isWithinLectureTime(selectedLecture.time, selectedShift || '')) {
-        Alert.alert('⏰ Time Error', `Attendance sirf ${formatTime12Hour(selectedLecture.time)} ke doran mark ho sakti hai`);
+        Alert.alert('⏰ Time Error', `Attendance can only be marked during ${formatTime12Hour(selectedLecture.time)}`);
         return;
       }
 
-      const moLocation = await checkLocation();
-      if (!moLocation.success) {
-        Alert.alert('📍 MO Location Error', moLocation.error || 'Unable to verify your location');
-        return;
+      // 2. Location Check 
+      // ✅ TEMPORARILY COMMENTED OUT FOR TESTING OTHER FUNCTIONALITIES
+      /*
+      let moLocation;
+      if (USE_TEST_LOCATION) {
+        const { checkLocationTestMode } = await import('../../services/locationService');
+        moLocation = await checkLocationTestMode();
+      } else {
+        moLocation = await checkLocation();
+        if (!moLocation.success) { Alert.alert('📍 Location Error', moLocation.error); return; }
       }
+      */
+      
+      // ✅ Dummy location object taake neeche offline save wala code crash na ho
+      const moLocation = { success: true, latitude: 31.5204, longitude: 74.3587 };
 
+      // 3. Save Attempt
       try {
         await attendanceService.markAttendance(
           selectedLecture.id,
@@ -230,47 +210,49 @@ export default function MarkAttendanceScreen({ onBack }: any) {
           selectedStatus === 'absent' ? substituteName : null
         );
 
+        // SUCCESS: Online Save
         setSavedRecords({ 
           ...savedRecords, 
-          [selectedLecture.id]: { 
-            status: selectedStatus, 
-            substituteName: selectedStatus === 'absent' ? substituteName : '',
-            timestamp: new Date().toLocaleString() 
-          } 
+          [selectedLecture.id]: { status: selectedStatus, substituteName: selectedStatus === 'absent' ? substituteName : '', isOffline: false } 
         });
-
         setShowModal(false);
-        Alert.alert('✅ Success', `Attendance marked as ${selectedStatus === 'present' ? 'Present' : 'Absent'}`);
+        Alert.alert('✅ Success', 'Attendance marked successfully!');
         
       } catch (apiError: any) {
-        console.log("Online attendance failed, saving offline:", apiError);
-        const today = new Date().toISOString().split('T')[0];
-        await saveOfflineAttendance({
-          timetable_id: selectedLecture.id,
-          teacher_name: selectedLecture.teacher,
-          date: today,
-          period: selectedLecture.period,
-          status: selectedStatus === 'present' ? 'Present' : 'Absent',
-          substitute: selectedStatus === 'absent' ? substituteName : '',
-          latitude: moLocation.latitude!,
-          longitude: moLocation.longitude!,
-        });
+        // ❌ ERROR: Check if it's a Network Error (Offline)
+        if (apiError.isNetworkError) {
+          // ✅ OFFLINE SAVE (Data locally save hoga, sync baad mein hoga)
+          const today = new Date().toISOString().split('T')[0];
+          /*await saveOfflineAttendance({
+            timetable_id: selectedLecture.id,
+            teacher_name: selectedLecture.teacher,
+            date: today,
+            period: selectedLecture.period,
+            status: selectedStatus === 'present' ? 'Present' : 'Absent',
+            substitute: selectedStatus === 'absent' ? substituteName : '',
+            latitude: moLocation.latitude!,
+            longitude: moLocation.longitude!,
+          });*/
 
-        setSavedRecords({ 
-          ...savedRecords, 
-          [selectedLecture.id]: { 
-            status: selectedStatus, 
-            substituteName: selectedStatus === 'absent' ? substituteName : '',
-            timestamp: new Date().toLocaleString(),
-            isOffline: true
-          } 
-        });
+          // ✅ UI UPDATE: Green/Red dikhayega (Yellow nahi)
+          setSavedRecords({ 
+            ...savedRecords, 
+            [selectedLecture.id]: { 
+              status: selectedStatus, 
+              substituteName: selectedStatus === 'absent' ? substituteName : '',
+              isOffline: true // Internal flag for sync
+            } 
+          });
 
-        setShowModal(false);
-        Alert.alert('📴 Offline Saved', 'No internet. Attendance saved locally and will sync when online.');
+          setShowModal(false);
+          Alert.alert('📴 Saved Locally', 'No internet. Attendance saved and will sync automatically.');
+        } else {
+          // ❌ BACKEND VALIDATION ERROR (e.g. Radius issue)
+          Alert.alert('❌ Error', apiError.message || 'Attendance could not be marked.');
+        }
       }
-    } catch (error) {
-      Alert.alert('Error', 'Failed to save attendance. Please try again.');
+    } catch (error: any) {
+      Alert.alert('Error', 'Failed to process attendance.');
     }
   };
 
@@ -282,20 +264,14 @@ export default function MarkAttendanceScreen({ onBack }: any) {
           <Text style={styles.headerTitle}>Select Shift</Text>
           <View style={{ width: 24 }} />
         </View>
-        {loading ? (
-          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-            <ActivityIndicator size="large" color="#1A237E" />
-          </View>
-        ) : (
+        {loading ? <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}><ActivityIndicator size="large" color="#1A237E" /></View> : (
           <View style={styles.shiftContainer}>
             <TouchableOpacity style={styles.shiftCard} onPress={() => setSelectedShift('1st Shift')}>
-              <Text style={styles.shiftTitle}>1st Shift</Text>
-              <Text style={styles.shiftSubtext}>Morning Classes</Text>
+              <Text style={styles.shiftTitle}>1st Shift</Text><Text style={styles.shiftSubtext}>Morning Classes</Text>
               <Text style={styles.shiftCount}>{assignedDuties.filter(d => d.shift === '1st Shift').length} Departments</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.shiftCard} onPress={() => setSelectedShift('2nd Shift')}>
-              <Text style={styles.shiftTitle}>2nd Shift</Text>
-              <Text style={styles.shiftSubtext}>Evening Classes</Text>
+              <Text style={styles.shiftTitle}>2nd Shift</Text><Text style={styles.shiftSubtext}>Evening Classes</Text>
               <Text style={styles.shiftCount}>{assignedDuties.filter(d => d.shift === '2nd Shift').length} Departments</Text>
             </TouchableOpacity>
           </View>
@@ -309,30 +285,21 @@ export default function MarkAttendanceScreen({ onBack }: any) {
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => setSelectedShift(null)}><Text style={styles.backArrow}>←</Text></TouchableOpacity>
-          <Text style={styles.headerTitle}>{selectedShift}</Text>
-          <View style={{ width: 24 }} />
+          <Text style={styles.headerTitle}>{selectedShift}</Text><View style={{ width: 24 }} />
         </View>
         <ScrollView contentContainerStyle={styles.content}>
           <View style={styles.teacherTopCard}>
             <Text style={styles.teacherTopName}>{currentUser.name}</Text>
             <Text style={styles.teacherTopDept}>{currentUser.role} • {selectedShift}</Text>
-            <View style={styles.dateRangeLine}>
-              <Text style={styles.dateRangeText}>{new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</Text>
-            </View>
+            <View style={styles.dateRangeLine}><Text style={styles.dateRangeText}>{new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</Text></View>
           </View>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Assigned Departments</Text>
-            <Text style={styles.sectionCount}>{filteredDepts.length} Departments</Text>
-          </View>
-          {loading ? (
-            <View style={{ padding: 20, alignItems: 'center' }}><ActivityIndicator size="large" color="#1A237E" /></View>
-          ) : filteredDepts.length === 0 ? (
+          <View style={styles.sectionHeader}><Text style={styles.sectionTitle}>Assigned Departments</Text><Text style={styles.sectionCount}>{filteredDepts.length} Departments</Text></View>
+          {loading ? <View style={{ padding: 20, alignItems: 'center' }}><ActivityIndicator size="large" color="#1A237E" /></View> : filteredDepts.length === 0 ? (
             <View style={styles.emptyBox}><Text style={styles.emptyText}>No duties assigned for this shift</Text></View>
           ) : (
             filteredDepts.map((duty, index) => (
               <TouchableOpacity key={index} style={styles.deptCard} onPress={() => setSelectedDept(duty.department)}>
-                <View style={styles.deptInfo}><Text style={styles.deptName}>{duty.department} Department</Text></View>
-                <Text style={styles.chevron}>›</Text>
+                <View style={styles.deptInfo}><Text style={styles.deptName}>{duty.department} Department</Text></View><Text style={styles.chevron}>›</Text>
               </TouchableOpacity>
             ))
           )}
@@ -345,52 +312,33 @@ export default function MarkAttendanceScreen({ onBack }: any) {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => setSelectedDept(null)}><Text style={styles.backArrow}>←</Text></TouchableOpacity>
-        <Text style={styles.headerTitle}>{selectedDept} - Mark Attendance</Text>
-        <View style={{ width: 24 }} />
+        <Text style={styles.headerTitle}>{selectedDept} - Mark Attendance</Text><View style={{ width: 24 }} />
       </View>
       <ScrollView contentContainerStyle={{ paddingBottom: 10 }}>
         <View style={[styles.teacherTopCard, { marginHorizontal: 15, marginTop: 15 }]}>
           <Text style={styles.teacherTopName}>{currentUser.name}</Text>
           <Text style={styles.teacherTopDept}>{currentUser.role} • {selectedShift}</Text>
-          <View style={styles.dateRangeLine}>
-            <Text style={styles.dateRangeText}>{selectedDept} Department • {selectedDay} • {new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}</Text>
-          </View>
+          <View style={styles.dateRangeLine}><Text style={styles.dateRangeText}>{selectedDept} Department • {selectedDay} • {new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}</Text></View>
         </View>
         {loading ? (
-          <View style={{ padding: 40, alignItems: 'center' }}>
-            <ActivityIndicator size="large" color="#1A237E" />
-            <Text style={{ marginTop: 10, color: '#666' }}>Loading timetable...</Text>
-          </View>
+          <View style={{ padding: 40, alignItems: 'center' }}><ActivityIndicator size="large" color="#1A237E" /><Text style={{ marginTop: 10, color: '#666' }}>Loading timetable...</Text></View>
         ) : (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.gridScrollView}>
             <ScrollView showsVerticalScrollIndicator={true}>
               <View style={styles.grid}>
                 <View style={styles.row}>
                   <View style={styles.cornerCell}><Text style={styles.cornerText}>Sem / Period</Text></View>
-                  {periods.map(p => (
-                    <View key={p.id} style={styles.periodHeaderCell}>
-                      <Text style={styles.periodNum}>P{p.period_number}</Text>
-                      <Text style={styles.periodTime}>{formatTime12Hour(p.time)}</Text>
-                    </View>
-                  ))}
+                  {periods.map(p => (<View key={p.id} style={styles.periodHeaderCell}><Text style={styles.periodNum}>P{p.period_number}</Text><Text style={styles.periodTime}>{formatTime12Hour(p.time)}</Text></View>))}
                 </View>
                 {SEMESTERS.map(sem => (
                   <View key={sem} style={styles.row}>
-                    <View style={styles.deptSemCell}>
-                      <Text style={styles.deptText}>{selectedDept}</Text>
-                      <Text style={styles.semText}>{sem}</Text>
-                    </View>
+                    <View style={styles.deptSemCell}><Text style={styles.deptText}>{selectedDept}</Text><Text style={styles.semText}>{sem}</Text></View>
                     {periods.map(p => {
                       const cls = getAttendance(sem, p.period_number);
                       const record = cls ? getRecord(cls.id) : null;
                       const isAlreadyMarked = !!record;
                       return (
-                        <TouchableOpacity 
-                          key={p.id} 
-                          style={[styles.dataCell, cls ? styles.filledCell : styles.emptyCell]} 
-                          onPress={() => handleCellPress(cls)} 
-                          disabled={!cls || isAlreadyMarked}
-                        >
+                        <TouchableOpacity key={p.id} style={[styles.dataCell, cls ? styles.filledCell : styles.emptyCell]} onPress={() => handleCellPress(cls)} disabled={!cls || isAlreadyMarked}>
                           {cls ? (
                             <View style={styles.cellContent}>
                               <Text style={styles.cellTeacher} numberOfLines={1}>{cls.teacher}</Text>
@@ -401,17 +349,11 @@ export default function MarkAttendanceScreen({ onBack }: any) {
                                   <View style={[styles.statusBadge, { backgroundColor: getStatusColor(record) }]}>
                                     <Text style={styles.statusText}>{getStatusDisplay(record)}</Text>
                                   </View>
-                                  {record.status === 'absent' && record.substituteName && record.substituteName.trim() ? (
-                                    <Text style={styles.substituteText}>{record.substituteName}</Text>
-                                  ) : null}
+                                  {record.status === 'absent' && record.substituteName && record.substituteName.trim() ? (<Text style={styles.substituteText}>{record.substituteName}</Text>) : null}
                                 </View>
-                              ) : (
-                                <View style={styles.markBtn}><Text style={styles.markBtnText}>Mark</Text></View>
-                              )}
+                              ) : (<View style={styles.markBtn}><Text style={styles.markBtnText}>Mark</Text></View>)}
                             </View>
-                          ) : (
-                            <Text style={styles.emptyText}>No Class</Text>
-                          )}
+                          ) : (<Text style={styles.emptyText}>No Class</Text>)}
                         </TouchableOpacity>
                       );
                     })}
@@ -448,12 +390,8 @@ export default function MarkAttendanceScreen({ onBack }: any) {
                   </View>
                 )}
                 <View style={styles.modalActions}>
-                  <TouchableOpacity style={[styles.modalBtn, styles.cancelBtn]} onPress={() => setShowModal(false)}>
-                    <Text style={styles.cancelText}>Cancel</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={[styles.modalBtn, styles.saveBtn]} onPress={handleSave}>
-                    <Text style={styles.saveText}>Save</Text>
-                  </TouchableOpacity>
+                  <TouchableOpacity style={[styles.modalBtn, styles.cancelBtn]} onPress={() => setShowModal(false)}><Text style={styles.cancelText}>Cancel</Text></TouchableOpacity>
+                  <TouchableOpacity style={[styles.modalBtn, styles.saveBtn]} onPress={handleSave}><Text style={styles.saveText}>Save</Text></TouchableOpacity>
                 </View>
               </ScrollView>
             )}

@@ -7,38 +7,65 @@ import { teacherService } from '../../services/teacherService';
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
-const PERIODS = [
-  { id: 1, time: '08:30 - 09:15' },
-  { id: 2, time: '09:15 - 10:00' },
-  { id: 3, time: '10:00 - 10:45' },
-  { id: 4, time: '11:00 - 11:45' },
-  { id: 5, time: '11:45 - 12:30' },
-  { id: 6, time: '01:30 - 02:15' },
-  { id: 7, time: '02:15 - 03:00' },
+// ✅ 1st Shift ki timings (Jaisi admin ne add ki hain)
+const PERIODS_1ST = [
+  { id: 1, time: '8:30 AM - 9:15 AM' },
+  { id: 2, time: '9:15 AM - 10:00 AM' },
+  { id: 3, time: '10:00 AM - 10:45 AM' },
+  { id: 4, time: '11:00 AM - 11:45 AM' },
+  { id: 5, time: '11:45 AM - 12:30 PM' },
 ];
+
+// ✅ 2nd Shift ki timings (YAHAN ADMIN KI ADD KI HUI REAL TIMINGS DALAIN)
+const PERIODS_2ND = [
+  { id: 1, time: '1:00 PM - 1:45 PM' }, // <-- Yeh change kar ke real timing likh dein
+  { id: 2, time: '1:45 PM - 2:30 PM' }, // <-- Yeh change kar ke real timing likh dein
+  { id: 3, time: '2:30 PM - 3:15 PM' }, // <-- Yeh change kar ke real timing likh dein
+  { id: 4, time: '3:15 PM - 4:00 PM' }, // <-- Yeh change kar ke real timing likh dein
+  { id: 5, time: '4:00 PM - 4:45 PM' }, // <-- Yeh change kar ke real timing likh dein
+];
+
+// ✅ HELPER: 24-hour ko 12-hour (AM/PM) mein convert kare
+const formatTime12Hour = (time24: string): string => {
+  if (!time24) return '';
+  
+  if (time24.toUpperCase().includes('AM') || time24.toUpperCase().includes('PM')) {
+    return time24;
+  }
+  
+  const timeWithoutSeconds = time24.split(':')[0] + ':' + time24.split(':')[1];
+  const [hours, minutes] = timeWithoutSeconds.split(':').map(Number);
+  
+  if (isNaN(hours) || isNaN(minutes)) return time24;
+  
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  const h12 = hours % 12 || 12;
+  
+  return `${h12}:${String(minutes).padStart(2, '0')} ${ampm}`;
+};
 
 export default function MyTimetableScreen({ onBack }: any) {
   const [step, setStep] = useState<'shift' | 'day' | 'timetable'>('shift');
   const [selectedShift, setSelectedShift] = useState('');
   const [selectedDay, setSelectedDay] = useState('Monday');
   
-  // ✅ NEW: Real data states
   const [myLectures, setMyLectures] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [teacherInfo, setTeacherInfo] = useState<any>({ name: 'Teacher', department: 'N/A' });
 
-  // ✅ NEW: Fetch user info on mount
   useEffect(() => {
     const loadUser = async () => {
       const user = await tokenStorage.getUser();
       if (user) {
-        setTeacherInfo({ name: user.name, department: user.department || 'N/A' });
+        setTeacherInfo({ 
+          name: String(user.name || 'Teacher'), 
+          department: String(user.department || 'N/A') 
+        });
       }
     };
     loadUser();
   }, []);
 
-  // ✅ NEW: Fetch timetable when step, shift, or day changes
   useEffect(() => {
     if (step === 'timetable' && selectedShift && selectedDay) {
       fetchTimetable();
@@ -50,9 +77,7 @@ export default function MyTimetableScreen({ onBack }: any) {
     try {
       const user = await tokenStorage.getUser();
       const data = await teacherService.getTimetableByDayAndShift(selectedDay, selectedShift);
-      
-      // ✅ Filter: Sirf current logged-in teacher ki classes dikhayein
-      const filtered = data.filter((item: any) => item.teacher_id === user.id);
+      const filtered = data.filter((item: any) => item.teacher_id === user?.id);
       setMyLectures(filtered);
     } catch (error: any) {
       console.error('Failed to fetch timetable:', error.message);
@@ -77,7 +102,7 @@ export default function MyTimetableScreen({ onBack }: any) {
     });
   };
 
-  const formatRoom = (room: string) => `R#${room.replace('R', '')}`;
+  const formatRoom = (room: any) => `R#${String(room || '').replace('R', '')}`;
 
   const handleBack = () => {
     if (step === 'timetable') setStep('day');
@@ -85,7 +110,9 @@ export default function MyTimetableScreen({ onBack }: any) {
     else onBack();
   };
 
-  // STEP 1: Select Shift
+  // ✅ Selected shift ke hisaab se periods choose karein
+  const currentPeriods = selectedShift === '2nd Shift' ? PERIODS_2ND : PERIODS_1ST;
+
   if (step === 'shift') {
     return (
       <SafeAreaView style={styles.container}>
@@ -96,20 +123,12 @@ export default function MyTimetableScreen({ onBack }: any) {
           <Text style={styles.headerTitle}>Select Shift</Text>
           <View style={{ width: 24 }} />
         </View>
-
         <View style={styles.shiftContainer}>
-          <TouchableOpacity
-            style={styles.shiftCard}
-            onPress={() => { setSelectedShift('1st Shift'); setStep('day'); }}
-          >
+          <TouchableOpacity style={styles.shiftCard} onPress={() => { setSelectedShift('1st Shift'); setStep('day'); }}>
             <Text style={styles.shiftTitle}>1st Shift</Text>
             <Text style={styles.shiftSubtext}>Morning Classes</Text>
           </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.shiftCard}
-            onPress={() => { setSelectedShift('2nd Shift'); setStep('day'); }}
-          >
+          <TouchableOpacity style={styles.shiftCard} onPress={() => { setSelectedShift('2nd Shift'); setStep('day'); }}>
             <Text style={styles.shiftTitle}>2nd Shift</Text>
             <Text style={styles.shiftSubtext}>Evening Classes</Text>
           </TouchableOpacity>
@@ -118,7 +137,6 @@ export default function MyTimetableScreen({ onBack }: any) {
     );
   }
 
-  // STEP 2: Select Day
   if (step === 'day') {
     return (
       <SafeAreaView style={styles.container}>
@@ -129,22 +147,15 @@ export default function MyTimetableScreen({ onBack }: any) {
           <Text style={styles.headerTitle}>Select Day</Text>
           <View style={{ width: 24 }} />
         </View>
-
         <ScrollView contentContainerStyle={{ padding: 15, paddingBottom: 30 }}>
           <View style={styles.teacherTopCard}>
             <Text style={styles.teacherTopName}>{teacherInfo.name}</Text>
             <Text style={styles.teacherTopDept}>{teacherInfo.department} Department • {selectedShift}</Text>
           </View>
-
           <Text style={styles.chooseText}>Choose a day to view your timetable</Text>
-
           <View style={styles.dayGrid}>
             {DAYS.map(day => (
-              <TouchableOpacity
-                key={day}
-                style={styles.dayCard}
-                onPress={() => { setSelectedDay(day); setStep('timetable'); }}
-              >
+              <TouchableOpacity key={day} style={styles.dayCard} onPress={() => { setSelectedDay(day); setStep('timetable'); }}>
                 <MaterialCommunityIcons name="calendar-blank" size={26} color="#1A237E" />
                 <Text style={styles.dayCardText}>{day}</Text>
               </TouchableOpacity>
@@ -155,7 +166,6 @@ export default function MyTimetableScreen({ onBack }: any) {
     );
   }
 
-  // STEP 3: Timetable View
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
@@ -188,7 +198,8 @@ export default function MyTimetableScreen({ onBack }: any) {
               <View style={styles.colLectures}><Text style={styles.tableTh}>Lectures</Text></View>
             </View>
 
-            {PERIODS.map(p => {
+            {/* ✅ Yahan currentPeriods use ho rahe hain jo shift ke hisaab se change honge */}
+            {currentPeriods.map(p => {
               const lecture = getLecture(p.id);
               return (
                 <View key={p.id} style={styles.tableRow}>
@@ -196,17 +207,20 @@ export default function MyTimetableScreen({ onBack }: any) {
                     <Text style={styles.periodNum}>{p.id}</Text>
                   </View>
                   <View style={styles.colTiming}>
-                    {/* ✅ Real time from backend, fallback to hardcoded if needed */}
                     <Text style={styles.timeText}>
-                      {lecture ? `${lecture.start_time} - ${lecture.end_time}` : p.time}
+                      {lecture 
+                        ? `${formatTime12Hour(lecture.start_time)} - ${formatTime12Hour(lecture.end_time)}` 
+                        : p.time}
                     </Text>
                   </View>
                   <View style={styles.colLectures}>
                     {lecture ? (
                       <View style={styles.lectureCentered}>
                         <Text style={styles.lectureValue}>{formatRoom(lecture.room_no)}</Text>
-                        <Text style={styles.lectureValue}>{lecture.subject_code}</Text>
-                        <Text style={styles.lectureValue}>{lecture.dept_name} {lecture.semester} sem</Text>
+                        <Text style={styles.lectureValue}>{String(lecture.subject_code || '')}</Text>
+                        <Text style={styles.lectureValue}>
+                          {String(lecture.dept_name || '')} {String(lecture.semester || '')} sem
+                        </Text>
                       </View>
                     ) : (
                       <Text style={styles.freeText}>— Free —</Text>
@@ -231,7 +245,6 @@ const styles = StyleSheet.create({
   },
   headerTitle: { fontSize: 18, fontWeight: '800', color: '#1A237E', flex: 1, textAlign: 'center' },
   backArrow: { fontSize: 24, fontWeight: '700', color: '#1A237E' },
-
   shiftContainer: { flex: 1, justifyContent: 'center', padding: 30, gap: 20 },
   shiftCard: {
     backgroundColor: '#FFF', borderRadius: 16, padding: 30, alignItems: 'center',
@@ -239,28 +252,21 @@ const styles = StyleSheet.create({
   },
   shiftTitle: { fontSize: 22, fontWeight: '800', color: '#1A237E', marginBottom: 5 },
   shiftSubtext: { fontSize: 14, color: '#666' },
-
   teacherTopCard: {
     backgroundColor: '#FFF', borderRadius: 12, padding: 15, marginBottom: 15,
     elevation: 2, borderLeftWidth: 4, borderLeftColor: '#1A237E',
   },
   teacherTopName: { fontSize: 17, fontWeight: '800', color: '#1A237E' },
   teacherTopDept: { fontSize: 13, color: '#666', marginTop: 3 },
-  dateRangeLine: {
-    marginTop: 10, paddingTop: 10,
-    borderTopWidth: 1, borderTopColor: '#E8EAF6',
-  },
+  dateRangeLine: { marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: '#E8EAF6' },
   dateRangeText: { fontSize: 13, color: '#1A237E', fontWeight: '700' },
-
   chooseText: { fontSize: 14, color: '#666', textAlign: 'center', marginBottom: 15, marginTop: 10 },
-
   dayGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
   dayCard: {
     width: '48%', backgroundColor: '#FFF', borderRadius: 12, padding: 18,
     marginBottom: 12, alignItems: 'center', elevation: 2, borderWidth: 1, borderColor: '#E8EAF6',
   },
   dayCardText: { fontSize: 14, fontWeight: '700', color: '#1A237E', marginTop: 8 },
-
   table: { borderWidth: 2, borderColor: '#1A237E', borderRadius: 8, overflow: 'hidden', backgroundColor: '#FFF' },
   tableHeader: { flexDirection: 'row', backgroundColor: '#1A237E', paddingVertical: 14 },
   tableTh: { color: '#FFF', fontWeight: '800', fontSize: 14, textAlign: 'center', flex: 1 },
