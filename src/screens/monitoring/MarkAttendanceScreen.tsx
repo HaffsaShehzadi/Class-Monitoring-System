@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, TextInput, Alert, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { checkLocation } from '../../services/locationService';
-//import { saveOfflineAttendance } from '../../services/offlineStorage';
+//import { checkLocation } from '../../services/locationService';
+import { saveOfflineAttendance } from '../../services/offlineStorage';
 import { moService } from '../../services/moService';
 import { tokenStorage } from '../../services/tokenStorage';
 import { attendanceService } from '../../services/attendanceService';
@@ -223,7 +223,7 @@ export default function MarkAttendanceScreen({ onBack }: any) {
         if (apiError.isNetworkError) {
           // ✅ OFFLINE SAVE (Data locally save hoga, sync baad mein hoga)
           const today = new Date().toISOString().split('T')[0];
-          /*await saveOfflineAttendance({
+          await saveOfflineAttendance({
             timetable_id: selectedLecture.id,
             teacher_name: selectedLecture.teacher,
             date: today,
@@ -232,7 +232,7 @@ export default function MarkAttendanceScreen({ onBack }: any) {
             substitute: selectedStatus === 'absent' ? substituteName : '',
             latitude: moLocation.latitude!,
             longitude: moLocation.longitude!,
-          });*/
+          });
 
           // ✅ UI UPDATE: Green/Red dikhayega (Yellow nahi)
           setSavedRecords({ 

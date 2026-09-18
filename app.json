@@ -16,21 +16,32 @@
       "supportsTablet": true
     },
     "android": {
+      "package": "com.haffsa16steam.classmonitoringsystem",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.INTERNET"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-font"
+      "expo-font",
+      "expo-sharing",
+      "expo-file-system"
     ],
     "extra": {
-      "backendUrl": "http://192.168.100.14:5000"
+      "backendUrl": "http://192.168.100.14:5000",
+      "eas": {
+        "projectId": "e0f03751-2705-485a-b163-4758dd1531f5"
+      }
     }
   }
 }

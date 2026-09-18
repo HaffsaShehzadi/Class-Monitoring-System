@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Modal, Alert, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import * as Print from 'expo-print';
+import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
+import { detectBackend } from '../../services/ipConfig';
+import { tokenStorage } from '../../services/tokenStorage';
 import { adminReportService } from '../../services/adminReportService';
 import { attendanceService } from '../../services/attendanceService';
 
@@ -76,98 +78,61 @@ export default function AdminAttendanceHistory({ onBack }: any) {
   const formatRoom = (room: string) => `R#${room.replace('R', '')}`;
   const uniqueDaysCount = new Set(filteredData.map((r: any) => r.date)).size;
 
-  // ✅ 100% FIXED & FORMATTED PDF DOWNLOAD FUNCTION
+  // ✅ YEH HAI WO SMART HANDLE DOWNLOAD FUNCTION JO DONO MODES KE LIYE KAAM KAREGA
   const handleDownload = async () => {
     try {
-      if (filteredData.length === 0) { 
-        Alert.alert('No Data', 'No attendance records to download'); 
-        return; 
+      if (filteredData.length === 0) {
+        Alert.alert('No Data', 'No attendance records to download');
+        return;
       }
-      
-      const title = viewMode === 'department' 
-        ? `${selectedDept} Department - ${selectedShift}` 
-        : `${selectedTeacher} - ${selectedShift}`;
-      
-      const formatDate = (dateStr: string) => {
-        if (!dateStr) return 'N/A';
-        const d = new Date(dateStr);
-        if (isNaN(d.getTime())) return dateStr;
-        return d.toISOString().split('T')[0];
-      };
 
-      const rows = filteredData.map((r: any) => `
-        <tr>
-          <td>${formatDate(r.date)}</td>
-          <td>${r.dept || 'N/A'} (${r.sem || 'N/A'})</td>
-          <td>P${r.period || 'N/A'}</td>
-          <td>${r.teacher || 'N/A'}</td>
-          <td>${r.code || 'N/A'}</td>
-          <td style="color: ${r.status?.toLowerCase() === 'present' ? 'green' : 'red'}; font-weight: bold;">${r.status || 'N/A'}</td>
-          <td>${r.substitute || '-'}</td>
-        </tr>
-      `).join('');
+      setLoading(true);
+      const BACKEND_URL = await detectBackend();
+      const token = await tokenStorage.getToken();
       
-      const html = `
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <meta charset="UTF-8">
-            <style>
-              body { font-family: Arial, sans-serif; padding: 20px; margin: 0; }
-              h1 { font-size: 20px; color: #1A237E; text-align: center; margin-bottom: 5px; }
-              .subtitle { font-size: 14px; color: #333; text-align: center; font-weight: bold; margin-bottom: 3px; }
-              .info { font-size: 11px; color: #555; text-align: center; margin-bottom: 3px; }
-              table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 11px; }
-              th { background-color: #1A237E; color: #ffffff; padding: 8px 6px; text-align: left; border: 1px solid #1A237E; }
-              td { border: 1px solid #999; padding: 6px; text-align: left; }
-              tr:nth-child(even) { background-color: #f9f9f9; }
-            </style>
-          </head>
-          <body>
-            <h1>Attendance Report - Class Monitoring System</h1>
-            <p class="subtitle">${title}</p>
-            <p class="info">Date Range: ${startDate} to ${endDate}</p>
-            <p class="info">Total Records: ${filteredData.length}</p>
-            <table>
-              <thead>
-                <tr>
-                  <th>Date</th><th>Class</th><th>Period</th><th>Teacher</th><th>Code</th><th>Status</th><th>Substitute</th>
-                </tr>
-              </thead>
-              <tbody>${rows}</tbody>
-            </table>
-          </body>
-        </html>
-      `;
-      
-      // 1. PDF ko cache folder mein banao
-      const { uri: cacheUri } = await Print.printToFileAsync({ html });
-      console.log('PDF created in cache:', cacheUri);
-      
-      // 2. PDF ko cache se Documents folder mein copy karo (Permission issue fix)
-      const fileName = `Attendance_Report_${Date.now()}.pdf`;
-      const fileUri = (FileSystem as any).documentDirectory + fileName;
-      
-      await FileSystem.copyAsync({
-        from: cacheUri,
-        to: fileUri
-      });
-      console.log('PDF copied to:', fileUri);
-      
-      // 3. Ab Documents folder se share karo
-      if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(fileUri, {
-          mimeType: 'application/pdf',
-          dialogTitle: 'Save Attendance Report'
-        });
-        Alert.alert('Success', 'PDF saved successfully!');
+      let url = '';
+      let fileName = '';
+
+      // Check karein ke Admin ne kaunsa mode select kiya hai
+      if (viewMode === 'department') {
+        if (!selectedDeptId) {
+          Alert.alert('Error', 'Department ID is missing');
+          setLoading(false);
+          return;
+        }
+        url = `${BACKEND_URL}/api/reports/department/${selectedDeptId}/pdf?startDate=${startDate}&endDate=${endDate}`;
+        fileName = `Dept_Report_${Date.now()}.pdf`;
       } else {
-        Alert.alert('Error', 'Sharing not available on this device');
+        if (!selectedTeacherId) {
+          Alert.alert('Error', 'Teacher ID is missing');
+          setLoading(false);
+          return;
+        }
+        url = `${BACKEND_URL}/api/reports/teacher/${selectedTeacherId}/pdf?startDate=${startDate}&endDate=${endDate}`;
+        fileName = `Teacher_Report_${Date.now()}.pdf`;
       }
-      
-    } catch (e: any) { 
-      console.error('❌ PDF Error:', e);
-      Alert.alert('Error', `Failed: ${e.message}`); 
+
+      const fileUri = (FileSystem as any).documentDirectory + fileName;
+
+      // Backend se PDF download karein
+      const result = await FileSystem.downloadAsync(url, fileUri, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (result.status === 200) {
+        if (await Sharing.isAvailableAsync()) {
+          await Sharing.shareAsync(result.uri);
+        } else {
+          Alert.alert('Success', `PDF saved at: ${result.uri}`);
+        }
+      } else {
+        throw new Error('Failed to download PDF from server');
+      }
+    } catch (e: any) {
+      console.error('❌ PDF Download Error:', e);
+      Alert.alert('Error', `Failed to download PDF: ${e.message}`);
+    } finally {
+      setLoading(false);
     }
   };
 

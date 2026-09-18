@@ -10,45 +10,48 @@ export const attendanceService = {
     try {
       response = await fetch(`${BACKEND_URL}/api/attendance/mark`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          timetable_id,
-          status,
-          substitute_teacher_name,
-        }),
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ timetable_id, status, substitute_teacher_name }),
       });
     } catch (networkError: any) {
-      // ✅ Network Error Flag
       const error = new Error('Network error - no connection to server');
       (error as any).isNetworkError = true;
       throw error;
     }
 
     const data = await response.json();
-
     if (!response.ok) {
-      // ✅ Backend Validation Error Flag
       const error = new Error(data.message || `Server error: ${response.status}`);
       (error as any).isNetworkError = false;
       throw error;
     }
-
     return data;
   },
 
-  getMyHistory: async () => {
+  // ✅ FIXED: Explicitly calls /my-history which relies ONLY on the JWT token
+    // ✅ FIXED: Ab yeh sahi endpoint call karega
+  getMyHistory: async (startDate: string, endDate: string) => {
     const BACKEND_URL = await detectBackend();
     const token = await tokenStorage.getToken();
-    const response = await fetch(`${BACKEND_URL}/api/attendance/my-history`, {
-      method: 'GET',
-      headers: { 'Authorization': `Bearer ${token}` },
-    });
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.message || 'Failed to fetch history');
-    return data;
+    const user = await tokenStorage.getUser(); // ✅ User info nikalo
+    
+    // ✅ Agar teacher hai toh apni ID use kare
+    if (user && user.role === 'teacher') {
+      const response = await fetch(
+        `${BACKEND_URL}/api/reports/teacher/${user.id}?startDate=${startDate}&endDate=${endDate}`,
+        {
+          method: 'GET',
+          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        }
+      );
+      
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || 'Failed to fetch history');
+      return data;
+    }
+    
+    // ✅ Fallback for other roles
+    throw new Error('Invalid user role');
   },
 
   updateAttendance: async (id: number, status: string, substitute_teacher_name?: string) => {

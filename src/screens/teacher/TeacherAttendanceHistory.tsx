@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Modal, Alert, Platform, ActivityIndicator, KeyboardAvoidingView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import * as Print from 'expo-print';
-import * as Sharing from 'expo-sharing';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing'; // ✅ Yeh import wapis add kar diya
+import { detectBackend } from '../../services/ipConfig';
 import { tokenStorage } from '../../services/tokenStorage';
 import { attendanceService } from '../../services/attendanceService';
 
@@ -27,6 +28,7 @@ export default function TeacherAttendanceHistory({ onBack }: any) {
   const [filteredDates, setFilteredDates] = useState<any[]>([]);
   const [teacherInfo, setTeacherInfo] = useState({ name: 'Teacher', department: 'N/A' });
   const [loading, setLoading] = useState(false);
+  const [downloading, setDownloading] = useState(false); // ✅ Sirf EK baar declare kiya
 
   useEffect(() => {
     const loadUser = async () => {
@@ -55,79 +57,30 @@ export default function TeacherAttendanceHistory({ onBack }: any) {
         return;
       }
 
-      const allRecords: any[] = [];
-      filteredDates.forEach(dateData => {
-        dateData.records.forEach((r: any) => {
-          const period = PERIODS.find(p => p.id === r.period);
-          allRecords.push({
-            date: r.date,
-            day: r.day,
-            period: r.period,
-            timing: period ? period.time : (r.start_time ? `${r.start_time} - ${r.end_time}` : ''),
-            room: r.room || r.room_no || 'N/A',
-            code: r.code || r.subject_code || 'N/A',
-            class: `${r.dept || r.dept_name} (${r.sem || r.semester})`,
-            status: r.status,
-            substitute: r.substitute || r.substitute_teacher_name || '-'
-          });
-        });
+      setDownloading(true); // ✅ Table chhupayega nahi
+      
+      const BACKEND_URL = await detectBackend();
+      const token = await tokenStorage.getToken();
+      
+      const url = `${BACKEND_URL}/api/reports/teacher/my-history/pdf?startDate=${startDate}&endDate=${endDate}`;
+      const fileUri = (FileSystem as any).documentDirectory + `Teacher_Report_${Date.now()}.pdf`;
+
+      await FileSystem.downloadAsync(url, fileUri, {
+        headers: { 'Authorization': `Bearer ${token}` }
       });
 
-      const rows = allRecords.map((r: any) => `
-        <tr>
-          <td>${r.date}</td>
-          <td>${r.day}</td>
-          <td>P${r.period}</td>
-          <td>${r.timing}</td>
-          <td>${r.room}</td>
-          <td>${r.code}</td>
-          <td>${r.class}</td>
-          <td>${r.status}</td>
-          <td>${r.substitute}</td>
-        </tr>
-      `).join('');
-
-      const html = `
-        <html>
-        <head><style>
-          body { font-family: sans-serif; padding: 20px; }
-          h1 { font-size: 18px; color: #1A237E; margin-bottom: 5px; }
-          p { font-size: 12px; color: #555; margin: 4px 0; }
-          table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-          th, td { border: 1px solid #999; padding: 6px 8px; font-size: 10px; text-align: left; }
-          th { background-color: #1A237E; color: #ffffff; }
-          tr:nth-child(even) { background-color: #f9f9f9; }
-        </style></head>
-        <body>
-          <h1>Teacher Attendance Report</h1>
-          <p><b>Teacher:</b> ${teacherName}</p>
-          <p><b>Department:</b> ${teacherDept}</p>
-          <p><b>Shift:</b> ${selectedShift}</p>
-          <p><b>Date Range:</b> ${startDate} to ${endDate}</p>
-          <p><b>Total Days:</b> ${filteredDates.length}</p>
-          <p><b>Total Records:</b> ${allRecords.length}</p>
-          <table>
-            <tr>
-              <th>Date</th><th>Day</th><th>Period</th><th>Timing</th>
-              <th>Room</th><th>Code</th><th>Class</th><th>Status</th><th>Substitute</th>
-            </tr>
-            ${rows}
-          </table>
-        </body>
-        </html>
-      `;
-
-      if (Platform.OS === 'web') {
-        await Print.printAsync({ html });
+      // ✅ Sharing menu wapis aa gaya!
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(fileUri);
       } else {
-        const { uri } = await Print.printToFileAsync({ html });
-        if (await Sharing.isAvailableAsync()) {
-          await Sharing.shareAsync(uri);
-        }
+        Alert.alert('Success', `PDF saved at: ${fileUri}`);
       }
-      Alert.alert('Success', 'PDF report generated successfully');
-    } catch (e) {
-      Alert.alert('Error', 'Failed to generate PDF report');
+
+    } catch (e: any) {
+      console.error('❌ PDF Download Error:', e);
+      Alert.alert('Error', `Failed to download PDF: ${e.message}`);
+    } finally {
+      setDownloading(false);
     }
   };
 
@@ -186,7 +139,7 @@ export default function TeacherAttendanceHistory({ onBack }: any) {
 
     setLoading(true);
     try {
-      const history = await attendanceService.getMyHistory();
+      const history = await attendanceService.getMyHistory(startDate, endDate);
       
       const myAttendance = history.filter((a: any) => 
         a.date >= startDate && a.date <= endDate
@@ -246,10 +199,7 @@ export default function TeacherAttendanceHistory({ onBack }: any) {
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
-            {/* ✅ CENTERED WHITE CARD */}
             <View style={styles.searchCard}>
-              
-              {/* 1. Shift Dropdown */}
               <Text style={styles.label}>Shift</Text>
               <TouchableOpacity style={styles.dropdownWrapper} onPress={() => setShiftModalVisible(true)}>
                 <Text style={[styles.dropdownText, !selectedShift && styles.placeholderText]}>
@@ -258,7 +208,6 @@ export default function TeacherAttendanceHistory({ onBack }: any) {
                 <MaterialCommunityIcons name="chevron-down" size={20} color="#999" />
               </TouchableOpacity>
 
-              {/* 2. Date Range */}
               <Text style={styles.label}>Date Range</Text>
               <View style={styles.dateRow}>
                 <View style={styles.dateCol}>
@@ -287,7 +236,6 @@ export default function TeacherAttendanceHistory({ onBack }: any) {
                 </View>
               </View>
 
-              {/* 3. Search Button */}
               <TouchableOpacity style={styles.searchBtn} onPress={handleSearch} disabled={loading}>
                 {loading ? (
                   <ActivityIndicator color="#FFF" />
@@ -298,12 +246,10 @@ export default function TeacherAttendanceHistory({ onBack }: any) {
                   </>
                 )}
               </TouchableOpacity>
-
             </View>
           </ScrollView>
         </KeyboardAvoidingView>
 
-        {/* Shift Selection Modal */}
         <Modal visible={shiftModalVisible} transparent animationType="fade">
           <View style={styles.modalOverlay}>
             <View style={styles.modalContent}>
@@ -334,7 +280,7 @@ export default function TeacherAttendanceHistory({ onBack }: any) {
     );
   }
 
-  // ✅ HISTORY TABLE SCREEN (Same as before)
+  // ✅ HISTORY TABLE SCREEN
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
@@ -356,7 +302,8 @@ export default function TeacherAttendanceHistory({ onBack }: any) {
           </View>
         </View>
 
-        {loading ? (
+        {/* ✅ Ab download ke waqt table nahi chhupayega */}
+        {loading && filteredDates.length === 0 ? (
           <View style={{ alignItems: 'center', marginTop: 40 }}>
             <ActivityIndicator size="large" color="#1A237E" />
             <Text style={{ marginTop: 10, color: '#666' }}>Loading history...</Text>
@@ -366,7 +313,6 @@ export default function TeacherAttendanceHistory({ onBack }: any) {
             <View style={styles.dateHeader}>
               <Text style={styles.dateHeaderText}>No Attendance Records Found</Text>
             </View>
-
             <ScrollView horizontal showsHorizontalScrollIndicator={true}>
               <View style={styles.sketchTable}>
                 <View style={styles.sketchHeader}>
@@ -375,19 +321,12 @@ export default function TeacherAttendanceHistory({ onBack }: any) {
                   <View style={styles.colLectures}><Text style={styles.sketchTh}>Lectures</Text></View>
                   <View style={styles.colStatus}><Text style={styles.sketchTh}>Status</Text></View>
                 </View>
-
                 {PERIODS.map(p => (
                   <View key={p.id} style={styles.sketchRow}>
                     <View style={styles.colPeriod}><Text style={styles.sketchPeriodNum}>{p.id}</Text></View>
-                    <View style={styles.colTiming}>
-                      <Text style={styles.sketchTimeText}>{p.time}</Text>
-                    </View>
-                    <View style={styles.colLectures}>
-                      <Text style={styles.sketchFree}>— No Record —</Text>
-                    </View>
-                    <View style={styles.colStatus}>
-                      <Text style={styles.freeStatus}>—</Text>
-                    </View>
+                    <View style={styles.colTiming}><Text style={styles.sketchTimeText}>{p.time}</Text></View>
+                    <View style={styles.colLectures}><Text style={styles.sketchFree}>— No Record —</Text></View>
+                    <View style={styles.colStatus}><Text style={styles.freeStatus}>—</Text></View>
                   </View>
                 ))}
               </View>
@@ -440,9 +379,18 @@ export default function TeacherAttendanceHistory({ onBack }: any) {
           ))
         )}
 
+        {/* ✅ Download button with spinner, aur sharing menu bhi kaam karega */}
         {filteredDates.length > 0 && (
-          <TouchableOpacity style={styles.exportBtn} onPress={handleDownload}>
-            <Text style={styles.exportBtnText}>Download PDF Report</Text>
+          <TouchableOpacity 
+            style={styles.exportBtn} 
+            onPress={handleDownload}
+            disabled={downloading}
+          >
+            {downloading ? (
+              <ActivityIndicator color="#FFF" />
+            ) : (
+              <Text style={styles.exportBtnText}>Download PDF Report</Text>
+            )}
           </TouchableOpacity>
         )}
       </ScrollView>
@@ -463,7 +411,6 @@ const styles = StyleSheet.create({
   resultBadge: { backgroundColor: '#1A237E', paddingHorizontal: 12, paddingVertical: 5, borderRadius: 12 },
   resultBadgeText: { color: '#FFF', fontSize: 12, fontWeight: '700' },
 
-  // ✅ CENTERED CARD LAYOUT
   scrollContent: { 
     padding: 20, 
     paddingBottom: 40, 
@@ -511,7 +458,6 @@ const styles = StyleSheet.create({
   },
   searchBtnText: { color: '#FFF', fontSize: 16, fontWeight: '700' },
 
-  // History Screen Styles (Same as before)
   teacherTopCard: {
     backgroundColor: '#FFF', borderRadius: 12, padding: 15, marginBottom: 15,
     elevation: 2, borderLeftWidth: 4, borderLeftColor: '#1A237E',
@@ -562,7 +508,6 @@ const styles = StyleSheet.create({
   },
   exportBtnText: { color: '#FFF', fontSize: 16, fontWeight: '700' },
 
-  // Modal Styles
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 },
   modalContent: { backgroundColor: '#FFF', borderRadius: 16, width: '100%', maxWidth: 400, maxHeight: '70%', elevation: 10 },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, borderBottomWidth: 1, borderBottomColor: '#E0E0E0' },

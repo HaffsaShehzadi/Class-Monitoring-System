@@ -47,7 +47,7 @@ export default function MonitoringAttendanceHistory({ onBack }: any) {
     const uniqueDepts = [...new Map(assignedDuties.filter((d: any) => {
       const dDate = d.duty_date ? String(d.duty_date).split('T')[0] : '';
       return d.shift === selectedShift && dDate === selectedDate;
-    }).map((item: any) => [item.dept_name, item])).values()];
+    }).map((item: any) => [item.dept_name || item.department_name, item])).values()];
     return uniqueDepts;
   }, [selectedShift, selectedDate, assignedDuties]);
 
@@ -55,29 +55,52 @@ export default function MonitoringAttendanceHistory({ onBack }: any) {
     if (selectedMonitoringDept && selectedDate) fetchAttendance();
   }, [selectedMonitoringDept, selectedDate]);
 
-  const fetchAttendance = async () => {
+      const fetchAttendance = async () => {
     setLoading(true);
     try {
-      const BACKEND_URL = await detectBackend();
-      const token = await tokenStorage.getToken();
-      const deptObj = assignedDuties.find((d: any) => d.dept_name === selectedMonitoringDept);
-      const deptId = deptObj?.department_id || deptObj?.id; 
-      const url = `${BACKEND_URL}/api/attendance/mo-history?date=${selectedDate}&department_id=${deptId}`;
-      const response = await fetch(url, { method: 'GET', headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' } });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.message || 'Failed to fetch attendance');
-      const mapped = data.map((item: any) => ({
-        id: item.id, date: item.date, dept: item.dept_name || item.dept, sem: item.semester || item.sem,
-        day: item.day, period: item.period_number || item.period, teacher: item.teacher_name || item.teacher,
-        code: item.subject_code || item.code, room: item.room_no || item.room, status: item.status,
+      // ✅ FIX 1: Bulletproof deptId extraction (checks all possible key names)
+      const deptObj = assignedDuties.find((d: any) => 
+        (d.dept_name || d.department_name || d.name) === selectedMonitoringDept
+      );
+      const deptId = deptObj?.department_id || deptObj?.departmentId || deptObj?.id || deptObj?.dept_id; 
+      
+      console.log("🔍 MO Fetching -> Dept ID:", deptId, "| Date:", selectedDate, "| Dept Name:", selectedMonitoringDept);
+
+      if (!deptId) {
+        throw new Error("Department ID not found. Please check your assigned duties.");
+      }
+
+      // ✅ REPLACED HARDCODED FETCH WITH CLEAN SERVICE CALL
+      const data = await moService.getMOHistory(selectedDate, deptId);
+      
+      console.log("📦 Raw Backend Response:", data);
+
+      const recordsArray = Array.isArray(data) ? data : (data.data || data.records || []);
+      
+      const mapped = recordsArray.map((item: any) => ({
+        id: item.id, 
+        date: item.date, 
+        dept: item.dept_name || item.dept, 
+        sem: String(item.semester || item.sem || '').trim(), 
+        day: item.day, 
+        // ✅ FIX 2: Check period_number, period_id, AND period to be 100% safe
+        period: Number(item.period_number || item.period_id || item.period), 
+        teacher: item.teacher_name || item.teacher,
+        code: item.subject_code || item.code, 
+        room: item.room_no || item.room, 
+        status: item.status,
         substitute: item.substitute_teacher_name || item.substitute || ''
       }));
+
+      console.log("✅ Mapped Records for Grid:", mapped);
       setAttendanceRecords(mapped);
     } catch (error: any) {
-      console.error('Fetch attendance error:', error);
+      console.error('❌ Fetch attendance error:', error);
+      Alert.alert('Error', error.message || 'Failed to fetch attendance');
       setAttendanceRecords([]);
-      Alert.alert('Info', 'No attendance records found for this date/department yet.');
-    } finally { setLoading(false); }
+    } finally { 
+      setLoading(false); 
+    }
   };
 
   const formatDisplayDate = (dateStr: string) => {
@@ -86,91 +109,99 @@ export default function MonitoringAttendanceHistory({ onBack }: any) {
     return d.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
   };
 
-  const getAttendance = (sem: string, periodId: number) => attendanceRecords.find(a => a.sem === sem && a.period === periodId);
+  // ✅ FIX 3: Flexible matching (handles "4th" vs "4" or "4 " with spaces)
+  const getAttendance = (sem: string, periodId: number) => {
+    return attendanceRecords.find(a => {
+      const dbSem = String(a.sem).toLowerCase().trim();
+      const targetSem = String(sem).toLowerCase().trim();
+      
+      // Match exact, OR match "4" with "4th"
+      const semMatch = dbSem === targetSem || dbSem === targetSem.replace(/th|nd|rd|st/g, '');
+      const periodMatch = Number(a.period) === Number(periodId);
+      
+      return semMatch && periodMatch;
+    });
+  };
+
   const getStatusColor = (status: string) => {
     if (status?.toLowerCase() === 'present') return '#4CAF50';
     if (status?.toLowerCase() === 'absent') return '#F44336';
     return '#E0E0E0';
   };
 
-  // ✅ PDF DOWNLOAD FUNCTION ADDED
   const handleDownloadPDF = async () => {
-  try {
-    if (attendanceRecords.length === 0) {
-      Alert.alert('No Data', 'No attendance records to download');
-      return;
+    try {
+      if (attendanceRecords.length === 0) {
+        Alert.alert('No Data', 'No attendance records to download');
+        return;
+      }
+
+      const formatDate = (dateStr: string) => {
+        if (!dateStr) return 'N/A';
+        const d = new Date(dateStr);
+        if (isNaN(d.getTime())) return dateStr;
+        return d.toISOString().split('T')[0];
+      };
+
+      const rows = attendanceRecords.map((r: any) => `
+        <tr>
+          <td>${formatDate(r.date)}</td>
+          <td>${r.dept || 'N/A'} (${r.sem || 'N/A'})</td>
+          <td>P${r.period || 'N/A'}</td>
+          <td>${r.teacher || 'N/A'}</td>
+          <td>${r.code || 'N/A'}</td>
+          <td>${r.room || 'N/A'}</td>
+          <td style="color: ${r.status?.toLowerCase() === 'present' ? 'green' : 'red'}; font-weight: bold;">${r.status || 'N/A'}</td>
+          <td>${r.substitute || '-'}</td>
+        </tr>
+      `).join('');
+
+      const html = `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="UTF-8">
+            <style>
+              body { font-family: Arial, sans-serif; padding: 20px; margin: 0; }
+              h1 { font-size: 20px; color: #1A237E; text-align: center; margin-bottom: 5px; }
+              .subtitle { font-size: 14px; color: #333; text-align: center; font-weight: bold; margin-bottom: 3px; }
+              .info { font-size: 11px; color: #555; text-align: center; margin-bottom: 3px; }
+              table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 11px; }
+              th { background-color: #1A237E; color: #ffffff; padding: 8px 6px; text-align: left; border: 1px solid #1A237E; }
+              td { border: 1px solid #999; padding: 6px; text-align: left; }
+              tr:nth-child(even) { background-color: #f9f9f9; }
+            </style>
+          </head>
+          <body>
+            <h1>Attendance Report - Class Monitoring System</h1>
+            <p class="subtitle">${selectedMonitoringDept} Department - ${selectedShift}</p>
+            <p class="info">Date: ${formatDisplayDate(selectedDate)}</p>
+            <p class="info">Generated by: ${userInfo.name}</p>
+            <p class="info">Total Records: ${attendanceRecords.length}</p>
+            <table>
+              <thead><tr><th>Date</th><th>Class</th><th>Period</th><th>Teacher</th><th>Code</th><th>Room</th><th>Status</th><th>Substitute</th></tr></thead>
+              <tbody>${rows}</tbody>
+            </table>
+          </body>
+        </html>
+      `;
+
+      const { uri } = await Print.printToFileAsync({ html });
+      
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(uri, {
+          mimeType: 'application/pdf',
+          dialogTitle: 'Save Attendance Report'
+        });
+        Alert.alert('Success', 'PDF saved successfully!');
+      } else {
+        Alert.alert('Error', 'Sharing not available');
+      }
+    } catch (e: any) {
+      console.error('PDF Error:', e);
+      Alert.alert('Error', 'Failed to generate PDF');
     }
-
-    const formatDate = (dateStr: string) => {
-      if (!dateStr) return 'N/A';
-      const d = new Date(dateStr);
-      if (isNaN(d.getTime())) return dateStr;
-      return d.toISOString().split('T')[0];
-    };
-
-    const rows = attendanceRecords.map((r: any) => `
-      <tr>
-        <td>${formatDate(r.date)}</td>
-        <td>${r.dept || 'N/A'} (${r.sem || 'N/A'})</td>
-        <td>P${r.period || 'N/A'}</td>
-        <td>${r.teacher || 'N/A'}</td>
-        <td>${r.code || 'N/A'}</td>
-        <td>${r.room || 'N/A'}</td>
-        <td style="color: ${r.status?.toLowerCase() === 'present' ? 'green' : 'red'}; font-weight: bold;">${r.status || 'N/A'}</td>
-        <td>${r.substitute || '-'}</td>
-      </tr>
-    `).join('');
-
-    const html = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <meta charset="UTF-8">
-          <style>
-            body { font-family: Arial, sans-serif; padding: 20px; margin: 0; }
-            h1 { font-size: 20px; color: #1A237E; text-align: center; margin-bottom: 5px; }
-            .subtitle { font-size: 14px; color: #333; text-align: center; font-weight: bold; margin-bottom: 3px; }
-            .info { font-size: 11px; color: #555; text-align: center; margin-bottom: 3px; }
-            table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 11px; }
-            th { background-color: #1A237E; color: #ffffff; padding: 8px 6px; text-align: left; border: 1px solid #1A237E; }
-            td { border: 1px solid #999; padding: 6px; text-align: left; }
-            tr:nth-child(even) { background-color: #f9f9f9; }
-          </style>
-        </head>
-        <body>
-          <h1>Attendance Report - Class Monitoring System</h1>
-          <p class="subtitle">${selectedMonitoringDept} Department - ${selectedShift}</p>
-          <p class="info">Date: ${formatDisplayDate(selectedDate)}</p>
-          <p class="info">Generated by: ${userInfo.name}</p>
-          <p class="info">Total Records: ${attendanceRecords.length}</p>
-          <table>
-            <thead><tr><th>Date</th><th>Class</th><th>Period</th><th>Teacher</th><th>Code</th><th>Room</th><th>Status</th><th>Substitute</th></tr></thead>
-            <tbody>${rows}</tbody>
-          </table>
-        </body>
-      </html>
-    `;
-
-    // ✅ PDF FILE BANAO
-    const { uri } = await Print.printToFileAsync({ html });
-    console.log('PDF created at:', uri);
-    
-    // ✅ FILE KO SHARE/SAVE KARO
-    if (await Sharing.isAvailableAsync()) {
-      await Sharing.shareAsync(uri, {
-        mimeType: 'application/pdf',
-        dialogTitle: 'Save Attendance Report'
-      });
-      Alert.alert('Success', 'PDF saved successfully!');
-    } else {
-      Alert.alert('Error', 'Sharing not available');
-    }
-    
-  } catch (e: any) {
-    console.error('PDF Error:', e);
-    Alert.alert('Error', 'Failed to generate PDF');
-  }
-};
+  };
 
   const handleSearch = () => {
     if (!selectedDate.trim()) { Alert.alert('Error', 'Please enter a date (YYYY-MM-DD)'); return; }
@@ -268,8 +299,8 @@ export default function MonitoringAttendanceHistory({ onBack }: any) {
             </View>
           ) : (
             monitoringDepts.map((dept: any, index: number) => (
-              <TouchableOpacity key={index} style={styles.deptCard} onPress={() => setSelectedMonitoringDept(dept.dept_name)}>
-                <View style={styles.deptInfo}><Text style={styles.deptName}>{dept.dept_name} Department</Text></View>
+              <TouchableOpacity key={index} style={styles.deptCard} onPress={() => setSelectedMonitoringDept(dept.dept_name || dept.department_name)}>
+                <View style={styles.deptInfo}><Text style={styles.deptName}>{dept.dept_name || dept.department_name} Department</Text></View>
                 <Text style={styles.chevron}>›</Text>
               </TouchableOpacity>
             ))
@@ -329,7 +360,6 @@ export default function MonitoringAttendanceHistory({ onBack }: any) {
         </ScrollView>
       )}
 
-      {/* ✅ PDF DOWNLOAD BUTTON - Only show when there are records */}
       {attendanceRecords.length > 0 && (
         <TouchableOpacity style={styles.exportBtn} onPress={handleDownloadPDF}>
           <MaterialCommunityIcons name="download" size={24} color="#FFF" />
@@ -435,7 +465,6 @@ const styles = StyleSheet.create({
   dateSection: { marginBottom: 20 },
   dateHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#1A237E', paddingVertical: 12, paddingHorizontal: 15, borderRadius: 10, marginBottom: 10, elevation: 3 },
   dateHeaderText: { fontSize: 14, fontWeight: '800', color: '#FFF' },
-  // ✅ NEW STYLE FOR PDF BUTTON
   exportBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#4CAF50', paddingVertical: 14, borderRadius: 12, gap: 8, elevation: 3, marginTop: 15, marginHorizontal: 15 },
   exportBtnText: { color: '#FFF', fontSize: 16, fontWeight: '700' },
 });

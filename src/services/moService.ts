@@ -2,7 +2,6 @@ import { detectBackend } from './ipConfig';
 import { tokenStorage } from './tokenStorage';
 
 export const moService = {
-  // ✅ Shift parameter add kiya gaya hai
   getMyDuties: async (params?: { date?: string; shift?: string }) => {
     try {
       const BACKEND_URL = await detectBackend();
@@ -16,40 +15,30 @@ export const moService = {
       
       const response = await fetch(url, {
         method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
       });
 
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.message || 'Failed to fetch duties');
       }
-
-      const data = await response.json();
-      return data;
+      return await response.json();
     } catch (error: any) {
       console.error("❌ moService.getMyDuties FAILED:", error.message);
       throw error;
     }
   },
 
-  // ✅ MO ke liye Timetable fetch karna
   getTimetableByDayAndShift: async (day: string, shift: string) => {
     const BACKEND_URL = await detectBackend();
     const token = await tokenStorage.getToken();
-    const response = await fetch(
-      `${BACKEND_URL}/api/timetable/by-day?day=${day}&shift=${shift}`, 
-      {
-        headers: { 'Authorization': `Bearer ${token}` }
-      }
-    );
+    const response = await fetch(`${BACKEND_URL}/api/timetable/by-day?day=${day}&shift=${shift}`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
     if (!response.ok) throw new Error('Failed to fetch timetable');
     return await response.json();
   },
 
-  // ✅ NEW: Config fetch karna (periods + semesters) taake MO ko bhi real timings milen
   getConfig: async () => {
     const BACKEND_URL = await detectBackend();
     const token = await tokenStorage.getToken();
@@ -57,6 +46,26 @@ export const moService = {
       headers: { 'Authorization': `Bearer ${token}` }
     });
     if (!response.ok) throw new Error('Failed to fetch config');
+    return await response.json();
+  },
+
+  // ✅ NEW: Added specifically for MonitoringAttendanceHistory.tsx
+  getMOHistory: async (date: string, departmentId: number) => {
+    const BACKEND_URL = await detectBackend();
+    const token = await tokenStorage.getToken();
+    
+    const response = await fetch(
+      `${BACKEND_URL}/api/reports/mo-history?date=${date}&department_id=${departmentId}`,
+      {
+        method: 'GET',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+      }
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Failed to fetch MO history');
+    }
     return await response.json();
   }
 };
