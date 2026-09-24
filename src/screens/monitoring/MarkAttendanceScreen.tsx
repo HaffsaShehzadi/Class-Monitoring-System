@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, TextInput, Alert, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-//import { checkLocation } from '../../services/locationService';
+import { checkLocation } from '../../services/locationService';
 import { saveOfflineAttendance } from '../../services/offlineStorage';
 import { moService } from '../../services/moService';
 import { tokenStorage } from '../../services/tokenStorage';
 import { attendanceService } from '../../services/attendanceService';
 
-const USE_TEST_LOCATION = true; // Testing ke liye true
+const USE_TEST_LOCATION = false; // Real GPS activate kar diya (testing ke liye true kar sakte hain)
 const ENFORCE_TIME_CHECK = true;
 
 const SEMESTERS = ['2nd', '4th', '6th', '8th'];
@@ -186,28 +186,27 @@ export default function MarkAttendanceScreen({ onBack }: any) {
         return;
       }
 
-      // 2. Location Check 
-      // ✅ TEMPORARILY COMMENTED OUT FOR TESTING OTHER FUNCTIONALITIES
-      /*
-      let moLocation;
+      // 2. Location Check (Live GPS)
+      let moLocation: any;
       if (USE_TEST_LOCATION) {
         const { checkLocationTestMode } = await import('../../services/locationService');
         moLocation = await checkLocationTestMode();
       } else {
         moLocation = await checkLocation();
-        if (!moLocation.success) { Alert.alert('📍 Location Error', moLocation.error); return; }
+        if (!moLocation.success || moLocation.latitude === undefined || moLocation.longitude === undefined) { 
+          Alert.alert('📍 Location Error', moLocation.error || 'Unable to detect your GPS location. Please ensure Location is enabled on your device.'); 
+          return; 
+        }
       }
-      */
-      
-      // ✅ Dummy location object taake neeche offline save wala code crash na ho
-      const moLocation = { success: true, latitude: 31.5204, longitude: 74.3587 };
 
       // 3. Save Attempt
       try {
         await attendanceService.markAttendance(
           selectedLecture.id,
           selectedStatus === 'present' ? 'Present' : 'Absent',
-          selectedStatus === 'absent' ? substituteName : null
+          selectedStatus === 'absent' ? substituteName : null,
+          moLocation.latitude,
+          moLocation.longitude
         );
 
         // SUCCESS: Online Save

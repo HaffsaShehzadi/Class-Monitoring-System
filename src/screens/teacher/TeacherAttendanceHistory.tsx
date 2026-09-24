@@ -61,19 +61,40 @@ export default function TeacherAttendanceHistory({ onBack }: any) {
       
       const BACKEND_URL = await detectBackend();
       const token = await tokenStorage.getToken();
-      
       const url = `${BACKEND_URL}/api/reports/teacher/my-history/pdf?startDate=${startDate}&endDate=${endDate}`;
+      
+      if (Platform.OS === 'web') {
+        const response = await fetch(url, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!response.ok) throw new Error('Failed to download PDF from server');
+        const blob = await response.blob();
+        const blobUrl = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = blobUrl;
+        a.download = `Teacher_Report_${Date.now()}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(blobUrl);
+        Alert.alert('Success', 'PDF downloaded successfully!');
+        return;
+      }
+
       const fileUri = (FileSystem as any).documentDirectory + `Teacher_Report_${Date.now()}.pdf`;
 
-      await FileSystem.downloadAsync(url, fileUri, {
+      const result = await FileSystem.downloadAsync(url, fileUri, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
 
-      // ✅ Sharing menu wapis aa gaya!
-      if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(fileUri);
+      if (result.status === 200) {
+        if (await Sharing.isAvailableAsync()) {
+          await Sharing.shareAsync(result.uri);
+        } else {
+          Alert.alert('Success', `PDF saved at: ${result.uri}`);
+        }
       } else {
-        Alert.alert('Success', `PDF saved at: ${fileUri}`);
+        throw new Error('Failed to download PDF from server');
       }
 
     } catch (e: any) {
@@ -402,9 +423,15 @@ export default function TeacherAttendanceHistory({ onBack }: any) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F5F5' },
   header: {
-    backgroundColor: '#FFF', paddingTop: 50, paddingBottom: 15, paddingHorizontal: 15,
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    borderBottomWidth: 2, borderBottomColor: '#1A237E',
+    backgroundColor: '#FFF', 
+    paddingTop: Platform.OS === 'web' ? 16 : 50, 
+    paddingBottom: 15, 
+    paddingHorizontal: 15,
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'space-between',
+    borderBottomWidth: 2, 
+    borderBottomColor: '#1A237E',
   },
   headerTitle: { fontSize: 18, fontWeight: '800', color: '#1A237E', flex: 1, textAlign: 'center' },
   backArrow: { fontSize: 24, fontWeight: '700', color: '#1A237E' },
@@ -502,9 +529,18 @@ const styles = StyleSheet.create({
   statusPillText: { fontSize: 10, fontWeight: '800', flexShrink: 1 },
 
   exportBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    backgroundColor: '#4CAF50', paddingVertical: 14, borderRadius: 12, gap: 8,
-    elevation: 3, marginTop: 10,
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'center',
+    backgroundColor: '#4CAF50', 
+    paddingVertical: 14, 
+    borderRadius: 12, 
+    gap: 8,
+    elevation: 3, 
+    marginTop: 15,
+    maxWidth: 680,
+    width: '100%',
+    alignSelf: 'center',
   },
   exportBtnText: { color: '#FFF', fontSize: 16, fontWeight: '700' },
 

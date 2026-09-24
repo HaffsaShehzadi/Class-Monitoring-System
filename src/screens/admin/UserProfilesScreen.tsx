@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, Modal, Animated, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, Modal, Animated, ActivityIndicator, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { userService } from '../../services/userService'; // ✅ NEW IMPORT
 
@@ -251,9 +251,9 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F5F5' },
   header: { 
     backgroundColor: '#FFF', 
-    paddingTop: 50, 
+    paddingTop: Platform.OS === 'web' ? 16 : 50, 
     paddingBottom: 15, 
-    paddingHorizontal: 15, 
+    paddingHorizontal: 20, 
     flexDirection: 'row', 
     alignItems: 'center', 
     justifyContent: 'space-between', 
@@ -262,7 +262,12 @@ const styles = StyleSheet.create({
   },
   backArrow: { fontSize: 24, fontWeight: '700', color: '#1A237E' },
   headerTitle: { fontSize: 18, fontWeight: '800', color: '#1A237E', flex: 1, textAlign: 'center' },
-  content: { padding: 15 },
+  content: { 
+    padding: 20,
+    maxWidth: 960,
+    width: '100%',
+    alignSelf: 'center',
+  },
   
   searchContainer: {
     flexDirection: 'row',

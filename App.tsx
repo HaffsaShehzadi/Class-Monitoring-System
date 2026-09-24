@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, Alert, BackHandler, Platform, TouchableOpacity, Text, ScrollView } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { initDatabase } from './src/services/database';
 import { startAutoSync, setAuthToken } from './src/services/syncService';
 import { tokenStorage } from './src/services/tokenStorage';
@@ -51,13 +52,13 @@ const isWeb = Platform.OS === 'web';
 const ADMIN_WEB_SCREENS = ['admin', 'pending', 'users', 'assignDuty', 'timetableManagement', 'addClassInTimetable', 'complaints', 'adminAttendanceHistory'];
 
 const WEB_MENU = [
-  { id: 'admin', title: 'Dashboard' },
-  { id: 'pending', title: 'Pending Approvals' },
-  { id: 'users', title: 'User Profiles' },
-  { id: 'assignDuty', title: 'Assign Duty' },
-  { id: 'timetableManagement', title: 'Manage Timetable' },
-  { id: 'complaints', title: 'Resolve Complaints' },
-  { id: 'adminAttendanceHistory', title: 'Attendance History' },
+  { id: 'admin', title: 'Dashboard', icon: 'view-dashboard-outline' },
+  { id: 'pending', title: 'Pending Approvals', icon: 'account-clock-outline' },
+  { id: 'users', title: 'User Profiles', icon: 'account-group-outline' },
+  { id: 'assignDuty', title: 'Assign Duty', icon: 'clipboard-check-outline' },
+  { id: 'timetableManagement', title: 'Manage Timetable', icon: 'calendar-clock-outline' },
+  { id: 'complaints', title: 'Resolve Complaints', icon: 'alert-circle-outline' },
+  { id: 'adminAttendanceHistory', title: 'Attendance History', icon: 'history' },
 ];
 
 export default function App() {
@@ -517,20 +518,30 @@ export default function App() {
         <View style={styles.webLayout}>
           <View style={styles.sidebar}>
             <Text style={styles.sidebarLogo}>🎓 Class Monitoring</Text>
-            <ScrollView style={{ flex: 1 }}>
-              {WEB_MENU.map(item => (
-                <TouchableOpacity
-                  key={item.id}
-                  style={[styles.sidebarItem, screen === item.id && styles.sidebarItemActive]}
-                  onPress={() => go(item.id)}
-                >
-                  <Text style={[styles.sidebarItemText, screen === item.id && styles.sidebarItemTextActive]}>
-                    {item.title}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+            <ScrollView style={{ flex: 1, paddingVertical: 10 }}>
+              {WEB_MENU.map(item => {
+                const isActive = screen === item.id;
+                return (
+                  <TouchableOpacity
+                    key={item.id}
+                    style={[styles.sidebarItem, isActive && styles.sidebarItemActive]}
+                    onPress={() => go(item.id)}
+                  >
+                    <MaterialCommunityIcons
+                      name={item.icon as any}
+                      size={20}
+                      color={isActive ? '#FFF' : '#C5CAE9'}
+                      style={{ marginRight: 12 }}
+                    />
+                    <Text style={[styles.sidebarItemText, isActive && styles.sidebarItemTextActive]}>
+                      {item.title}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
             </ScrollView>
             <TouchableOpacity style={styles.sidebarLogout} onPress={logout}>
+              <MaterialCommunityIcons name="logout" size={18} color="#FFCDD2" style={{ marginRight: 10 }} />
               <Text style={styles.sidebarLogoutText}>Logout</Text>
             </TouchableOpacity>
           </View>
@@ -548,31 +559,66 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
-  webLayout: { flex: 1, flexDirection: 'row', backgroundColor: '#F5F5F5' },
-  sidebar: { width: 240, backgroundColor: '#1A237E', paddingTop: 20, paddingHorizontal: 12 },
-  sidebarLogo: { color: '#FFF', fontSize: 18, fontWeight: '800', paddingHorizontal: 8, paddingBottom: 20, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.15)', marginBottom: 12 },
-  sidebarItem: { paddingVertical: 12, paddingHorizontal: 14, borderRadius: 8, marginBottom: 4 },
-  sidebarItemActive: { backgroundColor: 'rgba(255,255,255,0.18)' },
+  webLayout: { flex: 1, flexDirection: 'row', backgroundColor: '#F8F9FA' },
+  sidebar: { 
+    width: 250, 
+    backgroundColor: '#1A237E', 
+    paddingTop: 24, 
+    paddingHorizontal: 12,
+    borderRightWidth: 1,
+    borderRightColor: '#E0E0E0',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+  },
+  sidebarLogo: { 
+    color: '#FFF', 
+    fontSize: 18, 
+    fontWeight: '800', 
+    paddingHorizontal: 10, 
+    paddingBottom: 20, 
+    borderBottomWidth: 1, 
+    borderBottomColor: 'rgba(255,255,255,0.15)', 
+    marginBottom: 8 
+  },
+  sidebarItem: { 
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12, 
+    paddingHorizontal: 14, 
+    borderRadius: 8, 
+    marginBottom: 6,
+  },
+  sidebarItemActive: { 
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    borderLeftWidth: 4,
+    borderLeftColor: '#FFD54F',
+  },
   sidebarItemText: { color: '#C5CAE9', fontSize: 14, fontWeight: '600' },
   sidebarItemTextActive: { color: '#FFF', fontWeight: '700' },
-  sidebarLogout: { paddingVertical: 14, paddingHorizontal: 14, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.15)' },
+  sidebarLogout: { 
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 16, 
+    paddingHorizontal: 14, 
+    borderTopWidth: 1, 
+    borderTopColor: 'rgba(255,255,255,0.15)',
+    marginBottom: 8,
+  },
   sidebarLogoutText: { color: '#FFCDD2', fontSize: 14, fontWeight: '700' },
-  webContent: { flex: 1 },
+  webContent: { flex: 1, backgroundColor: '#F8F9FA' },
 
   webWrapper: {
     flex: 1,
-    backgroundColor: '#E9EDF2',
+    backgroundColor: '#F0F2F5',
     alignItems: 'center',
+    justifyContent: 'center',
   },
   container: { 
     flex: 1, 
     backgroundColor: '#F5F5F5',
     width: '100%',
     maxWidth: 1100,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 4,
   },
 });

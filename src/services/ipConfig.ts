@@ -3,10 +3,9 @@ import { Platform } from 'react-native';
 
 const BACKEND_PORT = '5000';
 // ✅ Yeh aapka fallback IP hai (agar auto-detect kisi wajah se fail ho jaye)
-const STATIC_IP = '192.168.100.14'; 
+const STATIC_IP = '10.121.141.40'; 
 
 export const detectBackend = async (): Promise<string> => {
-  
   // 1️⃣ Agar Web Browser (Chrome) mein test kar rahe hain
   if (Platform.OS === 'web') {
     console.log('🌐 Web Browser detected: Using localhost');

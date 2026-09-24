@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView, Animated, TouchableWithoutFeedback, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView, Animated, TouchableWithoutFeedback, ActivityIndicator, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { complaintAdminService } from '../../services/complaintAdminService';
@@ -257,7 +257,17 @@ export default function ComplaintsScreen({ onBack }: any) {
 // ✅ STYLES: Bilkul same jaise aapke original code mein the (Zero UI changes)
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F5F5' },
-  header: { backgroundColor: '#FFF', paddingTop: 50, paddingBottom: 15, paddingHorizontal: 15, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: 2, borderBottomColor: '#1A237E' },
+  header: { 
+    backgroundColor: '#FFF', 
+    paddingTop: Platform.OS === 'web' ? 16 : 50, 
+    paddingBottom: 15, 
+    paddingHorizontal: 20, 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'space-between', 
+    borderBottomWidth: 2, 
+    borderBottomColor: '#1A237E' 
+  },
   backArrow: { fontSize: 24, fontWeight: '700', color: '#1A237E' },
   headerTitle: { fontSize: 18, fontWeight: '800', color: '#1A237E', flex: 1, textAlign: 'center' },
   menuBtn: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F5F5F5' },
@@ -267,7 +277,13 @@ const styles = StyleSheet.create({
   menuItem: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 16, paddingVertical: 12 },
   menuItemText: { fontSize: 14, fontWeight: '700', color: '#1A237E' },
 
-  content: { padding: 15, paddingBottom: 30 },
+  content: { 
+    padding: 20, 
+    paddingBottom: 40,
+    maxWidth: 900,
+    width: '100%',
+    alignSelf: 'center',
+  },
   card: { backgroundColor: '#FFF', borderRadius: 12, padding: 15, marginBottom: 12, elevation: 2 },
   cardHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
   cardAvatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#E8EAF6', alignItems: 'center', justifyContent: 'center', marginRight: 10 },
@@ -283,7 +299,13 @@ const styles = StyleSheet.create({
   viewBtn: { backgroundColor: '#1A237E', paddingVertical: 12, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
   viewBtnText: { color: '#FFF', fontSize: 14, fontWeight: '700' },
 
-  detailContent: { padding: 15, paddingBottom: 20 },
+  detailContent: { 
+    padding: 20, 
+    paddingBottom: 40,
+    maxWidth: 900,
+    width: '100%',
+    alignSelf: 'center',
+  },
   detailCard: { backgroundColor: '#FFF', borderRadius: 12, padding: 15, marginBottom: 12, elevation: 2, borderLeftWidth: 4, borderLeftColor: '#1A237E' },
   detailName: { fontSize: 17, fontWeight: '800', color: '#1A237E' },
   detailDept: { fontSize: 13, color: '#666', marginTop: 3 },

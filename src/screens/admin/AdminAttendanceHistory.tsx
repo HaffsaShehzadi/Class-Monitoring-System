@@ -112,6 +112,24 @@ export default function AdminAttendanceHistory({ onBack }: any) {
         fileName = `Teacher_Report_${Date.now()}.pdf`;
       }
 
+      if (Platform.OS === 'web') {
+        const response = await fetch(url, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!response.ok) throw new Error('Failed to download PDF from server');
+        const blob = await response.blob();
+        const blobUrl = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = blobUrl;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(blobUrl);
+        Alert.alert('Success', 'PDF downloaded successfully!');
+        return;
+      }
+
       const fileUri = (FileSystem as any).documentDirectory + fileName;
 
       // Backend se PDF download karein
@@ -606,18 +624,42 @@ export default function AdminAttendanceHistory({ onBack }: any) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F5F5' },
-  header: { backgroundColor: '#FFF', paddingTop: 50, paddingBottom: 15, paddingHorizontal: 15, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: 2, borderBottomColor: '#1A237E' },
+  header: { 
+    backgroundColor: '#FFF', 
+    paddingTop: Platform.OS === 'web' ? 16 : 50, 
+    paddingBottom: 15, 
+    paddingHorizontal: 20, 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'space-between', 
+    borderBottomWidth: 2, 
+    borderBottomColor: '#1A237E' 
+  },
   backArrow: { fontSize: 24, fontWeight: '700', color: '#1A237E' },
   headerTitle: { fontSize: 18, fontWeight: '800', color: '#1A237E', flex: 1, textAlign: 'center' },
   resultBadge: { backgroundColor: '#1A237E', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 15 },
   resultBadgeText: { color: '#FFF', fontSize: 12, fontWeight: '700' },
-  scrollContent: { padding: 15, paddingBottom: 40, flexGrow: 1, justifyContent: 'center' },
+  scrollContent: { padding: 20, paddingBottom: 40, flexGrow: 1, justifyContent: 'center' },
   modeSelector: { flexDirection: 'row', marginBottom: 20, backgroundColor: '#F5F5F5', borderRadius: 10, padding: 4 },
   modeBtn: { flex: 1, paddingVertical: 10, borderRadius: 8, alignItems: 'center' },
   modeBtnActive: { backgroundColor: '#1A237E' },
   modeText: { fontSize: 14, fontWeight: '600', color: '#666' },
   modeTextActive: { color: '#FFF', fontWeight: '700' },
-  filterCard: { backgroundColor: '#FFF', borderRadius: 16, padding: 20, elevation: 3 },
+  filterCard: { 
+    backgroundColor: '#FFF', 
+    borderRadius: 16, 
+    padding: 24, 
+    elevation: 3,
+    maxWidth: 680,
+    width: '100%',
+    alignSelf: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    borderWidth: 1,
+    borderColor: '#E8EAF6',
+  },
   label: { fontSize: 14, fontWeight: '700', color: '#1A237E', marginBottom: 6, marginTop: 12 },
   inputWrapper: { flexDirection: 'row', alignItems: 'center', width: '100%', minHeight: 50, backgroundColor: '#F5F5F5', borderWidth: 1.5, borderColor: '#DDD', borderRadius: 10, paddingHorizontal: 12, marginBottom: 12 },
   inputText: { flex: 1, fontSize: 14, color: '#1A237E', fontWeight: '600' },
@@ -678,8 +720,20 @@ const styles = StyleSheet.create({
   editIconTable: { position: 'absolute', top: 5, right: 5 },
   statusPill: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 5, borderRadius: 12 },
   statusPillText: { fontSize: 10, fontWeight: '800', flexShrink: 1 },
-  freeStatus: { fontSize: 12, color: '#B0BEC5' },
-  exportBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#4CAF50', paddingVertical: 14, borderRadius: 12, gap: 8, elevation: 3, marginTop: 10 },
+  exportBtn: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    backgroundColor: '#4CAF50', 
+    paddingVertical: 14, 
+    borderRadius: 12, 
+    gap: 8, 
+    elevation: 3, 
+    marginTop: 15,
+    maxWidth: 680,
+    width: '100%',
+    alignSelf: 'center',
+  },
   exportBtnText: { color: '#FFF', fontSize: 16, fontWeight: '700' },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 },
   modalContent: { backgroundColor: '#FFF', borderRadius: 16, width: '100%', maxWidth: 400, maxHeight: '70%', elevation: 10 },

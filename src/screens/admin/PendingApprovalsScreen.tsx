@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Animated, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Animated, ActivityIndicator, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { dashboardService } from '../../services/dashboardService'; // ✅ NEW IMPORT
 
@@ -147,14 +147,25 @@ export default function PendingApprovalsScreen({ onBack }: PendingApprovalsScree
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F5F5' },
   header: { 
-    backgroundColor: '#FFF', paddingTop: 50, paddingBottom: 15, paddingHorizontal: 15,
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    borderBottomWidth: 2, borderBottomColor: '#1A237E'
+    backgroundColor: '#FFF', 
+    paddingTop: Platform.OS === 'web' ? 16 : 50, 
+    paddingBottom: 15, 
+    paddingHorizontal: 20,
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'space-between',
+    borderBottomWidth: 2, 
+    borderBottomColor: '#1A237E'
   },
   backBtn: { padding: 4 },
   backText: { fontSize: 24, color: '#1A237E', fontWeight: '700' },
   headerTitle: { fontSize: 18, fontWeight: '800', color: '#1A237E', flex: 1, textAlign: 'center' },
-  list: { padding: 15 },
+  list: { 
+    padding: 20,
+    maxWidth: 900,
+    width: '100%',
+    alignSelf: 'center',
+  },
   card: { backgroundColor: '#FFF', borderRadius: 12, padding: 18, marginBottom: 12, elevation: 2 },
   infoContainer: { marginBottom: 14 },
   name: { fontSize: 17, fontWeight: '700', color: '#1A237E', marginBottom: 6 },

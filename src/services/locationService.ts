@@ -25,9 +25,9 @@ export const checkLocation = async (): Promise<{
 
     // ✅ Step 2: Get location with TIMEOUT and FALLBACK options
     const location = await Location.getCurrentPositionAsync({
-      accuracy: Location.Accuracy.Balanced, // ✅ Faster than HighAccuracy
+      accuracy: Location.Accuracy.High, // ✅ High accuracy uses GPS satellites for classroom precision
       timeInterval: 5000, // ✅ Max wait time: 5 seconds
-      distanceInterval: 10, // ✅ Update every 10 meters
+      distanceInterval: 5, // ✅ Update every 5 meters
     }).catch(async (err) => {
       console.warn('⚠️ GPS location failed, trying network location...', err);
       

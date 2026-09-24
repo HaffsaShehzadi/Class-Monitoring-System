@@ -474,10 +474,26 @@ export default function AssignDutyScreen({ onBack }: any) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F5F5' },
-  header: { backgroundColor: '#FFF', paddingTop: 50, paddingBottom: 15, paddingHorizontal: 15, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: 2, borderBottomColor: '#1A237E' },
+  header: { 
+    backgroundColor: '#FFF', 
+    paddingTop: Platform.OS === 'web' ? 16 : 50, 
+    paddingBottom: 15, 
+    paddingHorizontal: 20, 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'space-between', 
+    borderBottomWidth: 2, 
+    borderBottomColor: '#1A237E' 
+  },
   backArrow: { fontSize: 24, fontWeight: '700', color: '#1A237E' },
   headerTitle: { fontSize: 18, fontWeight: '800', color: '#1A237E', flex: 1, textAlign: 'center' },
-  content: { padding: 15, paddingBottom: 40 },
+  content: { 
+    padding: 20, 
+    paddingBottom: 40,
+    maxWidth: 900,
+    width: '100%',
+    alignSelf: 'center',
+  },
   officialCard: { backgroundColor: '#FFF', borderRadius: 12, padding: 15, marginBottom: 12, elevation: 2 },
   officialHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
   officialName: { fontSize: 17, fontWeight: '700', color: '#1A237E' },

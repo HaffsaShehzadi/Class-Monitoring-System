@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Modal, TextInput, Animated, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Modal, TextInput, Animated, ActivityIndicator, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { timetableService } from '../../services/timetableService';
@@ -526,15 +526,38 @@ export default function TimetableManagementScreen({ onBack, onNavigate, params }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F5F5' },
-  header: { backgroundColor: '#FFF', paddingTop: 50, paddingBottom: 15, paddingHorizontal: 15, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderBottomWidth: 2, borderBottomColor: '#1A237E' },
+  header: { 
+    backgroundColor: '#FFF', 
+    paddingTop: Platform.OS === 'web' ? 16 : 50, 
+    paddingBottom: 15, 
+    paddingHorizontal: 20, 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'space-between', 
+    borderBottomWidth: 2, 
+    borderBottomColor: '#1A237E' 
+  },
   backArrow: { fontSize: 24, fontWeight: '700', color: '#1A237E' },
   headerTitle: { fontSize: 18, fontWeight: '800', color: '#1A237E' },
   headerTitleContainer: { flex: 1, alignItems: 'center' },
-  shiftContainer: { flex: 1, justifyContent: 'center', padding: 30, gap: 20 },
+  shiftContainer: { 
+    flex: 1, 
+    justifyContent: 'center', 
+    padding: 30, 
+    gap: 20,
+    maxWidth: 680,
+    width: '100%',
+    alignSelf: 'center',
+  },
   shiftCard: { backgroundColor: '#FFF', borderRadius: 16, padding: 30, alignItems: 'center', elevation: 3, borderWidth: 2, borderColor: '#E8EAF6' },
   shiftTitle: { fontSize: 22, fontWeight: '800', color: '#1A237E', marginBottom: 5 },
   shiftSubtext: { fontSize: 14, color: '#666' },
-  deptListContent: { padding: 20 },
+  deptListContent: { 
+    padding: 20,
+    maxWidth: 900,
+    width: '100%',
+    alignSelf: 'center',
+  },
   deptCard: { backgroundColor: '#FFF', borderRadius: 12, padding: 15, marginBottom: 15, flexDirection: 'row', alignItems: 'center', elevation: 2 },
   deptCardInfo: { flexDirection: 'row', alignItems: 'center', flex: 1 },
   deptInfoText: { flex: 1 },
