@@ -1,6 +1,7 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { authService } from '../../services/authService';
 
 interface SignUpScreenProps {
@@ -9,15 +10,35 @@ interface SignUpScreenProps {
 }
 
 const ROLES = ['Teacher', 'Monitoring Official'];
-const DEPARTMENTS = ['Math', 'Urdu', 'English', 'Islamiat', 'IT', 'Zoology', 'Economics', 'Political Science', 'Physics', 'Chemistry', 'BSCS'];
 
 export default function SignUpScreen({ onBack, onSignUp }: SignUpScreenProps) {
   const [role, setRole] = useState('');
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [department, setDepartment] = useState('');
+  const [departments, setDepartments] = useState<string[]>([]);
+  const [loadingDepartments, setLoadingDepartments] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchDepartments = async () => {
+      setLoadingDepartments(true);
+      try {
+        const list = await authService.getDepartments();
+        if (list && list.length > 0) {
+          setDepartments(list);
+        }
+      } catch (err) {
+        console.warn('Could not fetch departments from backend, using default fallback', err);
+        setDepartments(['BSCS', 'Chemistry', 'Economics', 'English', 'Islamiat', 'IT', 'Math', 'Physics', 'Political Science', 'Urdu', 'Zoology']);
+      } finally {
+        setLoadingDepartments(false);
+      }
+    };
+    fetchDepartments();
+  }, []);
 
   const [showRoleDropdown, setShowRoleDropdown] = useState(false);
   const [showDeptDropdown, setShowDeptDropdown] = useState(false);
@@ -179,6 +200,260 @@ export default function SignUpScreen({ onBack, onSignUp }: SignUpScreenProps) {
     }
   };
 
+  // ✅ WEB SMART DESK 2-COLUMN SPLIT LAYOUT
+  if (Platform.OS === 'web') {
+    return (
+      <View style={styles.webContainer}>
+        {/* Left Column - Class Monitoring System Navy Blue Hero Panel */}
+        <View style={styles.webHeroPanel}>
+          <View style={styles.heroContent}>
+            {/* App's Official Logo with Green Badge */}
+            <View style={styles.heroLogoWrapper}>
+              <MaterialCommunityIcons name="school" size={88} color="#FFFFFF" />
+              <View style={styles.heroBadge}>
+                <MaterialCommunityIcons name="clipboard-check" size={26} color="#4CAF50" />
+              </View>
+            </View>
+
+            <Text style={styles.heroTitle}>Class Monitoring System</Text>
+            <Text style={styles.heroSubtitle}>Teachers Attendance Management</Text>
+            
+            {/* 3 Features in the Middle */}
+            <View style={styles.heroFeatures}>
+              <View style={styles.heroFeatureItem}>
+                <MaterialCommunityIcons name="check-circle" size={22} color="#4CAF50" />
+                <Text style={styles.heroFeatureText}>GPS based attendance system</Text>
+              </View>
+              <View style={styles.heroFeatureItem}>
+                <MaterialCommunityIcons name="check-circle" size={22} color="#4CAF50" />
+                <Text style={styles.heroFeatureText}>Timetable validation</Text>
+              </View>
+              <View style={styles.heroFeatureItem}>
+                <MaterialCommunityIcons name="check-circle" size={22} color="#4CAF50" />
+                <Text style={styles.heroFeatureText}>PDF report generation</Text>
+              </View>
+            </View>
+          </View>
+        </View>
+
+        {/* Right Column - Clean Form / OTP / Success Panel */}
+        <View style={styles.webFormPanel}>
+          <ScrollView 
+            style={styles.webFormScrollView} 
+            contentContainerStyle={styles.webFormContent} 
+            showsVerticalScrollIndicator={false}
+          >
+            {step === 'otp' ? (
+              <View style={styles.webFormInner}>
+                <TouchableOpacity onPress={() => setStep('form')} style={styles.webBackButton}>
+                  <Text style={styles.webBackArrow}>← Back to Form</Text>
+                </TouchableOpacity>
+
+                <Text style={styles.webTitle}>Verify Email</Text>
+                <Text style={styles.webSubtitle}>
+                  We've sent a 4-digit code to <Text style={{ fontWeight: '700', color: '#1A237E' }}>{email}</Text>
+                </Text>
+
+                <View style={styles.otpInputRow}>
+                  {otp.map((digit, index) => (
+                    <TextInput
+                      key={index}
+                      ref={otpRefs[index]}
+                      style={[styles.otpInput, digit ? styles.otpInputFilled : null]}
+                      value={digit}
+                      onChangeText={(v) => handleOtpChange(v, index)}
+                      onKeyPress={(e) => handleOtpKeyPress(e, index)}
+                      keyboardType="number-pad"
+                      maxLength={1}
+                    />
+                  ))}
+                </View>
+
+                <TouchableOpacity 
+                  onPress={handleVerifyOtp} 
+                  style={[styles.webSubmitButton, otpLoading && styles.signUpButtonDisabled]}
+                  disabled={otpLoading}
+                >
+                  {otpLoading ? (
+                    <ActivityIndicator color="#FFF" />
+                  ) : (
+                    <Text style={styles.signUpButtonText}>Verify & Create Account</Text>
+                  )}
+                </TouchableOpacity>
+
+                <View style={styles.resendRow}>
+                  <Text style={styles.resendText}>Didn't receive code? </Text>
+                  {resendTimer > 0 ? (
+                    <Text style={styles.resendTimer}>Resend in {resendTimer}s</Text>
+                  ) : (
+                    <TouchableOpacity onPress={handleResendOtp} disabled={otpLoading}>
+                      <Text style={styles.resendLink}>Resend Code</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              </View>
+            ) : step === 'success' ? (
+              <View style={styles.webFormInner}>
+                <View style={[styles.successIconBox, { alignSelf: 'center' }]}>
+                  <Text style={styles.successIconText}>✓</Text>
+                </View>
+                <Text style={styles.successTitle}>Verified Successfully!</Text>
+                <Text style={[styles.successSubtitle, { textAlign: 'center' }]}>
+                  Your account has been created.{'\n'}Redirecting to request status...
+                </Text>
+              </View>
+            ) : (
+              <View style={styles.webFormInner}>
+                <Text style={styles.webTitle}>Create Account</Text>
+                <Text style={styles.webSubtitle}>Join Class Monitoring System</Text>
+
+                <Text style={styles.label}>Select Role *</Text>
+                <TouchableOpacity 
+                  style={styles.dropdown} 
+                  onPress={() => { setShowRoleDropdown(!showRoleDropdown); setShowDeptDropdown(false); }}
+                >
+                  <Text style={[styles.dropdownText, !role && styles.placeholderText]}>
+                    {role || 'Select your role'}
+                  </Text>
+                  <Text style={styles.dropdownArrow}>▼</Text>
+                </TouchableOpacity>
+
+                {showRoleDropdown && (
+                  <View style={styles.inlineDropdownList}>
+                    {ROLES.map(r => (
+                      <TouchableOpacity
+                        key={r}
+                        style={[styles.inlineDropdownItem, role === r && styles.inlineDropdownItemActive]}
+                        onPress={() => { 
+                          setRole(r); 
+                          setShowRoleDropdown(false); 
+                          if (r !== 'Teacher') setDepartment(''); 
+                        }}
+                      >
+                        <Text style={[styles.inlineDropdownItemText, role === r && styles.inlineDropdownItemTextActive]}>
+                          {r}
+                        </Text>
+                        {role === r && <Text style={styles.inlineDropdownCheck}>✓</Text>}
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+
+                <Text style={styles.label}>Full Name *</Text>
+                <View style={styles.inputContainer}>
+                  <MaterialCommunityIcons name="account-outline" size={20} color="#666" style={styles.inputIcon} />
+                  <TextInput 
+                    style={styles.inputField} 
+                    placeholder="Enter your full name" 
+                    placeholderTextColor="#999"
+                    value={fullName} 
+                    onChangeText={setFullName} 
+                  />
+                </View>
+
+                <Text style={styles.label}>Email Address *</Text>
+                <View style={styles.inputContainer}>
+                  <MaterialCommunityIcons name="email-outline" size={20} color="#666" style={styles.inputIcon} />
+                  <TextInput 
+                    style={styles.inputField} 
+                    placeholder="Enter your email" 
+                    placeholderTextColor="#999"
+                    keyboardType="email-address" 
+                    autoCapitalize="none" 
+                    value={email} 
+                    onChangeText={setEmail} 
+                  />
+                </View>
+
+                <Text style={styles.label}>Password *</Text>
+                <View style={styles.inputContainer}>
+                  <MaterialCommunityIcons name="lock-outline" size={20} color="#666" style={styles.inputIcon} />
+                  <TextInput 
+                    style={styles.inputField} 
+                    placeholder="At least 6 characters" 
+                    placeholderTextColor="#999"
+                    secureTextEntry={!showPassword} 
+                    value={password} 
+                    onChangeText={setPassword} 
+                  />
+                  <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeIcon} activeOpacity={0.7}>
+                    <MaterialCommunityIcons 
+                      name={showPassword ? "eye-off-outline" : "eye-outline"} 
+                      size={20} 
+                      color="#666" 
+                    />
+                  </TouchableOpacity>
+                </View>
+
+                {role === 'Teacher' && (
+                  <>
+                    <Text style={styles.label}>Department *</Text>
+                    <TouchableOpacity 
+                      style={styles.dropdown} 
+                      onPress={() => { setShowDeptDropdown(!showDeptDropdown); setShowRoleDropdown(false); }}
+                    >
+                      <Text style={[styles.dropdownText, !department && styles.placeholderText]}>
+                        {department || 'Select department'}
+                      </Text>
+                      <Text style={styles.dropdownArrow}>▼</Text>
+                    </TouchableOpacity>
+
+                    {showDeptDropdown && (
+                      <View style={[styles.inlineDropdownList, styles.inlineDropdownListScroll]}>
+                        {loadingDepartments ? (
+                          <View style={{ padding: 20, alignItems: 'center', justifyContent: 'center' }}>
+                            <ActivityIndicator size="small" color="#1A237E" />
+                            <Text style={{ fontSize: 13, color: '#666', marginTop: 8 }}>Loading departments...</Text>
+                          </View>
+                        ) : (
+                          <ScrollView nestedScrollEnabled showsVerticalScrollIndicator={true}>
+                            {departments.map(d => (
+                              <TouchableOpacity
+                                key={d}
+                                style={[styles.inlineDropdownItem, department === d && styles.inlineDropdownItemActive]}
+                                onPress={() => { setDepartment(d); setShowDeptDropdown(false); }}
+                              >
+                                <Text style={[styles.inlineDropdownItemText, department === d && styles.inlineDropdownItemTextActive]}>
+                                  {d}
+                                </Text>
+                                {department === d && <Text style={styles.inlineDropdownCheck}>✓</Text>}
+                              </TouchableOpacity>
+                            ))}
+                          </ScrollView>
+                        )}
+                      </View>
+                    )}
+                  </>
+                )}
+
+                <TouchableOpacity 
+                  style={[styles.webSubmitButton, loading && styles.signUpButtonDisabled]} 
+                  onPress={handleSignUp}
+                  disabled={loading}
+                  activeOpacity={0.85}
+                >
+                  {loading ? (
+                    <ActivityIndicator color="#FFF" />
+                  ) : (
+                    <Text style={styles.signUpButtonText}>SIGN UP</Text>
+                  )}
+                </TouchableOpacity>
+
+                <View style={styles.footer}>
+                  <Text style={styles.footerText}>Already have an account? </Text>
+                  <TouchableOpacity onPress={onBack}>
+                    <Text style={styles.linkText}>Sign In Now</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+          </ScrollView>
+        </View>
+      </View>
+    );
+  }
+
+  // ✅ MOBILE LAYOUT
   if (step === 'otp') {
     return (
       <SafeAreaView edges={['bottom']} style={styles.container}>
@@ -200,10 +475,6 @@ export default function SignUpScreen({ onBack, onSignUp }: SignUpScreenProps) {
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
-            <View style={styles.otpIconBox}>
-              <Text style={styles.otpIconText}>✉</Text>
-            </View>
-
             <Text style={styles.otpTitle}>Enter Verification Code</Text>
             <Text style={styles.otpSubtitle}>
               We've sent a 4-digit code to{'\n'}
@@ -345,14 +616,24 @@ export default function SignUpScreen({ onBack, onSignUp }: SignUpScreenProps) {
             />
 
             <Text style={styles.label}>Password *</Text>
-            <TextInput 
-              style={styles.input} 
-              placeholder="At least 6 characters" 
-              placeholderTextColor="#999"
-              secureTextEntry 
-              value={password} 
-              onChangeText={setPassword} 
-            />
+            {/* ✅ FIXED: Password field with eye toggle icon */}
+            <View style={styles.passwordInputContainer}>
+              <TextInput 
+                style={styles.passwordInput} 
+                placeholder="At least 6 characters" 
+                placeholderTextColor="#999"
+                secureTextEntry={!showPassword} 
+                value={password} 
+                onChangeText={setPassword} 
+              />
+              <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeIcon} activeOpacity={0.7}>
+                <MaterialCommunityIcons 
+                  name={showPassword ? "eye-off-outline" : "eye-outline"} 
+                  size={20} 
+                  color="#666" 
+                />
+              </TouchableOpacity>
+            </View>
 
             {role === 'Teacher' && (
               <>
@@ -369,20 +650,27 @@ export default function SignUpScreen({ onBack, onSignUp }: SignUpScreenProps) {
 
                 {showDeptDropdown && (
                   <View style={[styles.inlineDropdownList, styles.inlineDropdownListScroll]}>
-                    <ScrollView nestedScrollEnabled showsVerticalScrollIndicator={true}>
-                      {DEPARTMENTS.map(d => (
-                        <TouchableOpacity
-                          key={d}
-                          style={[styles.inlineDropdownItem, department === d && styles.inlineDropdownItemActive]}
-                          onPress={() => { setDepartment(d); setShowDeptDropdown(false); }}
-                        >
-                          <Text style={[styles.inlineDropdownItemText, department === d && styles.inlineDropdownItemTextActive]}>
-                            {d}
-                          </Text>
-                          {department === d && <Text style={styles.inlineDropdownCheck}>✓</Text>}
-                        </TouchableOpacity>
-                      ))}
-                    </ScrollView>
+                    {loadingDepartments ? (
+                      <View style={{ padding: 20, alignItems: 'center', justifyContent: 'center' }}>
+                        <ActivityIndicator size="small" color="#1A237E" />
+                        <Text style={{ fontSize: 13, color: '#666', marginTop: 8 }}>Loading departments...</Text>
+                      </View>
+                    ) : (
+                      <ScrollView nestedScrollEnabled showsVerticalScrollIndicator={true}>
+                        {departments.map(d => (
+                          <TouchableOpacity
+                            key={d}
+                            style={[styles.inlineDropdownItem, department === d && styles.inlineDropdownItemActive]}
+                            onPress={() => { setDepartment(d); setShowDeptDropdown(false); }}
+                          >
+                            <Text style={[styles.inlineDropdownItemText, department === d && styles.inlineDropdownItemTextActive]}>
+                              {d}
+                            </Text>
+                            {department === d && <Text style={styles.inlineDropdownCheck}>✓</Text>}
+                          </TouchableOpacity>
+                        ))}
+                      </ScrollView>
+                    )}
                   </View>
                 )}
               </>
@@ -412,6 +700,177 @@ export default function SignUpScreen({ onBack, onSignUp }: SignUpScreenProps) {
 }
 
 const styles = StyleSheet.create({
+  // Web 2-Column Split Styles (Smart Desk Style)
+  webContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#FFF',
+  },
+  webHeroPanel: {
+    flex: 1,
+    backgroundColor: '#1A237E',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 40,
+  },
+  heroContent: {
+    maxWidth: 480,
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+  },
+  heroLogoWrapper: {
+    position: 'relative',
+    marginBottom: 24,
+  },
+  heroBadge: {
+    position: 'absolute',
+    bottom: -4,
+    right: -8,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 5,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+  },
+  heroTitle: {
+    fontSize: 30,
+    fontWeight: '800',
+    color: '#FFF',
+    textAlign: 'center',
+    letterSpacing: 0.5,
+    marginBottom: 8,
+  },
+  heroSubtitle: {
+    fontSize: 16,
+    color: '#C5CAE9',
+    textAlign: 'center',
+    marginBottom: 40,
+    fontWeight: '600',
+  },
+  heroFeatures: {
+    width: 'auto',
+    gap: 18,
+    alignSelf: 'center',
+  },
+  heroFeatureItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+  },
+  heroFeatureText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: '600',
+    letterSpacing: 0.2,
+  },
+
+  // Web Form Panel
+  webFormPanel: {
+    flex: 1,
+    backgroundColor: '#FFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: '100%',
+    height: '100%',
+  },
+  webFormScrollView: {
+    width: '100%',
+    flex: 1,
+  },
+  webFormContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: '100%',
+    paddingVertical: 40,
+    paddingHorizontal: 40,
+  },
+  webFormInner: {
+    width: '90%',
+    maxWidth: 700,
+    alignSelf: 'center',
+  },
+  webTitle: {
+    fontSize: 36,
+    fontWeight: '800',
+    color: '#1E293B',
+    marginBottom: 6,
+  },
+  webSubtitle: {
+    fontSize: 16,
+    color: '#64748B',
+    marginBottom: 32,
+  },
+  webBackButton: {
+    marginBottom: 16,
+  },
+  webBackArrow: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1A237E',
+  },
+  webSubmitButton: {
+    backgroundColor: '#1A237E',
+    height: 56,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+    marginTop: 20,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 3.84,
+  },
+
+  // Form Fields & Icons
+  inputContainer: {
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1.5,
+    borderColor: '#CBD5E1',
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    height: 56,
+    marginBottom: 10,
+    width: '100%',
+  },
+  inputIcon: { marginRight: 14 },
+  inputField: {
+    flex: 1,
+    paddingVertical: 14,
+    fontSize: 16,
+    color: '#1E293B',
+  },
+  passwordInputContainer: {
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1.5,
+    borderColor: '#CBD5E1',
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    height: 56,
+    marginBottom: 10,
+    width: '100%',
+  },
+  passwordInput: {
+    flex: 1,
+    paddingVertical: 14,
+    fontSize: 16,
+    color: '#1E293B',
+  },
+  eyeIcon: { padding: 8 },
+
+  // Mobile & Common Styles
   container: { flex: 1, backgroundColor: '#F5F5F5' },
   header: {
     backgroundColor: '#FFF',
@@ -434,56 +893,51 @@ const styles = StyleSheet.create({
     maxWidth: 480,
     width: '100%',
     alignSelf: 'center',
-    backgroundColor: Platform.OS === 'web' ? '#FFF' : 'transparent',
-    borderRadius: Platform.OS === 'web' ? 16 : 0,
-    marginTop: Platform.OS === 'web' ? 20 : 0,
-    marginBottom: Platform.OS === 'web' ? 30 : 0,
-    borderWidth: Platform.OS === 'web' ? 1 : 0,
-    borderColor: '#E8EAF6',
-    elevation: Platform.OS === 'web' ? 3 : 0,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 14,
   },
   title: { fontSize: 28, fontWeight: '700', color: '#1A237E', textAlign: 'center' },
-  subtitle: { fontSize: 16, color: '#666', textAlign: 'center', marginBottom: 30, fontWeight: '600' },
-  label: { fontSize: 14, fontWeight: '600', color: '#333', marginBottom: 8, marginTop: 15 },
+  subtitle: { fontSize: 16, color: '#666', textAlign: 'center', marginBottom: 25, fontWeight: '600' },
+  label: { fontSize: 14, fontWeight: '600', color: '#333', marginBottom: 6, marginTop: 12 },
   input: {
     backgroundColor: '#FFF',
     borderWidth: 1,
     borderColor: '#DDD',
     borderRadius: 10,
     padding: 14,
-    fontSize: 16,
+    fontSize: 15,
     color: '#333',
+    marginBottom: 6,
   },
   dropdown: {
-    backgroundColor: '#FFF',
-    borderWidth: 1,
-    borderColor: '#DDD',
-    borderRadius: 10,
-    padding: 14,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1.5,
+    borderColor: '#CBD5E1',
+    borderRadius: 12,
+    height: 56,
+    paddingHorizontal: 20,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: 10,
+    width: '100%',
   },
-  dropdownText: { fontSize: 16, color: '#333', flex: 1 },
-  dropdownArrow: { fontSize: 14, color: '#666' },
-  placeholderText: { color: '#999' },
+  dropdownText: { fontSize: 16, color: '#1E293B', flex: 1 },
+  dropdownArrow: { fontSize: 14, color: '#64748B' },
+  placeholderText: { color: '#94A3B8' },
   
   inlineDropdownList: {
     backgroundColor: '#FFF',
-    borderWidth: 1,
-    borderColor: '#DDD',
-    borderRadius: 10,
-    marginTop: 5,
-    paddingVertical: 5,
-    elevation: 3,
+    borderWidth: 1.5,
+    borderColor: '#CBD5E1',
+    borderRadius: 12,
+    marginTop: -2,
+    marginBottom: 12,
+    paddingVertical: 6,
+    elevation: 4,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
+    width: '100%',
   },
   inlineDropdownListScroll: { maxHeight: 200 },
   inlineDropdownItem: {
@@ -506,15 +960,16 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderRadius: 12,
     alignItems: 'center',
-    marginTop: 30,
+    marginTop: 24,
     elevation: 3,
   },
   signUpButtonDisabled: { backgroundColor: '#9E9E9E' },
-  signUpButtonText: { color: '#FFF', fontSize: 18, fontWeight: '700' },
-  footer: { flexDirection: 'row', justifyContent: 'center', marginTop: 25, marginBottom: 30 },
+  signUpButtonText: { color: '#FFF', fontSize: 17, fontWeight: '700', letterSpacing: 0.5 },
+  footer: { flexDirection: 'row', justifyContent: 'center', marginTop: 24, marginBottom: 30 },
   footerText: { fontSize: 14, color: '#666' },
-  linkText: { fontSize: 14, color: '#1A237E', fontWeight: '600' },
+  linkText: { fontSize: 14, color: '#1A237E', fontWeight: '700' },
 
+  // OTP Styles
   otpContainer: { flexGrow: 1, padding: 20, alignItems: 'center', paddingTop: 40 },
   otpIconBox: {
     width: 120, height: 120, borderRadius: 60, backgroundColor: '#E8EAF6',
@@ -542,6 +997,7 @@ const styles = StyleSheet.create({
   resendLink: { fontSize: 14, color: '#1A237E', fontWeight: '700' },
   resendTimer: { fontSize: 14, color: '#999', fontWeight: '600' },
 
+  // Success Styles
   successContainer: {
     flex: 1, backgroundColor: '#F5F5F5', alignItems: 'center',
     justifyContent: 'center', padding: 20,

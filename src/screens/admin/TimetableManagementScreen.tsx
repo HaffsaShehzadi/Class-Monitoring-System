@@ -456,7 +456,7 @@ export default function TimetableManagementScreen({ onBack, onNavigate, params }
                       </TouchableOpacity>
                     );
                   })}
-                  <View style={styles.dataCell} />
+                  <View style={styles.addPeriodPlaceholder} />
                 </View>
               ))}
             </View>
@@ -573,25 +573,26 @@ const styles = StyleSheet.create({
   verticalScroll: { flex: 1 },
   grid: { borderWidth: 1, borderColor: '#90A4AE', borderRadius: 4, overflow: 'hidden', backgroundColor: '#FFF', margin: 15 },
   row: { flexDirection: 'row' },
-  cornerCell: { width: 90, height: 55, backgroundColor: '#1A237E', justifyContent: 'center', alignItems: 'center', borderRightWidth: 1, borderBottomWidth: 1, borderColor: '#90A4AE' },
+  cornerCell: { width: 90, height: 60, backgroundColor: '#1A237E', justifyContent: 'center', alignItems: 'center', borderRightWidth: 1, borderBottomWidth: 1, borderColor: '#90A4AE' },
   cornerText: { color: '#FFF', fontSize: 11, fontWeight: '800', textAlign: 'center' },
-  periodHeaderCell: { width: 115, height: 65, backgroundColor: '#E8EAF6', justifyContent: 'center', alignItems: 'center', borderRightWidth: 1, borderBottomWidth: 1, borderColor: '#90A4AE' },
-  periodNum: { fontSize: 14, fontWeight: '800', color: '#1A237E' },
-  periodTime: { fontSize: 9, color: '#546E7A', textAlign: 'center', marginTop: 2 },
-  cellEditIcon: { position: 'absolute', top: 8, right: 8 },
-  addPeriodCell: { width: 80, height: 65, backgroundColor: '#E8F5E9', justifyContent: 'center', alignItems: 'center', borderBottomWidth: 1, borderColor: '#90A4AE' },
+  periodHeaderCell: { width: 118, height: 60, backgroundColor: '#E8EAF6', justifyContent: 'center', alignItems: 'center', borderRightWidth: 1, borderBottomWidth: 1, borderColor: '#90A4AE' },
+  periodNum: { fontSize: 13.5, fontWeight: '800', color: '#1A237E' },
+  periodTime: { fontSize: 9.5, color: '#546E7A', textAlign: 'center', marginTop: 2 },
+  cellEditIcon: { position: 'absolute', top: 6, right: 6 },
+  addPeriodCell: { width: 80, height: 60, backgroundColor: '#E8F5E9', justifyContent: 'center', alignItems: 'center', borderBottomWidth: 1, borderColor: '#90A4AE' },
   addPeriodIcon: { fontSize: 22, color: '#4CAF50', fontWeight: '700' },
   addPeriodText: { fontSize: 11, color: '#4CAF50', fontWeight: '700', marginTop: 2 },
-  deptSemCell: { width: 90, minHeight: 75, backgroundColor: '#F5F5F5', justifyContent: 'center', alignItems: 'center', borderRightWidth: 1, borderBottomWidth: 1, borderColor: '#90A4AE' },
+  addPeriodPlaceholder: { width: 80, minHeight: 105, borderBottomWidth: 1, borderColor: '#90A4AE', backgroundColor: '#FAFAFA' },
+  deptSemCell: { width: 90, minHeight: 105, backgroundColor: '#F5F5F5', justifyContent: 'center', alignItems: 'center', borderRightWidth: 1, borderBottomWidth: 1, borderColor: '#90A4AE' },
   deptText: { fontSize: 13, fontWeight: '800', color: '#1A237E' },
   semText: { fontSize: 11, color: '#546E7A', fontWeight: '600' },
-  dataCell: { width: 115, minHeight: 75, justifyContent: 'center', alignItems: 'center', borderRightWidth: 1, borderBottomWidth: 1, borderColor: '#90A4AE', padding: 4 },
+  dataCell: { width: 118, minHeight: 105, justifyContent: 'center', alignItems: 'center', borderRightWidth: 1, borderBottomWidth: 1, borderColor: '#90A4AE', padding: 4 },
   filledCell: { backgroundColor: '#FFF' },
   emptyCell: { backgroundColor: '#FAFAFA' },
-  cellContent: { alignItems: 'center', justifyContent: 'center', flex: 1 },
-  cellTeacher: { fontSize: 10, fontWeight: '700', color: '#1A237E', textAlign: 'center', marginBottom: 2 },
-  cellCode: { fontSize: 9, color: '#546E7A', textAlign: 'center', marginBottom: 2 },
-  cellRoom: { fontSize: 9, color: '#D32F2F', fontWeight: '600', textAlign: 'center' },
+  cellContent: { alignItems: 'center', justifyContent: 'center', flex: 1, paddingVertical: 2 },
+  cellTeacher: { fontSize: 12.5, fontWeight: '700', color: '#1A237E', textAlign: 'center', marginBottom: 2 },
+  cellCode: { fontSize: 11, color: '#546E7A', fontWeight: '600', textAlign: 'center', marginBottom: 2 },
+  cellRoom: { fontSize: 11, color: '#D32F2F', fontWeight: '700', textAlign: 'center' },
   cellPlusIcon: { fontSize: 20, color: '#B0BEC5', fontWeight: '700' },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 },
   modalContent: { backgroundColor: '#FFF', borderRadius: 16, width: '100%', maxWidth: 400, padding: 20, elevation: 10 },

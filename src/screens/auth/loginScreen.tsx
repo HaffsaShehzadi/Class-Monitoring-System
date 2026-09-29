@@ -27,18 +27,21 @@ export default function LoginScreen({
   const [loading, setLoading] = useState(false);
 
   const handleLogin = async () => {
-    if (!email || !password) {
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanPassword = password.trim();
+
+    if (!cleanEmail || !cleanPassword) {
       Alert.alert('All Fields Required', 'Please enter email and password');
       return;
     }
     
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
+    if (!emailRegex.test(cleanEmail)) {
       Alert.alert('Invalid Email', 'Please enter a valid email address');
       return;
     }
 
-    if (password.length < 6) {
+    if (cleanPassword.length < 6) {
       Alert.alert('Invalid Password', 'Password must be at least 6 characters');
       return;
     }
@@ -46,38 +49,33 @@ export default function LoginScreen({
     setLoading(true);
 
     try {
-      const response = await authService.login(email, password);
+      const response = await authService.login(cleanEmail, cleanPassword);
 
       if (response.status === 'pending') {
         setLoading(false);
-        Alert.alert(
-          'Account Pending',
-          'Your account is pending admin approval. Please wait.',
-          [
-            {
-              text: 'Check Status',
-              onPress: () => {
-                if (onPendingStatus) {
-                  onPendingStatus({
-                    email: email,
-                    role: 'user',
-                    name: email.split('@')[0],
-                  });
-                }
-              }
-            },
-            { text: 'OK' }
-          ]
-        );
+        if (onPendingStatus) {
+          onPendingStatus({
+            email: response.user?.email || cleanEmail,
+            role: response.user?.role || 'User',
+            name: response.user?.name || cleanEmail.split('@')[0],
+            password: cleanPassword,
+            status: 'pending',
+          });
+        }
         return;
       }
 
       if (response.status === 'rejected') {
         setLoading(false);
-        Alert.alert(
-          'Account Rejected',
-          response.message || 'Your account request has been rejected by admin.'
-        );
+        if (onPendingStatus) {
+          onPendingStatus({
+            email: response.user?.email || cleanEmail,
+            role: response.user?.role || 'User',
+            name: response.user?.name || cleanEmail.split('@')[0],
+            password: cleanPassword,
+            status: 'rejected',
+          });
+        }
         return;
       }
 
@@ -104,6 +102,116 @@ export default function LoginScreen({
     }
   };
 
+  if (Platform.OS === 'web') {
+    return (
+      <View style={styles.webContainer}>
+        {/* Left Column - Class Monitoring System Navy Blue Hero Panel */}
+        <View style={styles.webHeroPanel}>
+          <View style={styles.heroContent}>
+            {/* App's Official Logo with Green Badge */}
+            <View style={styles.heroLogoWrapper}>
+              <MaterialCommunityIcons name="school" size={88} color="#FFFFFF" />
+              <View style={styles.heroBadge}>
+                <MaterialCommunityIcons name="clipboard-check" size={26} color="#4CAF50" />
+              </View>
+            </View>
+
+            <Text style={styles.heroTitle}>Class Monitoring System</Text>
+            <Text style={styles.heroSubtitle}>Teachers Attendance Management</Text>
+            
+            {/* 3 Features in the Middle */}
+            <View style={styles.heroFeatures}>
+              <View style={styles.heroFeatureItem}>
+                <MaterialCommunityIcons name="check-circle" size={22} color="#4CAF50" />
+                <Text style={styles.heroFeatureText}>GPS based Attendance System</Text>
+              </View>
+              <View style={styles.heroFeatureItem}>
+                <MaterialCommunityIcons name="check-circle" size={22} color="#4CAF50" />
+                <Text style={styles.heroFeatureText}>Timetable Validation</Text>
+              </View>
+              <View style={styles.heroFeatureItem}>
+                <MaterialCommunityIcons name="check-circle" size={22} color="#4CAF50" />
+                <Text style={styles.heroFeatureText}>PDF Report Generation</Text>
+              </View>
+            </View>
+          </View>
+        </View>
+
+        {/* Right Column - Clean Sign In Form */}
+        <View style={styles.webFormPanel}>
+          <ScrollView 
+            style={styles.webFormScrollView} 
+            contentContainerStyle={styles.webFormContent} 
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={styles.webFormInner}>
+              <Text style={styles.webTitle}>Welcome</Text>
+              <Text style={styles.webSubtitle}>Login to Class Monitoring System</Text>
+
+              <Text style={styles.label}>Email Address</Text>
+              <View style={styles.inputContainer}>
+                <MaterialCommunityIcons name="email-outline" size={20} color="#666" style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Enter your email"
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  value={email}
+                  onChangeText={setEmail}
+                  placeholderTextColor="#999"
+                />
+              </View>
+
+              <Text style={styles.label}>Password</Text>
+              <View style={styles.inputContainer}>
+                <MaterialCommunityIcons name="lock-outline" size={20} color="#666" style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Enter your password"
+                  secureTextEntry={!showPassword}
+                  value={password}
+                  onChangeText={setPassword}
+                  placeholderTextColor="#999"
+                />
+                <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeIcon} activeOpacity={0.7}>
+                  <MaterialCommunityIcons 
+                    name={showPassword ? "eye-off-outline" : "eye-outline"} 
+                    size={20} 
+                    color="#666" 
+                  />
+                </TouchableOpacity>
+              </View>
+
+              <TouchableOpacity onPress={onForgotPassword} style={styles.forgotContainer}>
+                <Text style={styles.forgotText}>Forgot Password?</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={styles.loginButton} 
+                onPress={handleLogin}
+                disabled={loading}
+                activeOpacity={0.85}
+              >
+                {loading ? (
+                  <ActivityIndicator color="#FFF" />
+                ) : (
+                  <Text style={styles.loginButtonText}>SIGN IN</Text>
+                )}
+              </TouchableOpacity>
+
+              <View style={styles.footer}>
+                <Text style={styles.footerText}>Don't have an account? </Text>
+                <TouchableOpacity onPress={onSignUp}>
+                  <Text style={styles.linkText}>Sign Up Now</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </ScrollView>
+        </View>
+      </View>
+    );
+  }
+
   return (
     <SafeAreaView edges={['bottom']} style={styles.container}>
       <View style={styles.header}>
@@ -129,8 +237,8 @@ export default function LoginScreen({
             <MaterialCommunityIcons name="account-circle" size={80} color="#1A237E" />
           </View>
 
-          <Text style={styles.title}>Welcome Back!</Text>
-          <Text style={styles.subtitle}>Class Monitoring System</Text>
+          <Text style={styles.title}>Welcome</Text>
+          <Text style={styles.subtitle}>Login to Class Monitoring System</Text>
 
           <Text style={styles.label}>Email Address *</Text>
           <View style={styles.inputContainer}>
@@ -157,7 +265,7 @@ export default function LoginScreen({
               onChangeText={setPassword}
               placeholderTextColor="#999"
             />
-            <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeIcon}>
+            <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeIcon} activeOpacity={0.7}>
               <MaterialCommunityIcons 
                 name={showPassword ? "eye-off-outline" : "eye-outline"} 
                 size={20} 
@@ -201,6 +309,115 @@ export default function LoginScreen({
 }
 
 const styles = StyleSheet.create({
+  // Web 2-Column Split Styles (Smart Desk Style)
+  webContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#FFF',
+  },
+  webHeroPanel: {
+    flex: 1,
+    backgroundColor: '#1A237E',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 40,
+  },
+  heroContent: {
+    maxWidth: 480,
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+  },
+  heroLogoWrapper: {
+    position: 'relative',
+    marginBottom: 24,
+  },
+  heroBadge: {
+    position: 'absolute',
+    bottom: -4,
+    right: -8,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 5,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+  },
+  heroTitle: {
+    fontSize: 30,
+    fontWeight: '800',
+    color: '#FFF',
+    textAlign: 'center',
+    letterSpacing: 0.5,
+    marginBottom: 8,
+  },
+  heroSubtitle: {
+    fontSize: 16,
+    color: '#C5CAE9',
+    textAlign: 'center',
+    marginBottom: 40,
+    fontWeight: '600',
+  },
+  heroFeatures: {
+    width: 'auto',
+    gap: 18,
+    alignSelf: 'center',
+  },
+  heroFeatureItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+  },
+  heroFeatureText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: '600',
+    letterSpacing: 0.2,
+  },
+
+  // Web Form Panel
+  webFormPanel: {
+    flex: 1,
+    backgroundColor: '#FFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: '100%',
+    height: '100%',
+  },
+  webFormScrollView: {
+    width: '100%',
+    flex: 1,
+  },
+  webFormContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: '100%',
+    paddingVertical: 40,
+    paddingHorizontal: 40,
+  },
+  webFormInner: {
+    width: '90%',
+    maxWidth: 700,
+    alignSelf: 'center',
+  },
+  webTitle: {
+    fontSize: 36,
+    fontWeight: '800',
+    color: '#1E293B',
+    marginBottom: 6,
+  },
+  webSubtitle: {
+    fontSize: 16,
+    color: '#64748B',
+    marginBottom: 32,
+  },
+
+  // Mobile & Common Styles
   container: { flex: 1, backgroundColor: '#F5F5F5' },
   header: {
     backgroundColor: '#FFF',
@@ -219,44 +436,48 @@ const styles = StyleSheet.create({
   logoContainer: { marginBottom: 20 },
   title: { fontSize: 26, fontWeight: '700', color: '#1A237E', textAlign: 'center', marginBottom: 5 },
   subtitle: { fontSize: 15, color: '#666', textAlign: 'center', marginBottom: 30, fontWeight: '600' },
-  label: { fontSize: 14, fontWeight: '600', color: '#333', marginBottom: 8, marginTop: 10, alignSelf: 'flex-start', marginLeft: 5 },
+  label: { fontSize: 15, fontWeight: '600', color: '#334155', marginBottom: 8, marginTop: 14, alignSelf: 'flex-start' },
   inputContainer: {
-    backgroundColor: '#FFF',
-    borderWidth: 1,
-    borderColor: '#DDD',
-    borderRadius: 10,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1.5,
+    borderColor: '#CBD5E1',
+    borderRadius: 12,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    marginBottom: 5,
+    paddingHorizontal: 20,
+    height: 56,
+    marginBottom: 10,
     width: '100%',
   },
-  inputIcon: { marginRight: 10 },
-  input: { flex: 1, paddingVertical: 14, fontSize: 16, color: '#333' },
-  eyeIcon: { padding: 5 },
-  forgotContainer: { alignSelf: 'flex-end', marginBottom: 20, width: '100%', marginTop: 5 },
-  forgotText: { fontSize: 14, color: '#1A237E', fontWeight: '500' },
+  inputIcon: { marginRight: 14 },
+  input: {
+    flex: 1,
+    paddingVertical: 14,
+    fontSize: 16,
+    color: '#1E293B',
+  },
+  eyeIcon: { padding: 8 },
+  forgotContainer: { alignSelf: 'flex-end', marginBottom: 20, marginTop: 8 },
+  forgotText: { fontSize: 14, color: '#1A237E', fontWeight: '600' },
   loginButton: {
     backgroundColor: '#1A237E',
-    paddingVertical: 16,
-    paddingHorizontal: 40,
+    height: 56,
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
     width: '100%',
-    marginTop: 10,
+    marginTop: 20,
     elevation: 3,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
+    shadowOpacity: 0.15,
     shadowRadius: 3.84,
-    minHeight: 56,
   },
-  loginButtonText: { color: '#FFF', fontSize: 18, fontWeight: '700' },
+  loginButtonText: { color: '#FFF', fontSize: 18, fontWeight: '700', letterSpacing: 0.5 },
   divider: { flexDirection: 'row', alignItems: 'center', marginVertical: 25, width: '100%' },
   dividerLine: { flex: 1, height: 1, backgroundColor: '#DDD' },
   dividerText: { paddingHorizontal: 15, color: '#666', fontSize: 14 },
-  footer: { flexDirection: 'row', justifyContent: 'center', marginTop: 10, marginBottom: 30 },
+  footer: { flexDirection: 'row', justifyContent: 'center', marginTop: 18, marginBottom: 25 },
   footerText: { fontSize: 14, color: '#666' },
-  linkText: { fontSize: 14, color: '#1A237E', fontWeight: '600' },
+  linkText: { fontSize: 14, color: '#1A237E', fontWeight: '700' },
 });

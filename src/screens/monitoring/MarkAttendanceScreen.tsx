@@ -29,6 +29,51 @@ const formatTime12Hour = (timeStr: string): string => {
   return `${formatSingle(start)} - ${formatSingle(end)}`;
 };
 
+const extractDateStr = (rawDate: any): string => {
+  if (!rawDate) return '';
+  if (typeof rawDate === 'string') return rawDate.split('T')[0];
+  if (rawDate instanceof Date) {
+    const y = rawDate.getFullYear();
+    const m = String(rawDate.getMonth() + 1).padStart(2, '0');
+    const d = String(rawDate.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+  return String(rawDate).split('T')[0];
+};
+
+const getDayFromDate = (dateStr?: string): string => {
+  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  if (dateStr) {
+    const clean = extractDateStr(dateStr);
+    const parts = clean.split('-');
+    if (parts.length === 3) {
+      const y = parseInt(parts[0], 10);
+      const m = parseInt(parts[1], 10) - 1;
+      const d = parseInt(parts[2], 10);
+      const dt = new Date(y, m, d);
+      return days[dt.getDay()];
+    }
+  }
+  const today = new Date();
+  return days[today.getDay()];
+};
+
+const formatDisplayDate = (dateStr?: string): string => {
+  if (!dateStr) {
+    return new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  }
+  const clean = extractDateStr(dateStr);
+  const parts = clean.split('-');
+  if (parts.length === 3) {
+    const y = parseInt(parts[0], 10);
+    const m = parseInt(parts[1], 10) - 1;
+    const d = parseInt(parts[2], 10);
+    const dt = new Date(y, m, d);
+    return dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  }
+  return dateStr;
+};
+
 const isWithinLectureTime = (timeStr: string, shift: string): boolean => {
   if (!ENFORCE_TIME_CHECK) return true;
   try {
@@ -55,7 +100,8 @@ const isWithinLectureTime = (timeStr: string, shift: string): boolean => {
 export default function MarkAttendanceScreen({ onBack }: any) {
   const [selectedShift, setSelectedShift] = useState<string | null>(null);
   const [selectedDept, setSelectedDept] = useState<string | null>(null);
-  const [selectedDay] = useState('Monday');
+  const [selectedDay, setSelectedDay] = useState<string>('Monday');
+  const [currentDateStr, setCurrentDateStr] = useState<string>('');
   
   const [showModal, setShowModal] = useState(false);
   const [selectedLecture, setSelectedLecture] = useState<any>(null);
@@ -92,30 +138,46 @@ export default function MarkAttendanceScreen({ onBack }: any) {
     init();
   }, []);
 
-  // ✅ STEP 2: Jab bhi selectedShift change ho, toh LOCAL FILTER lagao (No API Call)
+  // ✅ STEP 2: Jab bhi selectedShift change ho, toh LOCAL FILTER lagao
   useEffect(() => {
     if (allFetchedDuties.length === 0) return;
 
     const now = new Date();
     const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     
-    const todaysDuties = allFetchedDuties.filter((d: any) => {
-      const dDate = d.duty_date ? String(d.duty_date).split('T')[0] : '';
+    // 1. Filter duties matching today
+    let matchedDuties = allFetchedDuties.filter((d: any) => {
+      const dDate = extractDateStr(d.duty_date);
       return dDate === todayStr;
     });
 
-    let filteredDuties = todaysDuties;
+    // 2. Fallback: If no duties for today, pick duties of latest assigned date
+    if (matchedDuties.length === 0) {
+      const sortedDuties = [...allFetchedDuties].sort((a, b) => {
+        const da = extractDateStr(a.duty_date);
+        const db = extractDateStr(b.duty_date);
+        return db.localeCompare(da);
+      });
+      if (sortedDuties.length > 0) {
+        const latestDate = extractDateStr(sortedDuties[0].duty_date);
+        matchedDuties = allFetchedDuties.filter((d: any) => extractDateStr(d.duty_date) === latestDate);
+      }
+    }
+
+    let filteredDuties = matchedDuties;
     if (selectedShift) {
       filteredDuties = filteredDuties.filter((d: any) => d.shift === selectedShift || d.shift === 'Both');
     }
 
-    const uniqueDepts = [...new Map(filteredDuties.map((item: any) => 
-      [item.dept_name + '-' + item.shift, { 
+    const uniqueDepts = [...new Map(filteredDuties.map((item: any) => {
+      const dutyDate = extractDateStr(item.duty_date) || todayStr;
+      return [item.dept_name + '-' + item.shift, { 
         id: item.id, 
         department: item.dept_name, 
-        shift: item.shift 
-      }]
-    )).values()];
+        shift: item.shift,
+        duty_date: dutyDate
+      }];
+    })).values()];
     
     console.log("✅ Final departments to show:", uniqueDepts.length);
     setAssignedDuties(uniqueDepts);
@@ -123,8 +185,10 @@ export default function MarkAttendanceScreen({ onBack }: any) {
   }, [selectedShift, allFetchedDuties]);
 
   useEffect(() => { 
-    if (selectedShift && selectedDept) fetchTimetable(); 
-  }, [selectedShift, selectedDept, selectedDay]);
+    if (selectedShift && selectedDept) {
+      fetchTimetable(); 
+    }
+  }, [selectedShift, selectedDept, selectedDay, currentDateStr]);
 
   const fetchTimetable = async () => {
     if (!selectedShift || !selectedDept) return;
@@ -137,6 +201,8 @@ export default function MarkAttendanceScreen({ onBack }: any) {
         return p.day === 'Regular' || p.day === null || p.day === undefined;
       });
       setPeriods(filteredPeriods);
+
+      // 1. Timetable fetch karo for selected day & shift
       const data = await moService.getTimetableByDayAndShift(selectedDay, selectedShift);
       const mappedData = data.map((item: any) => ({
         id: item.id, dept: item.dept_name, semester: item.semester, day: item.day,
@@ -144,10 +210,60 @@ export default function MarkAttendanceScreen({ onBack }: any) {
         subject: item.subject_code, code: item.subject_code, teacher: item.teacher_name, room: item.room_no
       }));
       setTimetableData(mappedData);
-    } catch (error: any) { Alert.alert('Error', error.message); } finally { setLoading(false); }
+
+      // 2. Iss date ki marked attendance backend se fetch karo
+      const targetDate = currentDateStr || extractDateStr(new Date());
+      const todayAttendance = await attendanceService.getTodayAttendance(targetDate);
+      const recordsMap: any = {};
+      if (Array.isArray(todayAttendance)) {
+        todayAttendance.forEach((att: any) => {
+          if (att.timetable_id) {
+            recordsMap[att.timetable_id] = {
+              status: att.status ? att.status.toLowerCase() : 'present',
+              substituteName: att.substitute_teacher_name || '',
+              isOffline: false
+            };
+          }
+        });
+      }
+
+      // 3. Local SQLite unsynced records bhi merge karo
+      try {
+        const { getUnsyncedRecords } = await import('../../services/offlineStorage');
+        const unsynced = await getUnsyncedRecords();
+        if (Array.isArray(unsynced)) {
+          unsynced.forEach((rec: any) => {
+            if (rec.timetable_id && (!rec.date || rec.date === targetDate)) {
+              recordsMap[rec.timetable_id] = {
+                status: rec.status ? rec.status.toLowerCase() : 'present',
+                substituteName: rec.substitute || '',
+                isOffline: true
+              };
+            }
+          });
+        }
+      } catch (e) {
+        // SQLite web fallback
+      }
+
+      setSavedRecords(recordsMap);
+
+    } catch (error: any) { 
+      Alert.alert('Error', error.message); 
+    } finally { 
+      setLoading(false); 
+    }
   };
 
-  const filteredDepts = assignedDuties.filter(d => d.shift === selectedShift);
+  const handleSelectDept = (duty: any) => {
+    setSelectedDept(duty.department);
+    const dateStr = duty.duty_date || extractDateStr(new Date());
+    setCurrentDateStr(dateStr);
+    const dayName = getDayFromDate(dateStr);
+    setSelectedDay(dayName);
+  };
+
+  const filteredDepts = assignedDuties.filter(d => d.shift === selectedShift || d.shift === 'Both');
   const getAttendance = (sem: string, periodId: number) => timetableData.find(t => t.dept === selectedDept && t.semester === sem && t.day === selectedDay && t.period === periodId);
   const getRecord = (id: number) => savedRecords[id] || null;
 
@@ -166,7 +282,7 @@ export default function MarkAttendanceScreen({ onBack }: any) {
 
   const handleCellPress = (lecture: any) => {
     if (!lecture) return;
-    if (getRecord(lecture.id)) { Alert.alert('Already Marked', 'Attendance already marked.'); return; }
+    if (getRecord(lecture.id)) { Alert.alert('Already Marked', 'Attendance already marked for this class.'); return; }
     setSelectedLecture(lecture); setSelectedStatus(''); setSubstituteName(''); setShowModal(true);
   };
 
@@ -175,7 +291,7 @@ export default function MarkAttendanceScreen({ onBack }: any) {
     if (status === 'present') setSubstituteName('');
   };
 
-  // ✅ MAIN LOGIC: Offline Save + UI Green/Red
+  // ✅ MAIN LOGIC: Save + UI Green/Red
   const handleSave = async () => {
     if (!selectedStatus) { Alert.alert('Error', 'Please select Present or Absent'); return; }
 
@@ -206,14 +322,15 @@ export default function MarkAttendanceScreen({ onBack }: any) {
           selectedStatus === 'present' ? 'Present' : 'Absent',
           selectedStatus === 'absent' ? substituteName : null,
           moLocation.latitude,
-          moLocation.longitude
+          moLocation.longitude,
+          currentDateStr || extractDateStr(new Date())
         );
 
         // SUCCESS: Online Save
-        setSavedRecords({ 
-          ...savedRecords, 
+        setSavedRecords((prev: any) => ({ 
+          ...prev, 
           [selectedLecture.id]: { status: selectedStatus, substituteName: selectedStatus === 'absent' ? substituteName : '', isOffline: false } 
-        });
+        }));
         setShowModal(false);
         Alert.alert('✅ Success', 'Attendance marked successfully!');
         
@@ -221,11 +338,11 @@ export default function MarkAttendanceScreen({ onBack }: any) {
         // ❌ ERROR: Check if it's a Network Error (Offline)
         if (apiError.isNetworkError) {
           // ✅ OFFLINE SAVE (Data locally save hoga, sync baad mein hoga)
-          const today = new Date().toISOString().split('T')[0];
+          const targetDate = currentDateStr || extractDateStr(new Date());
           await saveOfflineAttendance({
             timetable_id: selectedLecture.id,
             teacher_name: selectedLecture.teacher,
-            date: today,
+            date: targetDate,
             period: selectedLecture.period,
             status: selectedStatus === 'present' ? 'Present' : 'Absent',
             substitute: selectedStatus === 'absent' ? substituteName : '',
@@ -234,19 +351,19 @@ export default function MarkAttendanceScreen({ onBack }: any) {
           });
 
           // ✅ UI UPDATE: Green/Red dikhayega (Yellow nahi)
-          setSavedRecords({ 
-            ...savedRecords, 
+          setSavedRecords((prev: any) => ({ 
+            ...prev, 
             [selectedLecture.id]: { 
               status: selectedStatus, 
               substituteName: selectedStatus === 'absent' ? substituteName : '',
               isOffline: true // Internal flag for sync
             } 
-          });
+          }));
 
           setShowModal(false);
           Alert.alert('📴 Saved Locally', 'No internet. Attendance saved and will sync automatically.');
         } else {
-          // ❌ BACKEND VALIDATION ERROR (e.g. Radius issue)
+          // ❌ BACKEND VALIDATION ERROR (e.g. Radius issue or Already Marked)
           Alert.alert('❌ Error', apiError.message || 'Attendance could not be marked.');
         }
       }
@@ -290,14 +407,14 @@ export default function MarkAttendanceScreen({ onBack }: any) {
           <View style={styles.teacherTopCard}>
             <Text style={styles.teacherTopName}>{currentUser.name}</Text>
             <Text style={styles.teacherTopDept}>{currentUser.role} • {selectedShift}</Text>
-            <View style={styles.dateRangeLine}><Text style={styles.dateRangeText}>{new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</Text></View>
+            <View style={styles.dateRangeLine}><Text style={styles.dateRangeText}>{formatDisplayDate(assignedDuties[0]?.duty_date || extractDateStr(new Date()))}</Text></View>
           </View>
           <View style={styles.sectionHeader}><Text style={styles.sectionTitle}>Assigned Departments</Text><Text style={styles.sectionCount}>{filteredDepts.length} Departments</Text></View>
           {loading ? <View style={{ padding: 20, alignItems: 'center' }}><ActivityIndicator size="large" color="#1A237E" /></View> : filteredDepts.length === 0 ? (
             <View style={styles.emptyBox}><Text style={styles.emptyText}>No duties assigned for this shift</Text></View>
           ) : (
             filteredDepts.map((duty, index) => (
-              <TouchableOpacity key={index} style={styles.deptCard} onPress={() => setSelectedDept(duty.department)}>
+              <TouchableOpacity key={index} style={styles.deptCard} onPress={() => handleSelectDept(duty)}>
                 <View style={styles.deptInfo}><Text style={styles.deptName}>{duty.department} Department</Text></View><Text style={styles.chevron}>›</Text>
               </TouchableOpacity>
             ))
@@ -310,14 +427,14 @@ export default function MarkAttendanceScreen({ onBack }: any) {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => setSelectedDept(null)}><Text style={styles.backArrow}>←</Text></TouchableOpacity>
+        <TouchableOpacity onPress={() => { setSelectedDept(null); setSavedRecords({}); }}><Text style={styles.backArrow}>←</Text></TouchableOpacity>
         <Text style={styles.headerTitle}>{selectedDept} - Mark Attendance</Text><View style={{ width: 24 }} />
       </View>
       <ScrollView contentContainerStyle={{ paddingBottom: 10 }}>
         <View style={[styles.teacherTopCard, { marginHorizontal: 15, marginTop: 15 }]}>
           <Text style={styles.teacherTopName}>{currentUser.name}</Text>
           <Text style={styles.teacherTopDept}>{currentUser.role} • {selectedShift}</Text>
-          <View style={styles.dateRangeLine}><Text style={styles.dateRangeText}>{selectedDept} Department • {selectedDay} • {new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}</Text></View>
+          <View style={styles.dateRangeLine}><Text style={styles.dateRangeText}>{selectedDept} Department • {selectedDay} • {formatDisplayDate(currentDateStr)}</Text></View>
         </View>
         {loading ? (
           <View style={{ padding: 40, alignItems: 'center' }}><ActivityIndicator size="large" color="#1A237E" /><Text style={{ marginTop: 10, color: '#666' }}>Loading timetable...</Text></View>
@@ -344,11 +461,11 @@ export default function MarkAttendanceScreen({ onBack }: any) {
                               <Text style={styles.cellCode}>{cls.code}</Text>
                               <Text style={styles.cellRoom}>{cls.room}</Text>
                               {record ? (
-                                <View>
+                                <View style={{ alignItems: 'center' }}>
                                   <View style={[styles.statusBadge, { backgroundColor: getStatusColor(record) }]}>
                                     <Text style={styles.statusText}>{getStatusDisplay(record)}</Text>
                                   </View>
-                                  {record.status === 'absent' && record.substituteName && record.substituteName.trim() ? (<Text style={styles.substituteText}>{record.substituteName}</Text>) : null}
+                                  {record.status === 'absent' && record.substituteName && record.substituteName.trim() ? (<Text style={styles.substituteText}>→ {record.substituteName}</Text>) : null}
                                 </View>
                               ) : (<View style={styles.markBtn}><Text style={styles.markBtnText}>Mark</Text></View>)}
                             </View>
@@ -427,28 +544,28 @@ const styles = StyleSheet.create({
   emptyBox: { alignItems: 'center', padding: 40 },
   emptyText: { fontSize: 16, color: '#666', marginTop: 15 },
   gridScrollView: { flex: 1 },
-  grid: { borderWidth: 1, borderColor: '#90A4AE', borderRadius: 4, backgroundColor: '#FFF', margin: 15 },
+  grid: { borderWidth: 1, borderColor: '#90A4AE', borderRadius: 4, overflow: 'hidden', backgroundColor: '#FFF', margin: 15 },
   row: { flexDirection: 'row' },
-  cornerCell: { width: 90, height: 55, backgroundColor: '#1A237E', justifyContent: 'center', alignItems: 'center', borderRightWidth: 1, borderBottomWidth: 1, borderColor: '#90A4AE' },
-  cornerText: { color: '#FFF', fontSize: 11, fontWeight: '800' },
-  periodHeaderCell: { width: 115, height: 55, backgroundColor: '#E8EAF6', justifyContent: 'center', alignItems: 'center', borderRightWidth: 1, borderBottomWidth: 1, borderColor: '#90A4AE' },
-  periodNum: { fontSize: 13, fontWeight: '800', color: '#1A237E' },
-  periodTime: { fontSize: 9, color: '#546E7A', marginTop: 2, textAlign: 'center' },
-  deptSemCell: { width: 90, minHeight: 110, backgroundColor: '#F5F5F5', justifyContent: 'center', alignItems: 'center', borderRightWidth: 1, borderBottomWidth: 1, borderColor: '#90A4AE' },
+  cornerCell: { width: 90, height: 60, backgroundColor: '#1A237E', justifyContent: 'center', alignItems: 'center', borderRightWidth: 1, borderBottomWidth: 1, borderColor: '#90A4AE' },
+  cornerText: { color: '#FFF', fontSize: 11, fontWeight: '800', textAlign: 'center' },
+  periodHeaderCell: { width: 118, height: 60, backgroundColor: '#E8EAF6', justifyContent: 'center', alignItems: 'center', borderRightWidth: 1, borderBottomWidth: 1, borderColor: '#90A4AE' },
+  periodNum: { fontSize: 13.5, fontWeight: '800', color: '#1A237E' },
+  periodTime: { fontSize: 9.5, color: '#546E7A', marginTop: 2, textAlign: 'center' },
+  deptSemCell: { width: 90, minHeight: 105, backgroundColor: '#F5F5F5', justifyContent: 'center', alignItems: 'center', borderRightWidth: 1, borderBottomWidth: 1, borderColor: '#90A4AE' },
   deptText: { fontSize: 13, fontWeight: '800', color: '#1A237E' },
   semText: { fontSize: 11, color: '#546E7A', fontWeight: '600' },
-  dataCell: { width: 115, minHeight: 110, justifyContent: 'center', alignItems: 'center', borderRightWidth: 1, borderBottomWidth: 1, borderColor: '#90A4AE', padding: 4 },
+  dataCell: { width: 118, minHeight: 105, justifyContent: 'center', alignItems: 'center', borderRightWidth: 1, borderBottomWidth: 1, borderColor: '#90A4AE', padding: 4 },
   filledCell: { backgroundColor: '#FFF' },
   emptyCell: { backgroundColor: '#FAFAFA' },
-  cellContent: { alignItems: 'center', justifyContent: 'center', flex: 1, gap: 3 },
-  cellTeacher: { fontSize: 10, fontWeight: '700', color: '#1A237E', textAlign: 'center', lineHeight: 13 },
-  cellCode: { fontSize: 9, color: '#546E7A', textAlign: 'center', fontWeight: '600' },
-  cellRoom: { fontSize: 9, color: '#D32F2F', fontWeight: '600', textAlign: 'center' },
+  cellContent: { alignItems: 'center', justifyContent: 'center', flex: 1, gap: 2 },
+  cellTeacher: { fontSize: 12.5, fontWeight: '700', color: '#1A237E', textAlign: 'center', lineHeight: 15, marginBottom: 2 },
+  cellCode: { fontSize: 11, color: '#546E7A', textAlign: 'center', fontWeight: '600', marginBottom: 2 },
+  cellRoom: { fontSize: 11, color: '#D32F2F', fontWeight: '700', textAlign: 'center' },
   markBtn: { backgroundColor: '#1A237E', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10, marginTop: 4 },
-  markBtnText: { color: '#FFF', fontSize: 9, fontWeight: '700' },
-  statusBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 10, marginTop: 4, maxWidth: 110, alignSelf: 'center' },
-  statusText: { color: '#FFF', fontSize: 8, fontWeight: '800', textAlign: 'center', lineHeight: 12 },
-  substituteText: { fontSize: 8, color: '#64B5F6', marginTop: 3, fontWeight: '700', textAlign: 'center' },
+  markBtnText: { color: '#FFF', fontSize: 9.5, fontWeight: '700' },
+  statusBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 10, marginTop: 3, maxWidth: 110, alignSelf: 'center' },
+  statusText: { color: '#FFF', fontSize: 9.5, fontWeight: '800', textAlign: 'center', lineHeight: 13 },
+  substituteText: { fontSize: 8.5, color: '#1976D2', marginTop: 2, fontWeight: '700', textAlign: 'center' },
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 },
   modal: { backgroundColor: '#FFF', borderRadius: 20, width: '100%', maxWidth: 400, maxHeight: '85%' },
   modalHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, borderBottomWidth: 2, borderBottomColor: '#E0E0E0' },

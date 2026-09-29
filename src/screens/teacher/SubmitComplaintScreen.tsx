@@ -1,19 +1,46 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, Alert, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, Alert, ScrollView, ActivityIndicator, Platform, TouchableWithoutFeedback } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { complaintService } from '../../services/complaintService';
+import { tokenStorage } from '../../services/tokenStorage';
 
 export default function SubmitComplaintScreen({ onBack }: any) {
   const [complaint, setComplaint] = useState('');
   const [showMenu, setShowMenu] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [viewingComplaint, setViewingComplaint] = useState<any>(null);
   const [inputHeight, setInputHeight] = useState(60);
   
-  // ✅ Real data state (Mock data hata diya)
+  // Complaints list & loading state
   const [complaints, setComplaints] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // ✅ Screen load hone par ya history open hone par data fetch karein
+  // Logged-in teacher details
+  const [teacherInfo, setTeacherInfo] = useState<{ name: string; department: string }>({
+    name: 'Teacher',
+    department: ''
+  });
+
+  // Load user data on mount
+  useEffect(() => {
+    const loadUser = async () => {
+      try {
+        const user = await tokenStorage.getUser();
+        if (user) {
+          setTeacherInfo({
+            name: user.name || 'Teacher',
+            department: user.department || ''
+          });
+        }
+      } catch (error) {
+        console.log('Error loading user info in complaints:', error);
+      }
+    };
+    loadUser();
+  }, []);
+
+  // Screen load hone par ya history open hone par data fetch karein
   useEffect(() => {
     if (showHistory) {
       fetchComplaints();
@@ -40,7 +67,7 @@ export default function SubmitComplaintScreen({ onBack }: any) {
 
     setLoading(true);
     try {
-      // ✅ Backend API Call
+      // Backend API Call
       await complaintService.createComplaint(complaint);
       
       setComplaint('');
@@ -59,25 +86,90 @@ export default function SubmitComplaintScreen({ onBack }: any) {
   };
 
   const getStatusColor = (status: string) => {
-    if (status === 'pending') return '#F44336';    // RED
-    if (status === 'resolved') return '#4CAF50';   // GREEN
-    if (status === 'rejected') return '#C62828';   // Dark Red
+    if (status === 'pending') return '#FF9800';  // Orange
+    if (status === 'resolved') return '#4CAF50'; // Green
+    if (status === 'rejected') return '#F44336'; // Red
     return '#999';
   };
 
-  // Agar history screen open hai to wo dikhao
+  const getInitials = (name: string) => {
+    if (!name) return 'T';
+    return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+  };
+
+  // ==========================================
+  // VIEW 1: COMPLAINT DETAILS (Admin jaisa Detail View)
+  // ==========================================
+  if (viewingComplaint) {
+    const item = viewingComplaint;
+    const teacherName = item.submittedBy || teacherInfo.name;
+    const teacherDept = item.department || teacherInfo.department;
+
+    return (
+      <SafeAreaView edges={['bottom']} style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => setViewingComplaint(null)}>
+            <Text style={styles.backArrow}>←</Text>
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Complaint Details</Text>
+          <View style={{ width: 36 }} />
+        </View>
+
+        <ScrollView contentContainerStyle={styles.detailContent}>
+          <View style={styles.detailCard}>
+            <Text style={styles.detailName}>{teacherName}</Text>
+            <Text style={styles.detailDept}>
+              {teacherDept ? `${teacherDept} Department` : 'Teacher'}
+            </Text>
+            <View style={styles.detailDivider} />
+            <Text style={styles.detailDate}>Submitted on {item.date}</Text>
+          </View>
+
+          <View style={styles.descCard}>
+            <Text style={styles.descLabel}>Description</Text>
+            <Text style={styles.descText}>{item.text}</Text>
+
+            {item.status === 'pending' ? (
+              <View style={[styles.resolvedBox, { backgroundColor: '#FFF3E0' }]}>
+                <MaterialCommunityIcons name="clock-outline" size={18} color="#FF9800" style={{ marginRight: 6 }} />
+                <Text style={[styles.resolvedText, { color: '#FF9800' }]}>
+                  Pending - Awaiting review by Admin
+                </Text>
+              </View>
+            ) : (
+              <View style={[styles.resolvedBox, { backgroundColor: getStatusColor(item.status) + '15' }]}>
+                <MaterialCommunityIcons 
+                  name={item.status === 'resolved' ? "check-circle-outline" : "close-circle-outline"} 
+                  size={18} 
+                  color={getStatusColor(item.status)} 
+                  style={{ marginRight: 6 }} 
+                />
+                <Text style={[styles.resolvedText, { color: getStatusColor(item.status) }]}>
+                  {item.status === 'resolved' ? 'Resolved' : 'Rejected'} on {item.resolvedDate || item.date}
+                </Text>
+              </View>
+            )}
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
+
+  // ==========================================
+  // VIEW 2: COMPLAINT HISTORY (Admin jaisa Card + View Complaint Button)
+  // ==========================================
   if (showHistory) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView edges={['bottom']} style={styles.container}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => setShowHistory(false)}>
             <Text style={styles.backArrow}>←</Text>
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Complaint History</Text>
-          <View style={{ width: 24 }} />
+          <View style={{ width: 36 }} />
         </View>
 
-        <ScrollView contentContainerStyle={styles.historyContent}>
+        <ScrollView contentContainerStyle={styles.content}>
           {loading ? (
             <View style={styles.emptyState}>
               <ActivityIndicator size="large" color="#1A237E" />
@@ -85,47 +177,54 @@ export default function SubmitComplaintScreen({ onBack }: any) {
             </View>
           ) : complaints.length === 0 ? (
             <View style={styles.emptyState}>
+              <MaterialCommunityIcons name="comment-off-outline" size={60} color="#999" />
               <Text style={styles.emptyText}>No complaints submitted yet</Text>
+              <Text style={styles.emptySubtext}>Complaints you submit will appear here</Text>
             </View>
           ) : (
-            complaints.map(item => (
-              <View key={item.id} style={styles.historyItem}>
-                <View style={styles.historyItemHeader}>
-                  <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) + '20' }]}>
-                    <Text style={[styles.statusText, { color: getStatusColor(item.status) }]}>
-                      {item.status.charAt(0).toUpperCase() + item.status.slice(1)}
-                    </Text>
+            complaints.map((item: any) => {
+              const teacherName = item.submittedBy || teacherInfo.name;
+              const teacherDept = item.department || teacherInfo.department;
+
+              return (
+                <View key={item.id} style={styles.card}>
+                  <View style={styles.cardHeader}>
+                    <View style={styles.cardAvatar}>
+                      <Text style={styles.cardAvatarText}>{getInitials(teacherName)}</Text>
+                    </View>
+                    <View style={styles.cardInfo}>
+                      <Text style={styles.teacherName}>{teacherName}</Text>
+                      <Text style={styles.deptText}>
+                        {teacherDept ? `${teacherDept} Department` : 'Teacher'}
+                      </Text>
+                    </View>
+                    <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) + '20' }]}>
+                      <Text style={[styles.statusText, { color: getStatusColor(item.status) }]}>
+                        {item.status.charAt(0).toUpperCase() + item.status.slice(1)}
+                      </Text>
+                    </View>
                   </View>
+
                   <Text style={styles.dateText}>{item.date}</Text>
+
+                  {/* View Complaint Button (Admin ki tarah) */}
+                  <TouchableOpacity style={styles.viewBtn} onPress={() => setViewingComplaint(item)}>
+                    <Text style={styles.viewBtnText}>View Complaint</Text>
+                  </TouchableOpacity>
                 </View>
-                <Text style={styles.historyText}>
-                  {item.text}
-                </Text>
-                {item.status === 'resolved' && item.resolvedDate && (
-                  <View style={styles.resolvedBox}>
-                    <Text style={styles.resolvedText}>
-                      Resolved on {item.resolvedDate}
-                    </Text>
-                  </View>
-                )}
-                {item.status === 'rejected' && item.resolvedDate && (
-                  <View style={styles.rejectedBox}>
-                    <Text style={styles.rejectedText}>
-                      Rejected on {item.resolvedDate}
-                    </Text>
-                  </View>
-                )}
-              </View>
-            ))
+              );
+            })
           )}
         </ScrollView>
       </SafeAreaView>
     );
   }
 
-  // Main Submit Screen
+  // ==========================================
+  // VIEW 3: SUBMIT NEW COMPLAINT (Original Design)
+  // ==========================================
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView edges={['bottom']} style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={onBack}>
           <Text style={styles.backArrow}>←</Text>
@@ -137,7 +236,12 @@ export default function SubmitComplaintScreen({ onBack }: any) {
       </View>
 
       {showMenu && (
-        <View style={styles.menu}>
+        <TouchableWithoutFeedback onPress={() => setShowMenu(false)}>
+          <View style={styles.menuBackdrop} />
+        </TouchableWithoutFeedback>
+      )}
+      {showMenu && (
+        <View style={styles.menuDropdown}>
           <TouchableOpacity 
             style={styles.menuItem}
             onPress={() => {
@@ -145,7 +249,8 @@ export default function SubmitComplaintScreen({ onBack }: any) {
               setShowHistory(true);
             }}
           >
-            <Text style={styles.menuText}>Complaint History</Text>
+            <MaterialCommunityIcons name="history" size={18} color="#1A237E" />
+            <Text style={styles.menuItemText}>Complaint History</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -160,7 +265,7 @@ export default function SubmitComplaintScreen({ onBack }: any) {
         
         <TextInput
           style={[styles.input, { height: Math.max(60, inputHeight) }]}
-          placeholder="Write about wrong attendance or any issue..."
+          placeholder="Write about any issue..."
           placeholderTextColor="#999"
           multiline
           value={complaint}
@@ -187,50 +292,104 @@ export default function SubmitComplaintScreen({ onBack }: any) {
   );
 }
 
-// ✅ STYLES: Bilkul same jaise aapke original code mein the
+// ✅ STYLES: Admin side ComplaintsScreen ke sath 100% consistent
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F5F5' },
   header: { 
     backgroundColor: '#FFF', 
-    paddingTop: 50,
-    paddingBottom: 15,
+    paddingTop: Platform.OS === 'web' ? 16 : 50, 
+    paddingBottom: 15, 
     paddingHorizontal: 20, 
     flexDirection: 'row', 
     alignItems: 'center', 
     justifyContent: 'space-between', 
-    borderBottomWidth: 2,
-    borderBottomColor: '#1A237E',
-    elevation: 2 
+    borderBottomWidth: 2, 
+    borderBottomColor: '#1A237E' 
   },
-  headerTitle: { fontSize: 18, fontWeight: '700', color: '#1A237E' },
   backArrow: { fontSize: 24, fontWeight: '700', color: '#1A237E' },
-  menuDots: { fontSize: 24, fontWeight: '700', color: '#1A237E' },
-  
-  menu: {
-    position: 'absolute',
-    top: 90,
-    right: 20,
-    backgroundColor: '#FFF',
-    borderRadius: 8,
-    padding: 10,
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    zIndex: 1000,
+  headerTitle: { fontSize: 18, fontWeight: '800', color: '#1A237E', flex: 1, textAlign: 'center' },
+  menuBtn: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F5F5F5' },
+
+  menuBackdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10 },
+  menuDropdown: { 
+    position: 'absolute', 
+    top: Platform.OS === 'web' ? 65 : 105, 
+    right: 12, 
+    backgroundColor: '#FFF', 
+    borderRadius: 10, 
+    elevation: 9, 
+    shadowColor: '#000', 
+    shadowOffset: { width: 0, height: 3 }, 
+    shadowOpacity: 0.2, 
+    shadowRadius: 6, 
+    paddingVertical: 6, 
+    minWidth: 190, 
+    zIndex: 20 
   },
-  menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 10,
-    gap: 10,
+  menuItem: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 16, paddingVertical: 12 },
+  menuItemText: { fontSize: 14, fontWeight: '700', color: '#1A237E' },
+
+  content: { 
+    padding: 20, 
+    paddingBottom: 40,
+    maxWidth: 900,
+    width: '100%',
+    alignSelf: 'center',
   },
-  menuText: { fontSize: 14, color: '#1A237E', fontWeight: '600' },
-  
+  card: { backgroundColor: '#FFF', borderRadius: 12, padding: 15, marginBottom: 12, elevation: 2 },
+  cardHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
+  cardAvatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#E8EAF6', alignItems: 'center', justifyContent: 'center', marginRight: 10 },
+  cardAvatarText: { fontSize: 16, fontWeight: '800', color: '#1A237E' },
+  cardInfo: { flex: 1 },
+  teacherName: { fontSize: 15, fontWeight: '700', color: '#1A237E', marginBottom: 2 },
+  deptText: { fontSize: 12, color: '#666' },
+  dateText: { fontSize: 12, color: '#666', marginBottom: 12 },
+
+  statusBadge: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12 },
+  statusText: { fontSize: 12, fontWeight: '700' },
+
+  viewBtn: { backgroundColor: '#1A237E', paddingVertical: 12, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+  viewBtnText: { color: '#FFF', fontSize: 14, fontWeight: '700' },
+
+  detailContent: { 
+    padding: 20, 
+    paddingBottom: 40,
+    maxWidth: 900,
+    width: '100%',
+    alignSelf: 'center',
+  },
+  detailCard: { backgroundColor: '#FFF', borderRadius: 12, padding: 15, marginBottom: 12, elevation: 2, borderLeftWidth: 4, borderLeftColor: '#1A237E' },
+  detailName: { fontSize: 17, fontWeight: '800', color: '#1A237E' },
+  detailDept: { fontSize: 13, color: '#666', marginTop: 3 },
+  detailDivider: { height: 1, backgroundColor: '#E8EAF6', marginVertical: 10 },
+  detailDate: { fontSize: 13, color: '#1A237E', fontWeight: '700' },
+
+  descCard: { backgroundColor: '#FFF', borderRadius: 12, padding: 15, marginBottom: 12, elevation: 2 },
+  descLabel: { fontSize: 14, fontWeight: '700', color: '#1A237E', marginBottom: 8 },
+  descText: { fontSize: 14, color: '#333', lineHeight: 22 },
+
+  resolvedBox: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    padding: 12, 
+    borderRadius: 8, 
+    marginTop: 14 
+  },
+  resolvedText: { fontSize: 13, fontWeight: '600' },
+
+  emptyState: { alignItems: 'center', paddingVertical: 60 },
+  emptyText: { fontSize: 16, color: '#666', marginTop: 15, fontWeight: '600' },
+  emptySubtext: { fontSize: 13, color: '#999', marginTop: 4, textAlign: 'center', paddingHorizontal: 30 },
+
+  menuDots: { fontSize: 24, fontWeight: '700', color: '#1A237E', paddingHorizontal: 6 },
+
+  // Submit Form Styles
   mainContent: { 
     padding: 20, 
-    paddingBottom: 40 
+    paddingBottom: 40,
+    maxWidth: 900,
+    width: '100%',
+    alignSelf: 'center',
   },
   pageTitle: { 
     fontSize: 22, 
@@ -246,7 +405,6 @@ const styles = StyleSheet.create({
     marginBottom: 25,
   },
   label: { fontSize: 15, fontWeight: '700', color: '#1A237E', marginBottom: 10 },
-  
   input: {
     backgroundColor: '#FFF',
     borderWidth: 1.5,
@@ -259,8 +417,8 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     textAlignVertical: 'top',
     elevation: 1,
+    color: '#333',
   },
-  
   submitBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -275,60 +433,4 @@ const styles = StyleSheet.create({
     minWidth: 150,
   },
   submitText: { color: '#FFF', fontSize: 14, fontWeight: '700' },
-  
-  historyContent: { padding: 15, paddingBottom: 25 },
-  
-  historyItem: {
-    backgroundColor: '#F9F9F9',
-    borderRadius: 12,
-    padding: 15,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#E8EAF6',
-  },
-  historyItemHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  statusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 12,
-    gap: 5,
-  },
-  statusText: { fontSize: 12, fontWeight: '700' },
-  dateText: { fontSize: 12, color: '#666' },
-  historyText: { fontSize: 14, color: '#333', lineHeight: 20 },
-  
-  resolvedText: { fontSize: 12, color: '#4CAF50', fontWeight: '600' },
-  rejectedText: { fontSize: 12, color: '#F44336', fontWeight: '600' },
-  
-  resolvedBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#E8F5E9',
-    padding: 10,
-    borderRadius: 8,
-    marginTop: 10,
-    gap: 8,
-  },
-  rejectedBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFEBEE',
-    padding: 10,
-    borderRadius: 8,
-    marginTop: 10,
-    gap: 8,
-  },
-  
-  emptyState: {
-    alignItems: 'center',
-    paddingVertical: 60,
-  },
-  emptyText: { fontSize: 16, color: '#666', marginTop: 15 },
 });

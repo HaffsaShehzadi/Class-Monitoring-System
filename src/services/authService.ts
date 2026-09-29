@@ -120,4 +120,28 @@ export const authService = {
     if (!response.ok) throw new Error('Failed to fetch profile');
     return data;
   },
+
+  // GET /api/departments/all
+  getDepartments: async (): Promise<string[]> => {
+    const BACKEND_URL = await detectBackend();
+    const response = await fetch(`${BACKEND_URL}/api/departments/all`, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.message || 'Failed to fetch departments');
+    return (data || []).map((d: any) => d.dept_name || d.name);
+  },
+
+  // GET /api/auth/status?email=...
+  checkStatus: async (email: string): Promise<{ status: 'pending' | 'approved' | 'rejected'; role?: string; name?: string; department?: string; message?: string }> => {
+    const BACKEND_URL = await detectBackend();
+    const response = await fetch(`${BACKEND_URL}/api/auth/status?email=${encodeURIComponent(email)}`, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.message || 'Failed to check status');
+    return data;
+  },
 };

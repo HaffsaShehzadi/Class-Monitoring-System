@@ -6,48 +6,89 @@ import { authService } from '../../services/authService';
 
 interface RequestStatusScreenProps {
   onBack: () => void;
-  onApproved: () => void;
+  onApproved?: () => void;
   userEmail: string;
-  userRole: string;
-  checkStatus: () => { status: 'pending' | 'approved' | 'rejected' };
+  userRole?: string;
+  initialStatus?: 'pending' | 'approved' | 'rejected';
+  checkStatus?: () => { status: 'pending' | 'approved' | 'rejected' };
   userPassword?: string;
 }
 
 export default function RequestStatusScreen({ 
-  onBack, onApproved, userEmail, userRole, checkStatus, userPassword
+  onBack, onApproved, userEmail, userRole, initialStatus, checkStatus, userPassword
 }: RequestStatusScreenProps) {
-  const [status, setStatus] = useState<'pending' | 'approved' | 'rejected'>('pending');
+  const formatRole = (r?: string) => {
+    if (!r) return 'User';
+    if (r.toLowerCase() === 'teacher') return 'Teacher';
+    if (r.toLowerCase().includes('monitor')) return 'Monitoring Official';
+    return r;
+  };
+
+  const [status, setStatus] = useState<'pending' | 'approved' | 'rejected'>(initialStatus || 'pending');
   const [refreshing, setRefreshing] = useState(false);
+  const [roleText, setRoleText] = useState(formatRole(userRole));
 
   useEffect(() => {
-    const result = checkStatus();
-    setStatus(result.status);
-  }, []);
+    if (initialStatus) {
+      setStatus(initialStatus);
+    }
+    if (userRole) {
+      setRoleText(formatRole(userRole));
+    }
+    if (userEmail) {
+      authService.checkStatus(userEmail)
+        .then(res => {
+          if (res.status) {
+            setStatus(res.status);
+          }
+          if (res.role) {
+            setRoleText(res.role === 'teacher' ? 'Teacher' : res.role === 'monitoring' ? 'Monitoring Official' : res.role);
+          }
+        })
+        .catch(() => {
+          if (checkStatus) {
+            const result = checkStatus();
+            if (result?.status) setStatus(result.status);
+          }
+        });
+    } else if (checkStatus) {
+      const result = checkStatus();
+      if (result?.status) setStatus(result.status);
+    }
+  }, [userEmail, initialStatus]);
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    
     try {
-      // ✅ Try to login to check real status
-      if (userPassword) {
-        const response = await authService.login(userEmail, userPassword);
-        setStatus(response.status);
-        
-        if (response.status === 'approved') {
-          Alert.alert('✅ Approved!', 'Your account has been approved. Welcome!');
-          setRefreshing(false);
-          setTimeout(() => onApproved(), 1000);
+      if (userEmail) {
+        const res = await authService.checkStatus(userEmail);
+        setStatus(res.status);
+        if (res.role) {
+          setRoleText(res.role === 'teacher' ? 'Teacher' : res.role === 'monitoring' ? 'Monitoring Official' : res.role);
+        }
+
+        if (res.status === 'approved') {
+          Alert.alert('✅ Approved!', 'Your account has been approved by Admin. Please sign in to continue.', [
+            { text: 'Go to Sign In', onPress: onBack }
+          ]);
           return;
         }
+
+        if (res.status === 'rejected') {
+          Alert.alert('Account Rejected', 'Your account request has been rejected by Admin. Please contact Admin.');
+          return;
+        }
+
+        if (res.status === 'pending') {
+          Alert.alert('Request Pending', 'Your account request is still pending Admin approval. Please wait.');
+          return;
+        }
+      } else if (checkStatus) {
+        const result = checkStatus();
+        setStatus(result.status);
       }
-      
-      // Fallback to local check
-      const result = checkStatus();
-      setStatus(result.status);
     } catch (error: any) {
-      // Error means still pending or rejected
-      const result = checkStatus();
-      setStatus(result.status);
+      Alert.alert('Status Check', error?.message || 'Could not verify status. Please try again.');
     } finally {
       setRefreshing(false);
     }
@@ -66,12 +107,12 @@ export default function RequestStatusScreen({
       <View style={styles.content}>
         {status === 'pending' && (
           <View style={styles.statusBox}>
-            <ActivityIndicator size="large" color="#1A237E" />
+            <MaterialCommunityIcons name="clock-time-four-outline" size={80} color="#FF9800" />
             <Text style={styles.statusTitle}>Request Pending</Text>
             <Text style={styles.statusText}>
-              Your {userRole} account request has been submitted successfully.
+              Your {roleText} account request has been submitted successfully.
             </Text>
-            <Text style={styles.waitText}>
+            <Text style={styles.statusText}>
               Please wait for Admin approval.
             </Text>
             <View style={styles.infoBox}>
@@ -82,8 +123,13 @@ export default function RequestStatusScreen({
               style={[styles.refreshBtn, refreshing && styles.refreshBtnDisabled]} 
               onPress={handleRefresh}
               disabled={refreshing}
+              activeOpacity={0.8}
             >
-              <MaterialCommunityIcons name="refresh" size={20} color="#FFF" />
+              {refreshing ? (
+                <ActivityIndicator size="small" color="#FFF" style={{ marginRight: 8 }} />
+              ) : (
+                <MaterialCommunityIcons name="refresh" size={20} color="#FFF" style={{ marginRight: 8 }} />
+              )}
               <Text style={styles.refreshText}>
                 {refreshing ? 'Checking...' : 'Check Status'}
               </Text>
@@ -93,26 +139,30 @@ export default function RequestStatusScreen({
 
         {status === 'approved' && (
           <View style={styles.statusBox}>
-            <MaterialCommunityIcons name="check-circle" size={80} color="#1A237E" />
+            <MaterialCommunityIcons name="check-circle" size={80} color="#4CAF50" />
             <Text style={styles.successTitle}>Request Approved!</Text>
             <Text style={styles.successText}>
-              Congratulations! Your {userRole} account has been approved by Admin.
+              Congratulations! Your {roleText} account has been approved by Admin.
             </Text>
-            <TouchableOpacity style={styles.welcomeBtn} onPress={onApproved}>
-              <Text style={styles.welcomeText}>Welcome to Class Monitoring System</Text>
+            <TouchableOpacity style={styles.welcomeBtn} onPress={onBack} activeOpacity={0.8}>
+              <Text style={styles.welcomeText}>Go to Sign In</Text>
             </TouchableOpacity>
           </View>
         )}
 
         {status === 'rejected' && (
           <View style={styles.statusBox}>
-            <MaterialCommunityIcons name="close-circle" size={80} color="#1A237E" />
+            <MaterialCommunityIcons name="close-circle" size={80} color="#F44336" />
             <Text style={styles.errorTitle}>Request Rejected</Text>
             <Text style={styles.errorText}>
-              Sorry, your {userRole} account request has been rejected by Admin.
+              Your {roleText} account request has been rejected by Admin. Please contact Admin.
             </Text>
-            <TouchableOpacity style={styles.backBtn} onPress={onBack}>
-              <MaterialCommunityIcons name="arrow-left" size={20} color="#FFF" />
+            <View style={styles.infoBox}>
+              <MaterialCommunityIcons name="email-outline" size={20} color="#666" />
+              <Text style={styles.infoText}>{userEmail}</Text>
+            </View>
+            <TouchableOpacity style={styles.backBtn} onPress={onBack} activeOpacity={0.8}>
+              <MaterialCommunityIcons name="arrow-left" size={20} color="#FFF" style={{ marginRight: 8 }} />
               <Text style={styles.backText}>Back to Sign In</Text>
             </TouchableOpacity>
           </View>
@@ -128,14 +178,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFF',
     paddingTop: 50,
     paddingBottom: 15,
-    paddingHorizontal: 20,
+    paddingHorizontal: 15,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
+    borderBottomWidth: 2,
+    borderBottomColor: '#1A237E',
   },
-  headerTitle: { fontSize: 20, fontWeight: '700', color: '#1A237E' },
+  headerTitle: { fontSize: 18, fontWeight: '800', color: '#1A237E', flex: 1, textAlign: 'center' },
   content: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
   statusBox: {
     backgroundColor: '#FFF',

@@ -107,6 +107,8 @@ export default function MonitoringAttendanceHistory({ onBack }: any) {
     return d.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
   };
 
+  const formatRoom = (room: any) => room ? `R#${String(room).replace('R', '')}` : '';
+
   // ✅ FIX 3: Flexible matching (handles "4th" vs "4" or "4 " with spaces)
   const getAttendance = (sem: string, periodId: number) => {
     return attendanceRecords.find(a => {
@@ -269,6 +271,7 @@ export default function MonitoringAttendanceHistory({ onBack }: any) {
                           <View style={styles.cellContent}>
                             <Text style={styles.cellTeacher} numberOfLines={1}>{record.teacher}</Text>
                             <Text style={styles.cellCode} numberOfLines={1}>{record.code}</Text>
+                            {record.room ? <Text style={styles.cellRoom}>{formatRoom(record.room)}</Text> : null}
                             <TouchableOpacity style={[styles.statusButton, { backgroundColor: getStatusColor(record.status) }]} onPress={() => handleCellPress(record)}>
                               <Text style={styles.statusText}>{record.status}</Text>
                             </TouchableOpacity>
@@ -345,23 +348,24 @@ const styles = StyleSheet.create({
   verticalScroll: { flex: 1 },
   grid: { borderWidth: 1, borderColor: '#90A4AE', borderRadius: 4, overflow: 'hidden', backgroundColor: '#FFF', margin: 15 },
   row: { flexDirection: 'row' },
-  cornerCell: { width: 90, height: 55, backgroundColor: '#1A237E', justifyContent: 'center', alignItems: 'center', borderRightWidth: 1, borderBottomWidth: 1, borderColor: '#90A4AE' },
+  cornerCell: { width: 90, height: 60, backgroundColor: '#1A237E', justifyContent: 'center', alignItems: 'center', borderRightWidth: 1, borderBottomWidth: 1, borderColor: '#90A4AE' },
   cornerText: { color: '#FFF', fontSize: 11, fontWeight: '800', textAlign: 'center' },
-  periodHeaderCell: { width: 115, height: 55, backgroundColor: '#E8EAF6', justifyContent: 'center', alignItems: 'center', borderRightWidth: 1, borderBottomWidth: 1, borderColor: '#90A4AE' },
-  periodNum: { fontSize: 13, fontWeight: '800', color: '#1A237E' },
-  periodTime: { fontSize: 9, color: '#546E7A', textAlign: 'center', marginTop: 2 },
-  deptSemCell: { width: 90, minHeight: 100, backgroundColor: '#F5F5F5', justifyContent: 'center', alignItems: 'center', borderRightWidth: 1, borderBottomWidth: 1, borderColor: '#90A4AE' },
+  periodHeaderCell: { width: 118, height: 60, backgroundColor: '#E8EAF6', justifyContent: 'center', alignItems: 'center', borderRightWidth: 1, borderBottomWidth: 1, borderColor: '#90A4AE' },
+  periodNum: { fontSize: 13.5, fontWeight: '800', color: '#1A237E' },
+  periodTime: { fontSize: 9.5, color: '#546E7A', textAlign: 'center', marginTop: 2 },
+  deptSemCell: { width: 90, minHeight: 105, backgroundColor: '#F5F5F5', justifyContent: 'center', alignItems: 'center', borderRightWidth: 1, borderBottomWidth: 1, borderColor: '#90A4AE' },
   deptText: { fontSize: 13, fontWeight: '800', color: '#1A237E' },
   semText: { fontSize: 11, color: '#546E7A', fontWeight: '600' },
-  dataCell: { width: 115, minHeight: 100, justifyContent: 'center', alignItems: 'center', borderRightWidth: 1, borderBottomWidth: 1, borderColor: '#90A4AE', padding: 6 },
+  dataCell: { width: 118, minHeight: 105, justifyContent: 'center', alignItems: 'center', borderRightWidth: 1, borderBottomWidth: 1, borderColor: '#90A4AE', padding: 4 },
   emptyCell: { backgroundColor: '#FAFAFA' },
-  emptyCellText: { fontSize: 10, color: '#B0BEC5', fontWeight: '600' },
+  emptyCellText: { fontSize: 11, color: '#B0BEC5', fontWeight: '600' },
   cellContent: { alignItems: 'center', justifyContent: 'center', flex: 1 },
-  cellTeacher: { fontSize: 10, fontWeight: '700', color: '#333', textAlign: 'center', marginBottom: 2 },
-  cellCode: { fontSize: 9, color: '#546E7A', textAlign: 'center', marginBottom: 4 },
-  statusButton: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12, marginTop: 4 },
+  cellTeacher: { fontSize: 12.5, fontWeight: '700', color: '#1A237E', textAlign: 'center', marginBottom: 2 },
+  cellCode: { fontSize: 11, color: '#546E7A', textAlign: 'center', fontWeight: '600', marginBottom: 2 },
+  cellRoom: { fontSize: 11, color: '#D32F2F', fontWeight: '700', textAlign: 'center', marginBottom: 2 },
+  statusButton: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10, marginTop: 2 },
   statusText: { color: '#FFF', fontSize: 10, fontWeight: '800' },
-  substituteText: { fontSize: 8, color: '#64B5F6', marginTop: 3, fontWeight: '700', textAlign: 'center' },
+  substituteText: { fontSize: 8.5, color: '#1976D2', marginTop: 2, fontWeight: '700', textAlign: 'center' },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 },
   modalContent: { backgroundColor: '#FFF', borderRadius: 16, width: '100%', maxWidth: 400, maxHeight: '70%', elevation: 10 },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, borderBottomWidth: 1, borderBottomColor: '#E0E0E0' },

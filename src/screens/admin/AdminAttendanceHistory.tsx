@@ -9,10 +9,36 @@ import { tokenStorage } from '../../services/tokenStorage';
 import { adminReportService } from '../../services/adminReportService';
 import { attendanceService } from '../../services/attendanceService';
 
-const PERIODS = [
-  { id: 1, time: '08:30 - 09:15' }, { id: 2, time: '09:15 - 10:00' }, { id: 3, time: '10:00 - 10:45' },
-  { id: 4, time: '11:00 - 11:45' }, { id: 5, time: '11:45 - 12:30' }, { id: 6, time: '01:30 - 02:15' }, { id: 7, time: '02:15 - 03:00' },
+const PERIODS_1ST = [
+  { id: 1, time: '08:00 AM - 08:45 AM' },
+  { id: 2, time: '08:45 AM - 09:30 AM' },
+  { id: 3, time: '09:30 AM - 10:15 AM' },
+  { id: 4, time: '10:15 AM - 11:00 AM' },
+  { id: 5, time: '11:00 AM - 11:45 AM' },
+  { id: 6, time: '11:45 AM - 12:30 PM' },
+  { id: 7, time: '12:30 PM - 01:15 PM' },
 ];
+
+const PERIODS_2ND = [
+  { id: 1, time: '01:00 PM - 01:45 PM' },
+  { id: 2, time: '01:45 PM - 02:30 PM' },
+  { id: 3, time: '02:30 PM - 03:15 PM' },
+  { id: 4, time: '03:15 PM - 04:00 PM' },
+  { id: 5, time: '04:00 PM - 04:45 PM' },
+  { id: 6, time: '04:45 PM - 05:30 PM' },
+  { id: 7, time: '05:30 PM - 06:15 PM' },
+];
+
+const formatTime12Hour = (time24: string): string => {
+  if (!time24) return '';
+  if (time24.toUpperCase().includes('AM') || time24.toUpperCase().includes('PM')) return time24;
+  const timeWithoutSeconds = time24.split(':')[0] + ':' + (time24.split(':')[1] || '00');
+  const [hours, minutes] = timeWithoutSeconds.split(':').map(Number);
+  if (isNaN(hours) || isNaN(minutes)) return time24;
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  const h12 = hours % 12 || 12;
+  return `${h12}:${String(minutes).padStart(2, '0')} ${ampm}`;
+};
 
 export default function AdminAttendanceHistory({ onBack }: any) {
   const [viewMode, setViewMode] = useState<'department' | 'teacher'>('department');
@@ -383,6 +409,7 @@ export default function AdminAttendanceHistory({ onBack }: any) {
   }
 
   const renderDepartmentHistory = () => {
+    const currentPeriods = selectedShift === '2nd Shift' ? PERIODS_2ND : PERIODS_1ST;
     const getStatusColor = (status: string) => {
       if (status.toLowerCase() === 'present') return '#4CAF50';
       if (status.toLowerCase() === 'absent') return '#F44336';
@@ -400,16 +427,20 @@ export default function AdminAttendanceHistory({ onBack }: any) {
       return (
         <View style={styles.dateSection}>
           <View style={styles.dateHeader}><Text style={styles.dateHeaderText}>No Attendance Records Found</Text></View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ width: '100%', minWidth: 920 }}
+          >
             <View style={styles.grid}>
               <View style={styles.row}>
                 <View style={styles.cornerCell}><Text style={styles.cornerText}>Sem / Period</Text></View>
-                {PERIODS.map(p => (<View key={p.id} style={styles.periodHeaderCell}><Text style={styles.periodNum}>P{p.id}</Text><Text style={styles.periodTime}>{p.time}</Text></View>))}
+                {currentPeriods.map(p => (<View key={p.id} style={styles.periodHeaderCell}><Text style={styles.periodNum}>P{p.id}</Text><Text style={styles.periodTime}>{p.time}</Text></View>))}
               </View>
               {displaySemesters.map(sem => (
                 <View key={sem} style={styles.row}>
                   <View style={styles.deptSemCell}><Text style={styles.deptText}>{selectedDept}</Text><Text style={styles.semText}>{sem} sem</Text></View>
-                  {PERIODS.map(p => (<View key={p.id} style={styles.dataCell}><Text style={styles.emptyText}>— No Record —</Text></View>))}
+                  {currentPeriods.map(p => (<View key={p.id} style={styles.dataCell}><Text style={styles.emptyText}>— No Record —</Text></View>))}
                 </View>
               ))}
             </View>
@@ -426,16 +457,20 @@ export default function AdminAttendanceHistory({ onBack }: any) {
               <View style={styles.dateHeaderLeft}><Text style={styles.dateHeaderText}>{formatDisplayDate(dateData.date)}</Text></View>
               <View style={styles.markedByBadge}><Text style={styles.markedByText}>Marked by {dateData.markedBy}</Text></View>
             </View>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ width: '100%', minWidth: 920 }}
+            >
               <View style={styles.grid}>
                 <View style={styles.row}>
                   <View style={styles.cornerCell}><Text style={styles.cornerText}>Sem / Period</Text></View>
-                  {PERIODS.map(p => (<View key={p.id} style={styles.periodHeaderCell}><Text style={styles.periodNum}>P{p.id}</Text><Text style={styles.periodTime}>{p.time}</Text></View>))}
+                  {currentPeriods.map(p => (<View key={p.id} style={styles.periodHeaderCell}><Text style={styles.periodNum}>P{p.id}</Text><Text style={styles.periodTime}>{p.time}</Text></View>))}
                 </View>
                 {displaySemesters.map(sem => (
                   <View key={sem} style={styles.row}>
                     <View style={styles.deptSemCell}><Text style={styles.deptText}>{selectedDept}</Text><Text style={styles.semText}>{sem} sem</Text></View>
-                    {PERIODS.map(p => {
+                    {currentPeriods.map(p => {
                       const record = dateData.records.find((r: any) => r.sem === sem && r.period === p.id);
                       return (
                         <TouchableOpacity key={p.id} style={[styles.dataCell, record ? { backgroundColor: '#FFF' } : styles.emptyCell]} onPress={() => handleCellPress(record)} activeOpacity={0.7} disabled={!record}>
@@ -443,6 +478,7 @@ export default function AdminAttendanceHistory({ onBack }: any) {
                             <View style={styles.cellContent}>
                               <Text style={styles.cellTeacher} numberOfLines={1}>{record.teacher}</Text>
                               <Text style={styles.cellCode} numberOfLines={1}>{record.code}</Text>
+                              {record.room ? <Text style={styles.cellRoom}>{formatRoom(record.room)}</Text> : null}
                               <View style={[styles.statusButton, { backgroundColor: getStatusColor(record.status) }]}><Text style={styles.statusText}>{record.status}</Text></View>
                               {record.status.toLowerCase() === 'absent' && record.substitute ? (<Text style={styles.substituteText}>→ {record.substitute}</Text>) : null}
                               <View style={styles.cellEditIcon}><MaterialCommunityIcons name="pencil" size={10} color="#1A237E" /></View>
@@ -462,6 +498,7 @@ export default function AdminAttendanceHistory({ onBack }: any) {
   };
 
   const renderTeacherHistory = () => {
+    const currentPeriods = selectedShift === '2nd Shift' ? PERIODS_2ND : PERIODS_1ST;
     const dateMap: any = {};
     filteredData.forEach(record => { 
       if (!dateMap[record.date]) dateMap[record.date] = []; 
@@ -473,7 +510,11 @@ export default function AdminAttendanceHistory({ onBack }: any) {
       return (
         <View style={styles.dateSection}>
           <View style={styles.dateHeader}><Text style={styles.dateHeaderText}>No Attendance Records Found</Text></View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={true}>
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={Platform.OS !== 'web'}
+            contentContainerStyle={{ width: '100%', minWidth: 650 }}
+          >
             <View style={styles.sketchTable}>
               <View style={styles.sketchHeader}>
                 <View style={styles.colPeriod}><Text style={styles.sketchTh}>Period</Text></View>
@@ -481,7 +522,7 @@ export default function AdminAttendanceHistory({ onBack }: any) {
                 <View style={styles.colLectures}><Text style={styles.sketchTh}>Lectures</Text></View>
                 <View style={styles.colStatus}><Text style={styles.sketchTh}>Status</Text></View>
               </View>
-              {PERIODS.map(p => (
+              {currentPeriods.map(p => (
                 <View key={p.id} style={styles.sketchRow}>
                   <View style={styles.colPeriod}><Text style={styles.sketchPeriodNum}>{p.id}</Text></View>
                   <View style={styles.colTiming}><Text style={styles.sketchTimeText}>{p.time}</Text></View>
@@ -502,7 +543,11 @@ export default function AdminAttendanceHistory({ onBack }: any) {
             <View style={styles.dateHeader}>
               <View style={styles.dateHeaderLeft}><Text style={styles.dateHeaderText}>{formatDisplayDate(dateData.date)}</Text></View>
             </View>
-            <ScrollView horizontal showsHorizontalScrollIndicator={true}>
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={Platform.OS !== 'web'}
+              contentContainerStyle={{ width: '100%', minWidth: 650 }}
+            >
               <View style={styles.sketchTable}>
                 <View style={styles.sketchHeader}>
                   <View style={styles.colPeriod}><Text style={styles.sketchTh}>Period</Text></View>
@@ -510,18 +555,24 @@ export default function AdminAttendanceHistory({ onBack }: any) {
                   <View style={styles.colLectures}><Text style={styles.sketchTh}>Lectures</Text></View>
                   <View style={styles.colStatus}><Text style={styles.sketchTh}>Status</Text></View>
                 </View>
-                {PERIODS.map(p => {
-                  const lecture = dateData.records.find((r: any) => r.period === p.id);
+                {currentPeriods.map(p => {
+                  const lecture = dateData.records.find((r: any) => Number(r.period) === Number(p.id));
                   return (
                     <TouchableOpacity key={p.id} style={styles.sketchRow} onPress={() => handleCellPress(lecture)} disabled={!lecture}>
                       <View style={styles.colPeriod}><Text style={styles.sketchPeriodNum}>{p.id}</Text></View>
-                      <View style={styles.colTiming}><Text style={styles.sketchTimeText}>{p.time}</Text></View>
+                      <View style={styles.colTiming}>
+                        <Text style={styles.sketchTimeText}>
+                          {lecture && lecture.start_time && lecture.end_time 
+                            ? `${formatTime12Hour(lecture.start_time)} - ${formatTime12Hour(lecture.end_time)}` 
+                            : p.time}
+                        </Text>
+                      </View>
                       <View style={styles.colLectures}>
                         {lecture ? (
                           <View style={styles.lectureCentered}>
-                            <Text style={styles.sketchVal}>{formatRoom(lecture.room)}</Text>
-                            <Text style={styles.sketchVal}>{lecture.code}</Text>
-                            <Text style={styles.sketchVal}>{lecture.dept} {lecture.sem} sem</Text>
+                            <Text style={styles.sketchRoom}>{formatRoom(lecture.room)}</Text>
+                            <Text style={styles.sketchCode}>{lecture.code}</Text>
+                            <Text style={styles.sketchDept}>{lecture.dept} {lecture.sem} sem</Text>
                           </View>
                         ) : (<Text style={styles.sketchFree}>— Free —</Text>)}
                       </View>
@@ -547,25 +598,27 @@ export default function AdminAttendanceHistory({ onBack }: any) {
         <Text style={styles.headerTitle}>{selectedShift} - History</Text>
         <View style={styles.resultBadge}><Text style={styles.resultBadgeText}>{uniqueDaysCount} Days</Text></View>
       </View>
-      <ScrollView contentContainerStyle={{ padding: 15, paddingBottom: 30 }}>
-        <View style={styles.adminInfoCard}>
-          <Text style={styles.adminName}>{viewMode === 'department' ? `${selectedDept} Department` : selectedTeacher}</Text>
-          <Text style={styles.adminSub}>{viewMode === 'department' ? `${selectedShift}` : `${selectedTeacherDept} Department • ${selectedShift}`}</Text>
-          <View style={styles.dateRangeLine}><Text style={styles.dateRangeText}>{startDate === endDate ? formatDisplayDate(startDate) : `${startDate} to ${endDate}`}</Text></View>
-        </View>
-        {loading && filteredData.length === 0 ? (
-          <View style={{ padding: 40, alignItems: 'center' }}>
-            <ActivityIndicator size="large" color="#1A237E" />
-            <Text style={{ marginTop: 10, color: '#666' }}>Loading records...</Text>
+      <ScrollView contentContainerStyle={{ padding: 15, paddingBottom: 40 }}>
+        <View style={styles.centeredWrapper}>
+          <View style={styles.adminInfoCard}>
+            <Text style={styles.adminName}>{viewMode === 'department' ? `${selectedDept} Department` : selectedTeacher}</Text>
+            <Text style={styles.adminSub}>{viewMode === 'department' ? `${selectedShift}` : `${selectedTeacherDept} Department • ${selectedShift}`}</Text>
+            <View style={styles.dateRangeLine}><Text style={styles.dateRangeText}>{startDate === endDate ? formatDisplayDate(startDate) : `${startDate} to ${endDate}`}</Text></View>
           </View>
-        ) : (viewMode === 'department' ? renderDepartmentHistory() : renderTeacherHistory())}
-        
-        {filteredData.length > 0 && (
-          <TouchableOpacity style={styles.exportBtn} onPress={handleDownload}>
-            <MaterialCommunityIcons name="download" size={24} color="#FFF" />
-            <Text style={styles.exportBtnText}>Download PDF Report</Text>
-          </TouchableOpacity>
-        )}
+          {loading && filteredData.length === 0 ? (
+            <View style={{ padding: 40, alignItems: 'center' }}>
+              <ActivityIndicator size="large" color="#1A237E" />
+              <Text style={{ marginTop: 10, color: '#666' }}>Loading records...</Text>
+            </View>
+          ) : (viewMode === 'department' ? renderDepartmentHistory() : renderTeacherHistory())}
+          
+          {filteredData.length > 0 && (
+            <TouchableOpacity style={styles.exportBtn} onPress={handleDownload}>
+              <MaterialCommunityIcons name="download" size={24} color="#FFF" />
+              <Text style={styles.exportBtnText}>Download PDF Report</Text>
+            </TouchableOpacity>
+          )}
+        </View>
       </ScrollView>
 
       <Modal visible={editModalVisible} transparent animationType="slide">
@@ -650,7 +703,7 @@ const styles = StyleSheet.create({
     borderRadius: 16, 
     padding: 24, 
     elevation: 3,
-    maxWidth: 680,
+    maxWidth: 550,
     width: '100%',
     alignSelf: 'center',
     shadowColor: '#000',
@@ -659,6 +712,11 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     borderWidth: 1,
     borderColor: '#E8EAF6',
+  },
+  centeredWrapper: {
+    width: '100%',
+    maxWidth: 1000,
+    alignSelf: 'center',
   },
   label: { fontSize: 14, fontWeight: '700', color: '#1A237E', marginBottom: 6, marginTop: 12 },
   inputWrapper: { flexDirection: 'row', alignItems: 'center', width: '100%', minHeight: 50, backgroundColor: '#F5F5F5', borderWidth: 1.5, borderColor: '#DDD', borderRadius: 10, paddingHorizontal: 12, marginBottom: 12 },
@@ -678,48 +736,52 @@ const styles = StyleSheet.create({
   dateRangeLine: { marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: '#E8EAF6' },
   dateRangeText: { fontSize: 13, color: '#1A237E', fontWeight: '700' },
   historyContainer: { flex: 1 },
-  grid: { borderWidth: 1, borderColor: '#90A4AE', borderRadius: 4, overflow: 'hidden', backgroundColor: '#FFF' },
-  row: { flexDirection: 'row' },
-  cornerCell: { width: 90, height: 55, backgroundColor: '#1A237E', justifyContent: 'center', alignItems: 'center', borderRightWidth: 1, borderBottomWidth: 1, borderColor: '#90A4AE' },
+  grid: { width: '100%', borderWidth: 1, borderColor: '#90A4AE', borderRadius: 4, overflow: 'hidden', backgroundColor: '#FFF' },
+  row: { flexDirection: 'row', width: '100%' },
+  cornerCell: { width: 90, height: 60, backgroundColor: '#1A237E', justifyContent: 'center', alignItems: 'center', borderRightWidth: 1, borderBottomWidth: 1, borderColor: '#90A4AE' },
   cornerText: { color: '#FFF', fontSize: 11, fontWeight: '800', textAlign: 'center' },
-  periodHeaderCell: { width: 115, height: 55, backgroundColor: '#E8EAF6', justifyContent: 'center', alignItems: 'center', borderRightWidth: 1, borderBottomWidth: 1, borderColor: '#90A4AE' },
-  periodNum: { fontSize: 13, fontWeight: '800', color: '#1A237E' },
-  periodTime: { fontSize: 9, color: '#546E7A', textAlign: 'center', marginTop: 2 },
-  deptSemCell: { width: 90, minHeight: 100, backgroundColor: '#F5F5F5', justifyContent: 'center', alignItems: 'center', borderRightWidth: 1, borderBottomWidth: 1, borderColor: '#90A4AE' },
+  periodHeaderCell: { width: 118, height: 60, backgroundColor: '#E8EAF6', justifyContent: 'center', alignItems: 'center', borderRightWidth: 1, borderBottomWidth: 1, borderColor: '#90A4AE' },
+  periodNum: { fontSize: 13.5, fontWeight: '800', color: '#1A237E' },
+  periodTime: { fontSize: 9.5, color: '#546E7A', textAlign: 'center', marginTop: 2 },
+  deptSemCell: { width: 90, minHeight: 105, backgroundColor: '#F5F5F5', justifyContent: 'center', alignItems: 'center', borderRightWidth: 1, borderBottomWidth: 1, borderColor: '#90A4AE' },
   deptText: { fontSize: 13, fontWeight: '800', color: '#1A237E', textAlign: 'center' },
   semText: { fontSize: 11, color: '#546E7A', fontWeight: '600' },
-  dataCell: { width: 115, minHeight: 100, justifyContent: 'center', alignItems: 'center', borderRightWidth: 1, borderBottomWidth: 1, borderColor: '#90A4AE', padding: 6 },
+  dataCell: { width: 118, minHeight: 105, justifyContent: 'center', alignItems: 'center', borderRightWidth: 1, borderBottomWidth: 1, borderColor: '#90A4AE', padding: 4 },
   emptyCell: { backgroundColor: '#FAFAFA' },
-  emptyText: { fontSize: 10, color: '#B0BEC5', fontWeight: '600' },
+  emptyText: { fontSize: 11, color: '#B0BEC5', fontWeight: '600' },
   cellContent: { alignItems: 'center', justifyContent: 'center', flex: 1 },
-  cellTeacher: { fontSize: 10, fontWeight: '700', color: '#333', textAlign: 'center', marginBottom: 2 },
-  cellCode: { fontSize: 9, color: '#546E7A', textAlign: 'center', marginBottom: 4 },
-  statusButton: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12, marginTop: 4 },
+  cellTeacher: { fontSize: 12.5, fontWeight: '700', color: '#1A237E', textAlign: 'center', marginBottom: 2 },
+  cellCode: { fontSize: 11, color: '#546E7A', textAlign: 'center', fontWeight: '600', marginBottom: 2 },
+  cellRoom: { fontSize: 11, color: '#D32F2F', fontWeight: '700', textAlign: 'center', marginBottom: 2 },
+  statusButton: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10, marginTop: 2 },
   statusText: { color: '#FFF', fontSize: 10, fontWeight: '800' },
-  substituteText: { fontSize: 8, color: '#2196F3', marginTop: 2, fontWeight: '600' },
+  substituteText: { fontSize: 8.5, color: '#1976D2', marginTop: 2, fontWeight: '700', textAlign: 'center' },
   cellEditIcon: { position: 'absolute', top: 0, right: 0 },
-  dateSection: { marginBottom: 20 },
-  dateHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#1A237E', paddingVertical: 12, paddingHorizontal: 15, borderRadius: 10, marginBottom: 10, elevation: 3 },
+  dateSection: { marginBottom: 20, width: '100%' },
+  dateHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#1A237E', paddingVertical: 12, paddingHorizontal: 15, borderRadius: 10, marginBottom: 10, elevation: 3, width: '100%' },
   dateHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 },
   dateHeaderText: { fontSize: 13, fontWeight: '800', color: '#FFF' },
   markedByBadge: { backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12 },
   markedByText: { fontSize: 10, fontWeight: '700', color: '#FFF' },
-  sketchTable: { borderWidth: 2, borderColor: '#1A237E', borderRadius: 8, overflow: 'hidden', backgroundColor: '#FFF' },
-  sketchHeader: { flexDirection: 'row', backgroundColor: '#1A237E', paddingVertical: 12 },
-  sketchTh: { color: '#FFF', fontWeight: '800', fontSize: 13 },
-  colPeriod: { width: 60, alignItems: 'center', justifyContent: 'center' },
-  colTiming: { width: 110, alignItems: 'center', justifyContent: 'center', borderLeftWidth: 1, borderLeftColor: '#C5CAE9' },
-  colLectures: { width: 140, borderLeftWidth: 1, borderLeftColor: '#C5CAE9', paddingHorizontal: 8, paddingVertical: 10, alignItems: 'center', justifyContent: 'center' },
-  colStatus: { width: 130, borderLeftWidth: 1, borderLeftColor: '#C5CAE9', paddingHorizontal: 6, paddingVertical: 10, alignItems: 'center', justifyContent: 'center' },
-  sketchRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#C5CAE9', minHeight: 80 },
-  sketchPeriodNum: { fontSize: 15, fontWeight: '800', color: '#1A237E' },
-  sketchTimeText: { fontSize: 11, fontWeight: '600', color: '#333', textAlign: 'center' },
+  sketchTable: { borderWidth: 2, borderColor: '#1A237E', borderRadius: 8, overflow: 'hidden', backgroundColor: '#FFF', width: '100%' },
+  sketchHeader: { flexDirection: 'row', backgroundColor: '#1A237E', paddingVertical: 14 },
+  sketchTh: { color: '#FFF', fontWeight: '800', fontSize: 14, textAlign: 'center', flex: 1 },
+  colPeriod: { width: 70, alignItems: 'center', justifyContent: 'center', borderRightWidth: 1, borderRightColor: '#C5CAE9' },
+  colTiming: { width: 130, alignItems: 'center', justifyContent: 'center', borderRightWidth: 1, borderRightColor: '#C5CAE9' },
+  colLectures: { flex: 1, minWidth: 180, borderRightWidth: 1, borderRightColor: '#C5CAE9', paddingHorizontal: 10, paddingVertical: 10, alignItems: 'center', justifyContent: 'center' },
+  colStatus: { width: 130, paddingHorizontal: 6, paddingVertical: 10, alignItems: 'center', justifyContent: 'center' },
+  sketchRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#C5CAE9', minHeight: 85 },
+  sketchPeriodNum: { fontSize: 16, fontWeight: '800', color: '#1A237E' },
+  sketchTimeText: { fontSize: 12, fontWeight: '600', color: '#333', textAlign: 'center' },
   lectureCentered: { alignItems: 'center', justifyContent: 'center' },
-  sketchVal: { fontSize: 12, color: '#1A237E', fontWeight: '700', marginBottom: 3, textAlign: 'center' },
-  sketchFree: { fontSize: 11, color: '#B0BEC5', fontStyle: 'italic', textAlign: 'center' },
+  sketchRoom: { fontSize: 12.5, color: '#D32F2F', fontWeight: '700', marginBottom: 2, textAlign: 'center' },
+  sketchCode: { fontSize: 13, color: '#1A237E', fontWeight: '700', marginBottom: 2, textAlign: 'center' },
+  sketchDept: { fontSize: 11.5, color: '#546E7A', fontWeight: '600', textAlign: 'center' },
+  sketchFree: { fontSize: 12, color: '#90A4AE', fontStyle: 'italic', textAlign: 'center' },
+  freeStatus: { fontSize: 12, color: '#B0BEC5', textAlign: 'center' },
   editIconTable: { position: 'absolute', top: 5, right: 5 },
   statusPill: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 5, borderRadius: 12 },
-  statusPillText: { fontSize: 10, fontWeight: '800', flexShrink: 1 },
+  statusPillText: { fontSize: 11, fontWeight: '800', flexShrink: 1 },
   exportBtn: { 
     flexDirection: 'row', 
     alignItems: 'center', 
@@ -730,7 +792,7 @@ const styles = StyleSheet.create({
     gap: 8, 
     elevation: 3, 
     marginTop: 15,
-    maxWidth: 680,
+    maxWidth: 500,
     width: '100%',
     alignSelf: 'center',
   },

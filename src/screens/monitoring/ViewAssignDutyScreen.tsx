@@ -157,7 +157,6 @@ export default function ViewAssignDutyScreen({ onBack }: any) {
                 <Text style={styles.deptName}>{duty.dept_name} Department</Text>
                 <Text style={styles.deptMeta}>Assigned by: {duty.assigned_by_name || 'Admin'}</Text>
               </View>
-              <Text style={styles.chevron}>›</Text>
             </View>
           ))
         )}
@@ -236,7 +235,6 @@ const styles = StyleSheet.create({
   deptInfo: { flex: 1 },
   deptName: { fontSize: 18, fontWeight: '700', color: '#1A237E', marginBottom: 4 },
   deptMeta: { fontSize: 12, color: '#666' },
-  chevron: { fontSize: 28, color: '#1A237E', fontWeight: '300' },
   
   emptyBox: { alignItems: 'center', padding: 40 },
   emptyText: { fontSize: 16, color: '#666', marginTop: 15 },

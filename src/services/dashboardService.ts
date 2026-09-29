@@ -76,5 +76,24 @@ export const dashboardService = {
       throw new Error(data.message || 'Failed to reject user');
     }
     return data;
+  },
+
+  // ✅ 5. NEW: Rejected users ki list fetch karna
+  getRejectedUsers: async () => {
+    const BACKEND_URL = await detectBackend();
+    const token = await tokenStorage.getToken();
+
+    const response = await fetch(`${BACKEND_URL}/api/dashboard/rejected-users`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.message || 'Failed to fetch rejected users');
+    }
+    return data;
   }
 };

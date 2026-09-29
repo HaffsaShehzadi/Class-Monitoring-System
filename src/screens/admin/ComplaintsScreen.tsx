@@ -134,11 +134,11 @@ export default function ComplaintsScreen({ onBack }: any) {
 
             {item.status === 'pending' && (
               <View style={styles.descActions}>
-                <TouchableOpacity style={styles.rejectBtn} onPress={() => handleReject(item.id)}>
-                  <Text style={styles.actionText}>Reject</Text>
-                </TouchableOpacity>
                 <TouchableOpacity style={styles.resolveBtn} onPress={() => handleResolve(item.id)}>
                   <Text style={styles.actionText}>Resolve</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.rejectBtn} onPress={() => handleReject(item.id)}>
+                  <Text style={styles.actionText}>Reject</Text>
                 </TouchableOpacity>
               </View>
             )}

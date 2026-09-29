@@ -21,6 +21,43 @@ if (Platform.OS === 'web') {
       cancelBtn && cancelBtn.onPress && cancelBtn.onPress();
     }
   };
+
+  // ✅ GLOBAL CSS: Remove browser outline, blue box, autofill color, and duplicate eye icon
+  if (typeof document !== 'undefined') {
+    const styleId = 'custom-global-web-styles';
+    if (!document.getElementById(styleId)) {
+      const style = document.createElement('style');
+      style.id = styleId;
+      style.innerHTML = `
+        /* Remove browser outline and blue focus box */
+        input:focus, textarea:focus, select:focus {
+          outline: none !important;
+          box-shadow: none !important;
+        }
+        /* Remove duplicate eye icon added by Edge/Chrome */
+        input::-ms-reveal,
+        input::-ms-clear {
+          display: none !important;
+        }
+        /* Fix autofill blue/purple background */
+        input:-webkit-autofill,
+        input:-webkit-autofill:hover, 
+        input:-webkit-autofill:focus,
+        input:-webkit-autofill:active {
+          -webkit-box-shadow: 0 0 0 1000px #FFFFFF inset !important;
+          -webkit-text-fill-color: #333333 !important;
+          transition: background-color 5000s ease-in-out 0s;
+        }
+        /* Full viewport height and width on web */
+        html, body, #root {
+          height: 100%;
+          margin: 0;
+          padding: 0;
+        }
+      `;
+      document.head.appendChild(style);
+    }
+  }
 }
 
 import SplashScreen from './src/screens/auth/SplashScreen';
@@ -51,8 +88,8 @@ import MonitoringAttendanceHistory from './src/screens/monitoring/MonitoringAtte
 const isWeb = Platform.OS === 'web';
 const ADMIN_WEB_SCREENS = ['admin', 'pending', 'users', 'assignDuty', 'timetableManagement', 'addClassInTimetable', 'complaints', 'adminAttendanceHistory'];
 
+// ✅ FIXED: "Dashboard" keyword removed from sidebar as requested
 const WEB_MENU = [
-  { id: 'admin', title: 'Dashboard', icon: 'view-dashboard-outline' },
   { id: 'pending', title: 'Pending Approvals', icon: 'account-clock-outline' },
   { id: 'users', title: 'User Profiles', icon: 'account-group-outline' },
   { id: 'assignDuty', title: 'Assign Duty', icon: 'clipboard-check-outline' },
@@ -61,10 +98,23 @@ const WEB_MENU = [
   { id: 'adminAttendanceHistory', title: 'Attendance History', icon: 'history' },
 ];
 
+const TEACHER_WEB_MENU = [
+  { id: 'myTimetable', title: 'My Timetable', icon: 'calendar-clock-outline' },
+  { id: 'teacherAttendanceHistory', title: 'My Attendance History', icon: 'history' },
+  { id: 'submitComplaint', title: 'Submit Complaint', icon: 'alert-circle-outline' },
+];
+
+const MO_WEB_MENU = [
+  { id: 'viewAssignDuty', title: 'View Assigned Duty', icon: 'clipboard-check-outline' },
+  { id: 'markAttendance', title: 'Mark Attendance', icon: 'check-circle-outline' },
+  { id: 'monitoringAttendanceHistory', title: 'Attendance History', icon: 'history' },
+];
+
 export default function App() {
   const [screen, setScreen] = useState('splash');
   const [params, setParams] = useState<any>({});
   const [role, setRole] = useState('');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   
   const [pendingUsers, setPendingUsers] = useState<any[]>([]);
   const [approvedUsers, setApprovedUsers] = useState<any[]>([]);
@@ -178,6 +228,9 @@ export default function App() {
     // ✅ Purana params clear karein
     setParams(p || {});
     setScreen(name);
+    if (!isWeb) {
+      setSidebarOpen(false);
+    }
   };
 
   // ✅ Screen change hone par states ko reset karein (agar zaroori ho)
@@ -198,6 +251,7 @@ export default function App() {
   const goBack = () => {
     // ✅ Jab back jayen, params clear kar dein
     setParams({});
+    setSidebarOpen(false);
     
     if (screen === 'requestStatus') { setScreen('signin'); return; }
     if (screen === 'myTimetable') { setScreen('teacher'); return; }
@@ -210,6 +264,7 @@ export default function App() {
   };
 
   const logout = async () => {
+    setSidebarOpen(false);
     await tokenStorage.clearAll();
     setAuthToken(null);
     setRole('');
@@ -419,6 +474,7 @@ export default function App() {
             onApproved={handleApproved} 
             userEmail={currentUser?.email || ''} 
             userRole={currentUser?.role || ''} 
+            initialStatus={currentUser?.status}
             checkStatus={checkRequestStatus}
             userPassword={currentUser?.password}
           />
@@ -429,7 +485,7 @@ export default function App() {
 
       // ✅ ADMIN SCREENS
       case 'admin': 
-        return <AdminDashboard onNavigate={go} onLogout={logout} adminStats={adminStats} />;
+        return <AdminDashboard onNavigate={go} onLogout={logout} adminStats={adminStats} onToggleSidebar={() => setSidebarOpen(prev => !prev)} sidebarOpen={sidebarOpen} />;
       
       // ✅ ERROR FIXED HERE: Removed extra props that were causing the TypeScript error
       case 'pending': 
@@ -455,7 +511,7 @@ export default function App() {
 
       // ✅ TEACHER SCREENS
       case 'teacher': 
-        return <TeacherDashboard onNavigate={go} onLogout={logout} />;
+        return <TeacherDashboard onNavigate={go} onLogout={logout} onToggleSidebar={() => setSidebarOpen(prev => !prev)} sidebarOpen={sidebarOpen} />;
       
       case 'submitComplaint': 
         return <SubmitComplaintScreen onBack={goBack} onSubmit={submitComplaint} />;
@@ -468,7 +524,7 @@ export default function App() {
 
       // ✅ MO SCREENS
       case 'monitoring': 
-        return <MonitoringOfficialDashboard onNavigate={go} onLogout={logout} />;
+        return <MonitoringOfficialDashboard onNavigate={go} onLogout={logout} onToggleSidebar={() => setSidebarOpen(prev => !prev)} sidebarOpen={sidebarOpen} />;
       
       case 'viewAssignDuty': 
         return <ViewAssignDutyScreen onBack={goBack} duties={moDuties} />;
@@ -495,9 +551,9 @@ export default function App() {
         />;
 
       default:
-        if (role === 'admin') return <AdminDashboard onNavigate={go} onLogout={logout} adminStats={adminStats} />;
-        if (role === 'teacher') return <TeacherDashboard onNavigate={go} onLogout={logout} />;
-        if (role === 'monitoring') return <MonitoringOfficialDashboard onNavigate={go} onLogout={logout} />;
+        if (role === 'admin') return <AdminDashboard onNavigate={go} onLogout={logout} adminStats={adminStats} onToggleSidebar={() => setSidebarOpen(prev => !prev)} />;
+        if (role === 'teacher') return <TeacherDashboard onNavigate={go} onLogout={logout} onToggleSidebar={() => setSidebarOpen(prev => !prev)} />;
+        if (role === 'monitoring') return <MonitoringOfficialDashboard onNavigate={go} onLogout={logout} onToggleSidebar={() => setSidebarOpen(prev => !prev)} />;
         return (
           <SignInScreen 
             onBack={splashDone} 
@@ -510,22 +566,73 @@ export default function App() {
     }
   };
 
-  const showWebSidebar = isWeb && role === 'admin' && ADMIN_WEB_SCREENS.includes(screen);
+  const getRoleMenu = () => {
+    if (role === 'admin') return WEB_MENU;
+    if (role === 'teacher') return TEACHER_WEB_MENU;
+    if (role === 'monitoring') return MO_WEB_MENU;
+    return [];
+  };
 
+  const currentMenu = getRoleMenu();
+  const isAuthScreen = ['splash', 'signin', 'signup', 'forgot', 'requestStatus'].includes(screen);
+
+  if (isAuthScreen) {
+    return (
+      <SafeAreaProvider>
+        <View style={[styles.webWrapper, styles.webWrapperAuth]}>
+          <View style={[styles.container, styles.containerAuth]}>
+            {renderScreen()}
+          </View>
+        </View>
+      </SafeAreaProvider>
+    );
+  }
+
+  // ✅ MOBILE: Pure full-screen layout without any sidebar
+  if (!isWeb) {
+    return (
+      <SafeAreaProvider>
+        <View style={styles.container}>
+          {renderScreen()}
+        </View>
+      </SafeAreaProvider>
+    );
+  }
+
+  // ✅ WEB: Side-by-side in-flow sidebar on left and adjusting content on right
   return (
     <SafeAreaProvider>
-      {showWebSidebar ? (
-        <View style={styles.webLayout}>
-          <View style={styles.sidebar}>
-            <Text style={styles.sidebarLogo}>🎓 Class Monitoring</Text>
-            <ScrollView style={{ flex: 1, paddingVertical: 10 }}>
-              {WEB_MENU.map(item => {
+      <View style={styles.appShell}>
+        {/* ✅ IN-FLOW NAVIGATION BAR: Adjusts side-by-side on the left; screen content on right adjusts smoothly */}
+        {sidebarOpen && currentMenu.length > 0 && (
+          <View style={styles.inFlowSidebar}>
+            <View style={styles.sidebarHeader}>
+              <TouchableOpacity 
+                onPress={() => go(role === 'admin' ? 'admin' : role === 'teacher' ? 'teacher' : 'monitoring')}
+                activeOpacity={0.8}
+                style={{ flex: 1 }}
+              >
+                <Text style={styles.sidebarLogo}>🎓 Class Monitoring</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                onPress={() => setSidebarOpen(false)} 
+                style={styles.sidebarCloseBtn}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                activeOpacity={0.7}
+              >
+                <MaterialCommunityIcons name="close" size={22} color="#FFF" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={{ flex: 1, paddingVertical: 10 }} showsVerticalScrollIndicator={false}>
+              {currentMenu.map(item => {
                 const isActive = screen === item.id;
                 return (
                   <TouchableOpacity
                     key={item.id}
                     style={[styles.sidebarItem, isActive && styles.sidebarItemActive]}
                     onPress={() => go(item.id)}
+                    activeOpacity={0.75}
                   >
                     <MaterialCommunityIcons
                       name={item.icon as any}
@@ -540,47 +647,81 @@ export default function App() {
                 );
               })}
             </ScrollView>
-            <TouchableOpacity style={styles.sidebarLogout} onPress={logout}>
-              <MaterialCommunityIcons name="logout" size={18} color="#FFCDD2" style={{ marginRight: 10 }} />
-              <Text style={styles.sidebarLogoutText}>Logout</Text>
-            </TouchableOpacity>
           </View>
-          <View style={styles.webContent}>{renderScreen()}</View>
+        )}
+
+        {/* ✅ RIGHT MAIN CONTENT AREA: Never hidden; fills remaining space seamlessly */}
+        <View style={styles.mainContentArea}>
+          {renderScreen()}
         </View>
-      ) : (
-        <View style={styles.webWrapper}>
-          <View style={styles.container}>
-            {renderScreen()}
-          </View>
-        </View>
-      )}
+      </View>
     </SafeAreaProvider>
   );
 }
 
 const styles = StyleSheet.create({
-  webLayout: { flex: 1, flexDirection: 'row', backgroundColor: '#F8F9FA' },
-  sidebar: { 
-    width: 250, 
-    backgroundColor: '#1A237E', 
-    paddingTop: 24, 
+  webWrapper: {
+    flex: 1,
+    backgroundColor: '#F0F2F5',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+    height: '100%',
+  },
+  webWrapperAuth: {
+    backgroundColor: '#FFF',
+    alignItems: 'stretch',
+  },
+  container: { 
+    flex: 1, 
+    backgroundColor: '#F5F5F5',
+    width: '100%',
+    maxWidth: isWeb ? '100%' : 1100,
+  },
+  containerAuth: {
+    backgroundColor: '#FFF',
+    maxWidth: '100%',
+    width: '100%',
+    height: '100%',
+  },
+
+  // ✅ Modern Web App Layout with Side-by-Side In-Flow Sidebar
+  appShell: {
+    flex: 1,
+    flexDirection: 'row',
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#F5F5F5',
+  },
+  inFlowSidebar: {
+    width: 260,
+    backgroundColor: '#1A237E',
+    height: '100%',
+    zIndex: 100,
+    paddingTop: Platform.OS === 'web' ? 20 : 44,
     paddingHorizontal: 12,
     borderRightWidth: 1,
-    borderRightColor: '#E0E0E0',
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
+    borderRightColor: 'rgba(255,255,255,0.12)',
+  },
+  sidebarHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 8,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.15)',
+    marginBottom: 8,
   },
   sidebarLogo: { 
     color: '#FFF', 
     fontSize: 18, 
     fontWeight: '800', 
-    paddingHorizontal: 10, 
-    paddingBottom: 20, 
-    borderBottomWidth: 1, 
-    borderBottomColor: 'rgba(255,255,255,0.15)', 
-    marginBottom: 8 
+  },
+  sidebarCloseBtn: {
+    padding: 6,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.15)',
   },
   sidebarItem: { 
     flexDirection: 'row',
@@ -597,28 +738,10 @@ const styles = StyleSheet.create({
   },
   sidebarItemText: { color: '#C5CAE9', fontSize: 14, fontWeight: '600' },
   sidebarItemTextActive: { color: '#FFF', fontWeight: '700' },
-  sidebarLogout: { 
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 16, 
-    paddingHorizontal: 14, 
-    borderTopWidth: 1, 
-    borderTopColor: 'rgba(255,255,255,0.15)',
-    marginBottom: 8,
-  },
-  sidebarLogoutText: { color: '#FFCDD2', fontSize: 14, fontWeight: '700' },
-  webContent: { flex: 1, backgroundColor: '#F8F9FA' },
-
-  webWrapper: {
+  mainContentArea: {
     flex: 1,
-    backgroundColor: '#F0F2F5',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  container: { 
-    flex: 1, 
+    height: '100%',
     backgroundColor: '#F5F5F5',
-    width: '100%',
-    maxWidth: 1100,
+    overflow: 'hidden',
   },
 });

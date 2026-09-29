@@ -145,16 +145,24 @@ export default function UserProfilesScreen({ onBack }: any) {
                 <View style={styles.userInfo}>
                   <Text style={styles.name}>{user.name}</Text>
                   <Text style={styles.roleDept}>
-                    {user.role} {user.department !== '-' ? `• ${user.department}` : ''}
+                    {user.role} {user.department && user.department !== '-' && user.department !== 'N/A' ? `• ${user.department}` : ''}
                   </Text>
                 </View>
               </View>
 
               <View style={styles.cardActions}>
-                <TouchableOpacity style={styles.actionBtnView} onPress={() => handleViewProfile(user)}>
+                <TouchableOpacity 
+                  style={styles.actionBtnView} 
+                  onPress={() => handleViewProfile(user)}
+                  activeOpacity={0.8}
+                >
                   <Text style={styles.actionTextView}>View Profile</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.actionBtnDelete} onPress={() => handleDeleteUser(user.id, user.name)}>
+                <TouchableOpacity 
+                  style={styles.actionBtnDelete} 
+                  onPress={() => handleDeleteUser(user.id, user.name)}
+                  activeOpacity={0.8}
+                >
                   <Text style={styles.actionTextDelete}>Remove</Text>
                 </TouchableOpacity>
               </View>
@@ -188,7 +196,7 @@ export default function UserProfilesScreen({ onBack }: any) {
                     <Text style={styles.profileValue}>{selectedUser.role}</Text>
                   </View>
 
-                  {selectedUser.role === 'Teacher' && selectedUser.department !== '-' && (
+                  {selectedUser.role === 'Teacher' && selectedUser.department && selectedUser.department !== '-' && selectedUser.department !== 'N/A' && (
                     <View style={styles.profileRow}>
                       <Text style={styles.profileLabel}>Department:</Text>
                       <Text style={styles.profileValue}>{selectedUser.department}</Text>
@@ -327,21 +335,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row', 
     alignItems: 'center', 
     justifyContent: 'center', 
-    backgroundColor: '#E8EAF6', 
-    paddingVertical: 10, 
+    backgroundColor: '#1A237E', 
+    paddingVertical: 12, 
     borderRadius: 8 
   },
-  actionTextView: { color: '#1A237E', fontSize: 14, fontWeight: '600' },
+  actionTextView: { color: '#FFF', fontSize: 14, fontWeight: '700' },
   actionBtnDelete: { 
     flex: 1, 
     flexDirection: 'row', 
     alignItems: 'center', 
     justifyContent: 'center', 
-    backgroundColor: '#FFEBEE', 
-    paddingVertical: 10, 
+    backgroundColor: '#F44336', 
+    paddingVertical: 12, 
     borderRadius: 8 
   },
-  actionTextDelete: { color: '#F44336', fontSize: 14, fontWeight: '600' },
+  actionTextDelete: { color: '#FFF', fontSize: 14, fontWeight: '700' },
   
   emptyBox: { alignItems: 'center', paddingVertical: 40 },
   emptyText: { fontSize: 16, color: '#999', marginTop: 10 },

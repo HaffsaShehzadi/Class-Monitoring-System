@@ -7,7 +7,8 @@ export const attendanceService = {
     status: string, 
     substitute_teacher_name: string | null = null,
     latitude?: number,
-    longitude?: number
+    longitude?: number,
+    date?: string
   ) => {
     const BACKEND_URL = await detectBackend();
     const token = await tokenStorage.getToken();
@@ -17,7 +18,7 @@ export const attendanceService = {
       response = await fetch(`${BACKEND_URL}/api/attendance/mark`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ timetable_id, status, substitute_teacher_name, latitude, longitude }),
+        body: JSON.stringify({ timetable_id, status, substitute_teacher_name, latitude, longitude, date }),
       });
     } catch (networkError: any) {
       const error = new Error('Network error - no connection to server');
@@ -71,5 +72,23 @@ export const attendanceService = {
     const data = await response.json();
     if (!response.ok) throw new Error(data.message || 'Failed to update attendance');
     return data;
+  },
+
+  getTodayAttendance: async (date?: string) => {
+    try {
+      const BACKEND_URL = await detectBackend();
+      const token = await tokenStorage.getToken();
+      const url = `${BACKEND_URL}/api/attendance/today${date ? `?date=${date}` : ''}`;
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      });
+      if (!response.ok) return [];
+      const data = await response.json();
+      return Array.isArray(data) ? data : (data.data || []);
+    } catch (e: any) {
+      console.warn('⚠️ getTodayAttendance error:', e.message);
+      return [];
+    }
   }
 };

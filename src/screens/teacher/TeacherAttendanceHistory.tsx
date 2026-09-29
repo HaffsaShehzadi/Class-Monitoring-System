@@ -8,15 +8,41 @@ import { detectBackend } from '../../services/ipConfig';
 import { tokenStorage } from '../../services/tokenStorage';
 import { attendanceService } from '../../services/attendanceService';
 
-const PERIODS = [
-  { id: 1, time: '08:30 - 09:15' },
-  { id: 2, time: '09:15 - 10:00' },
-  { id: 3, time: '10:00 - 10:45' },
-  { id: 4, time: '11:00 - 11:45' },
-  { id: 5, time: '11:45 - 12:30' },
-  { id: 6, time: '01:30 - 02:15' },
-  { id: 7, time: '02:15 - 03:00' },
+// ✅ Full 7 Periods for 1st Shift
+const PERIODS_1ST = [
+  { id: 1, time: '08:00 AM - 08:45 AM' },
+  { id: 2, time: '08:45 AM - 09:30 AM' },
+  { id: 3, time: '09:30 AM - 10:15 AM' },
+  { id: 4, time: '10:15 AM - 11:00 AM' },
+  { id: 5, time: '11:00 AM - 11:45 AM' },
+  { id: 6, time: '11:45 AM - 12:30 PM' },
+  { id: 7, time: '12:30 PM - 01:15 PM' },
 ];
+
+// ✅ Full 7 Periods for 2nd Shift
+const PERIODS_2ND = [
+  { id: 1, time: '01:00 PM - 01:45 PM' },
+  { id: 2, time: '01:45 PM - 02:30 PM' },
+  { id: 3, time: '02:30 PM - 03:15 PM' },
+  { id: 4, time: '03:15 PM - 04:00 PM' },
+  { id: 5, time: '04:00 PM - 04:45 PM' },
+  { id: 6, time: '04:45 PM - 05:30 PM' },
+  { id: 7, time: '05:30 PM - 06:15 PM' },
+];
+
+// ✅ HELPER: 24-hour ko 12-hour (AM/PM) format mein convert kare
+const formatTime12Hour = (time24: string): string => {
+  if (!time24) return '';
+  if (time24.toUpperCase().includes('AM') || time24.toUpperCase().includes('PM')) {
+    return time24;
+  }
+  const timeWithoutSeconds = time24.split(':')[0] + ':' + (time24.split(':')[1] || '00');
+  const [hours, minutes] = timeWithoutSeconds.split(':').map(Number);
+  if (isNaN(hours) || isNaN(minutes)) return time24;
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  const h12 = hours % 12 || 12;
+  return `${h12}:${String(minutes).padStart(2, '0')} ${ampm}`;
+};
 
 export default function TeacherAttendanceHistory({ onBack }: any) {
   const [selectedShift, setSelectedShift] = useState('');
@@ -45,9 +71,16 @@ export default function TeacherAttendanceHistory({ onBack }: any) {
 
   const formatDisplayDate = (dateStr: string) => {
     if (!dateStr) return '';
-    const d = new Date(dateStr);
-    if (isNaN(d.getTime())) return dateStr;
-    return d.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    const cleanDate = String(dateStr).split('T')[0];
+    const parts = cleanDate.split('-');
+    if (parts.length === 3) {
+      const year = parseInt(parts[0], 10);
+      const month = parseInt(parts[1], 10) - 1;
+      const day = parseInt(parts[2], 10);
+      const d = new Date(year, month, day);
+      return d.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    }
+    return cleanDate;
   };
 
   const handleDownload = async () => {
@@ -162,23 +195,35 @@ export default function TeacherAttendanceHistory({ onBack }: any) {
     try {
       const history = await attendanceService.getMyHistory(startDate, endDate);
       
-      const myAttendance = history.filter((a: any) => 
-        a.date >= startDate && a.date <= endDate
-      );
+      const myAttendance = (history || []).filter((a: any) => {
+        const recDate = String(a.date || '').split('T')[0];
+        const inDateRange = recDate >= startDate && recDate <= endDate;
+        const matchesShift = !selectedShift || !a.shift || a.shift.trim().toLowerCase() === selectedShift.trim().toLowerCase();
+        return inDateRange && matchesShift;
+      });
 
       const dateMap: any = {};
       myAttendance.forEach((record: any) => {
-        if (!dateMap[record.date]) dateMap[record.date] = [];
-        dateMap[record.date].push(record);
+        const cleanDate = String(record.date || '').split('T')[0];
+        if (!dateMap[cleanDate]) dateMap[cleanDate] = [];
+        dateMap[cleanDate].push({ ...record, date: cleanDate });
       });
 
       const sortedDates = Object.keys(dateMap)
         .sort((a, b) => b.localeCompare(a))
-        .map(date => ({ 
-          date, 
-          day: dateMap[date][0].day || new Date(date).toLocaleDateString('en-US', { weekday: 'long' }), 
-          records: dateMap[date] 
-        }));
+        .map(date => {
+          const parts = date.split('-');
+          let dayName = dateMap[date][0]?.day;
+          if (!dayName && parts.length === 3) {
+            const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+            dayName = d.toLocaleDateString('en-US', { weekday: 'long' });
+          }
+          return { 
+            date, 
+            day: dayName || 'Day', 
+            records: dateMap[date] 
+          };
+        });
 
       setFilteredDates(sortedDates);
       setShowHistory(true);
@@ -301,6 +346,9 @@ export default function TeacherAttendanceHistory({ onBack }: any) {
     );
   }
 
+  // ✅ Current shift periods
+  const currentPeriods = selectedShift === '2nd Shift' ? PERIODS_2ND : PERIODS_1ST;
+
   // ✅ HISTORY TABLE SCREEN
   return (
     <SafeAreaView style={styles.container}>
@@ -314,53 +362,32 @@ export default function TeacherAttendanceHistory({ onBack }: any) {
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={{ padding: 15, paddingBottom: 30 }}>
-        <View style={styles.teacherTopCard}>
-          <Text style={styles.teacherTopName}>{teacherName}</Text>
-          <Text style={styles.teacherTopDept}>{teacherDept} • {selectedShift}</Text>
-          <View style={styles.dateRangeLine}>
-            <Text style={styles.dateRangeText}>{startDate} to {endDate}</Text>
-          </View>
-        </View>
-
-        {/* ✅ Ab download ke waqt table nahi chhupayega */}
-        {loading && filteredDates.length === 0 ? (
-          <View style={{ alignItems: 'center', marginTop: 40 }}>
-            <ActivityIndicator size="large" color="#1A237E" />
-            <Text style={{ marginTop: 10, color: '#666' }}>Loading history...</Text>
-          </View>
-        ) : filteredDates.length === 0 ? (
-          <View style={styles.dateSection}>
-            <View style={styles.dateHeader}>
-              <Text style={styles.dateHeaderText}>No Attendance Records Found</Text>
+      <ScrollView contentContainerStyle={{ padding: 15, paddingBottom: 40 }}>
+        <View style={styles.centeredWrapper}>
+          <View style={styles.teacherTopCard}>
+            <Text style={styles.teacherTopName}>{teacherName}</Text>
+            <Text style={styles.teacherTopDept}>{teacherDept} • {selectedShift}</Text>
+            <View style={styles.dateRangeLine}>
+              <Text style={styles.dateRangeText}>{startDate} to {endDate}</Text>
             </View>
-            <ScrollView horizontal showsHorizontalScrollIndicator={true}>
-              <View style={styles.sketchTable}>
-                <View style={styles.sketchHeader}>
-                  <View style={styles.colPeriod}><Text style={styles.sketchTh}>Period</Text></View>
-                  <View style={styles.colTiming}><Text style={styles.sketchTh}>Timing</Text></View>
-                  <View style={styles.colLectures}><Text style={styles.sketchTh}>Lectures</Text></View>
-                  <View style={styles.colStatus}><Text style={styles.sketchTh}>Status</Text></View>
-                </View>
-                {PERIODS.map(p => (
-                  <View key={p.id} style={styles.sketchRow}>
-                    <View style={styles.colPeriod}><Text style={styles.sketchPeriodNum}>{p.id}</Text></View>
-                    <View style={styles.colTiming}><Text style={styles.sketchTimeText}>{p.time}</Text></View>
-                    <View style={styles.colLectures}><Text style={styles.sketchFree}>— No Record —</Text></View>
-                    <View style={styles.colStatus}><Text style={styles.freeStatus}>—</Text></View>
-                  </View>
-                ))}
-              </View>
-            </ScrollView>
           </View>
-        ) : (
-          filteredDates.map((dateData) => (
-            <View key={dateData.date} style={styles.dateSection}>
-              <View style={styles.dateHeader}>
-                <Text style={styles.dateHeaderText}>{formatDisplayDate(dateData.date)}</Text>
-              </View>
 
-              <ScrollView horizontal showsHorizontalScrollIndicator={true}>
+          {/* ✅ Ab download ke waqt table nahi chhupayega */}
+          {loading && filteredDates.length === 0 ? (
+            <View style={{ alignItems: 'center', marginTop: 40 }}>
+              <ActivityIndicator size="large" color="#1A237E" />
+              <Text style={{ marginTop: 10, color: '#666' }}>Loading history...</Text>
+            </View>
+          ) : filteredDates.length === 0 ? (
+            <View style={styles.dateSection}>
+              <View style={styles.dateHeader}>
+                <Text style={styles.dateHeaderText}>No Attendance Records Found</Text>
+              </View>
+              <ScrollView 
+                horizontal 
+                showsHorizontalScrollIndicator={Platform.OS !== 'web'}
+                contentContainerStyle={{ width: '100%', minWidth: 650 }}
+              >
                 <View style={styles.sketchTable}>
                   <View style={styles.sketchHeader}>
                     <View style={styles.colPeriod}><Text style={styles.sketchTh}>Period</Text></View>
@@ -368,52 +395,85 @@ export default function TeacherAttendanceHistory({ onBack }: any) {
                     <View style={styles.colLectures}><Text style={styles.sketchTh}>Lectures</Text></View>
                     <View style={styles.colStatus}><Text style={styles.sketchTh}>Status</Text></View>
                   </View>
-
-                  {PERIODS.map(p => {
-                    const lecture = dateData.records.find((r: any) => r.period === p.id);
-                    return (
-                      <View key={p.id} style={styles.sketchRow}>
-                        <View style={styles.colPeriod}><Text style={styles.sketchPeriodNum}>{p.id}</Text></View>
-                        <View style={styles.colTiming}>
-                          <Text style={styles.sketchTimeText}>
-                            {lecture ? (lecture.start_time ? `${lecture.start_time} - ${lecture.end_time}` : p.time) : p.time}
-                          </Text>
-                        </View>
-                        <View style={styles.colLectures}>
-                          {lecture ? (
-                            <View style={styles.lectureCentered}>
-                              <Text style={styles.sketchVal}>{formatRoom(lecture.room || lecture.room_no)}</Text>
-                              <Text style={styles.sketchVal}>{lecture.code || lecture.subject_code}</Text>
-                              <Text style={styles.sketchVal}>{lecture.dept || lecture.dept_name} {lecture.sem || lecture.semester} sem</Text>
-                            </View>
-                          ) : (
-                            <Text style={styles.sketchFree}>— Free —</Text>
-                          )}
-                        </View>
-                        <View style={styles.colStatus}>{renderStatus(lecture)}</View>
-                      </View>
-                    );
-                  })}
+                  {currentPeriods.map(p => (
+                    <View key={p.id} style={styles.sketchRow}>
+                      <View style={styles.colPeriod}><Text style={styles.sketchPeriodNum}>{p.id}</Text></View>
+                      <View style={styles.colTiming}><Text style={styles.sketchTimeText}>{p.time}</Text></View>
+                      <View style={styles.colLectures}><Text style={styles.sketchFree}>— No Record —</Text></View>
+                      <View style={styles.colStatus}><Text style={styles.freeStatus}>—</Text></View>
+                    </View>
+                  ))}
                 </View>
               </ScrollView>
             </View>
-          ))
-        )}
+          ) : (
+            filteredDates.map((dateData) => (
+              <View key={dateData.date} style={styles.dateSection}>
+                <View style={styles.dateHeader}>
+                  <Text style={styles.dateHeaderText}>{formatDisplayDate(dateData.date)}</Text>
+                </View>
 
-        {/* ✅ Download button with spinner, aur sharing menu bhi kaam karega */}
-        {filteredDates.length > 0 && (
-          <TouchableOpacity 
-            style={styles.exportBtn} 
-            onPress={handleDownload}
-            disabled={downloading}
-          >
-            {downloading ? (
-              <ActivityIndicator color="#FFF" />
-            ) : (
-              <Text style={styles.exportBtnText}>Download PDF Report</Text>
-            )}
-          </TouchableOpacity>
-        )}
+                <ScrollView 
+                  horizontal 
+                  showsHorizontalScrollIndicator={Platform.OS !== 'web'}
+                  contentContainerStyle={{ width: '100%', minWidth: 650 }}
+                >
+                  <View style={styles.sketchTable}>
+                    <View style={styles.sketchHeader}>
+                      <View style={styles.colPeriod}><Text style={styles.sketchTh}>Period</Text></View>
+                      <View style={styles.colTiming}><Text style={styles.sketchTh}>Timing</Text></View>
+                      <View style={styles.colLectures}><Text style={styles.sketchTh}>Lectures</Text></View>
+                      <View style={styles.colStatus}><Text style={styles.sketchTh}>Status</Text></View>
+                    </View>
+
+                    {currentPeriods.map(p => {
+                      const lecture = dateData.records.find((r: any) => Number(r.period) === Number(p.id));
+                      return (
+                        <View key={p.id} style={styles.sketchRow}>
+                          <View style={styles.colPeriod}><Text style={styles.sketchPeriodNum}>{p.id}</Text></View>
+                          <View style={styles.colTiming}>
+                            <Text style={styles.sketchTimeText}>
+                              {lecture && lecture.start_time && lecture.end_time 
+                                ? `${formatTime12Hour(lecture.start_time)} - ${formatTime12Hour(lecture.end_time)}` 
+                                : p.time}
+                            </Text>
+                          </View>
+                          <View style={styles.colLectures}>
+                            {lecture ? (
+                              <View style={styles.lectureCentered}>
+                                <Text style={styles.sketchRoom}>{formatRoom(lecture.room || lecture.room_no)}</Text>
+                                <Text style={styles.sketchCode}>{lecture.code || lecture.subject_code}</Text>
+                                <Text style={styles.sketchDept}>{lecture.dept || lecture.dept_name} {lecture.sem || lecture.semester} sem</Text>
+                              </View>
+                            ) : (
+                              <Text style={styles.sketchFree}>— Free —</Text>
+                            )}
+                          </View>
+                          <View style={styles.colStatus}>{renderStatus(lecture)}</View>
+                        </View>
+                      );
+                    })}
+                  </View>
+                </ScrollView>
+              </View>
+            ))
+          )}
+
+          {/* ✅ Download button with spinner */}
+          {filteredDates.length > 0 && (
+            <TouchableOpacity 
+              style={styles.exportBtn} 
+              onPress={handleDownload}
+              disabled={downloading}
+            >
+              {downloading ? (
+                <ActivityIndicator color="#FFF" />
+              ) : (
+                <Text style={styles.exportBtnText}>Download PDF Report</Text>
+              )}
+            </TouchableOpacity>
+          )}
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -444,6 +504,11 @@ const styles = StyleSheet.create({
     flexGrow: 1, 
     justifyContent: 'center',
   },
+  centeredWrapper: {
+    width: '100%',
+    maxWidth: 950,
+    alignSelf: 'center',
+  },
   searchCard: {
     backgroundColor: '#FFF',
     borderRadius: 16,
@@ -453,6 +518,9 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
+    width: '100%',
+    maxWidth: 550,
+    alignSelf: 'center',
   },
   
   label: { fontSize: 14, fontWeight: '700', color: '#1A237E', marginBottom: 8 },
@@ -497,36 +565,38 @@ const styles = StyleSheet.create({
   },
   dateRangeText: { fontSize: 13, color: '#1A237E', fontWeight: '700' },
 
-  dateSection: { marginBottom: 20 },
+  dateSection: { marginBottom: 20, width: '100%' },
   dateHeader: {
     backgroundColor: '#1A237E', paddingVertical: 12, paddingHorizontal: 15,
-    borderRadius: 10, marginBottom: 10, elevation: 3,
+    borderRadius: 10, marginBottom: 10, elevation: 3, width: '100%',
   },
   dateHeaderText: { fontSize: 14, fontWeight: '800', color: '#FFF' },
 
   sketchTable: {
     borderWidth: 2, borderColor: '#1A237E', borderRadius: 8,
-    overflow: 'hidden', backgroundColor: '#FFF',
+    overflow: 'hidden', backgroundColor: '#FFF', width: '100%',
   },
-  sketchHeader: { flexDirection: 'row', backgroundColor: '#1A237E', paddingVertical: 12 },
-  sketchTh: { color: '#FFF', fontWeight: '800', fontSize: 13 },
-  colPeriod: { width: 60, alignItems: 'center', justifyContent: 'center' },
-  colTiming: { width: 110, alignItems: 'center', justifyContent: 'center', borderLeftWidth: 1, borderLeftColor: '#C5CAE9' },
-  colLectures: { width: 140, borderLeftWidth: 1, borderLeftColor: '#C5CAE9', paddingHorizontal: 8, paddingVertical: 10, alignItems: 'center', justifyContent: 'center' },
-  colStatus: { width: 130, borderLeftWidth: 1, borderLeftColor: '#C5CAE9', paddingHorizontal: 6, paddingVertical: 10, alignItems: 'center', justifyContent: 'center' },
-  sketchRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#C5CAE9', minHeight: 80 },
-  sketchPeriodNum: { fontSize: 15, fontWeight: '800', color: '#1A237E' },
-  sketchTimeText: { fontSize: 11, fontWeight: '600', color: '#333', textAlign: 'center' },
+  sketchHeader: { flexDirection: 'row', backgroundColor: '#1A237E', paddingVertical: 14 },
+  sketchTh: { color: '#FFF', fontWeight: '800', fontSize: 14, textAlign: 'center', flex: 1 },
+  colPeriod: { width: 70, alignItems: 'center', justifyContent: 'center', borderRightWidth: 1, borderRightColor: '#C5CAE9' },
+  colTiming: { width: 130, alignItems: 'center', justifyContent: 'center', borderRightWidth: 1, borderRightColor: '#C5CAE9' },
+  colLectures: { flex: 1, minWidth: 180, borderRightWidth: 1, borderRightColor: '#C5CAE9', paddingHorizontal: 10, paddingVertical: 10, alignItems: 'center', justifyContent: 'center' },
+  colStatus: { width: 130, paddingHorizontal: 6, paddingVertical: 10, alignItems: 'center', justifyContent: 'center' },
+  sketchRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#C5CAE9', minHeight: 85 },
+  sketchPeriodNum: { fontSize: 16, fontWeight: '800', color: '#1A237E' },
+  sketchTimeText: { fontSize: 12, fontWeight: '600', color: '#333', textAlign: 'center' },
   lectureCentered: { alignItems: 'center', justifyContent: 'center' },
-  sketchVal: { fontSize: 12, color: '#1A237E', fontWeight: '700', marginBottom: 3, textAlign: 'center' },
-  sketchFree: { fontSize: 11, color: '#B0BEC5', fontStyle: 'italic', textAlign: 'center' },
-  freeStatus: { fontSize: 12, color: '#B0BEC5' },
+  sketchRoom: { fontSize: 12.5, color: '#D32F2F', fontWeight: '700', marginBottom: 2, textAlign: 'center' },
+  sketchCode: { fontSize: 13, color: '#1A237E', fontWeight: '700', marginBottom: 2, textAlign: 'center' },
+  sketchDept: { fontSize: 11.5, color: '#546E7A', fontWeight: '600', textAlign: 'center' },
+  sketchFree: { fontSize: 12, color: '#90A4AE', fontStyle: 'italic', textAlign: 'center' },
+  freeStatus: { fontSize: 12, color: '#B0BEC5', textAlign: 'center' },
 
   statusPill: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
     paddingHorizontal: 8, paddingVertical: 5, borderRadius: 12,
   },
-  statusPillText: { fontSize: 10, fontWeight: '800', flexShrink: 1 },
+  statusPillText: { fontSize: 11, fontWeight: '800', flexShrink: 1 },
 
   exportBtn: {
     flexDirection: 'row', 
@@ -538,7 +608,7 @@ const styles = StyleSheet.create({
     gap: 8,
     elevation: 3, 
     marginTop: 15,
-    maxWidth: 680,
+    maxWidth: 500,
     width: '100%',
     alignSelf: 'center',
   },
