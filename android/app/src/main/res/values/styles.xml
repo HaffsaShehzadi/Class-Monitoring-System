@@ -9,5 +9,7 @@
     <item name="android:windowBackground">@color/splashscreen_background</item>
     <item name="android:statusBarColor">@color/splashscreen_background</item>
     <item name="android:navigationBarColor">@color/splashscreen_background</item>
+    <item name="android:windowSplashScreenBackground" tools:targetApi="31">@color/splashscreen_background</item>
+    <item name="android:windowSplashScreenAnimatedIcon" tools:targetApi="31">@android:color/transparent</item>
   </style>
 </resources>
