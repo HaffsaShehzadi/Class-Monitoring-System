@@ -234,7 +234,12 @@ export default function LoginScreen({
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.logoContainer}>
-            <MaterialCommunityIcons name="account-circle" size={80} color="#1A237E" />
+            <View style={styles.mobileLogoWrapper}>
+              <MaterialCommunityIcons name="school" size={76} color="#1A237E" />
+              <View style={styles.mobileBadge}>
+                <MaterialCommunityIcons name="clipboard-check" size={24} color="#4CAF50" />
+              </View>
+            </View>
           </View>
 
           <Text style={styles.title}>Welcome</Text>
@@ -434,6 +439,24 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 18, fontWeight: '800', color: '#1A237E', flex: 1, textAlign: 'center' },
   formContainer: { padding: 20, paddingTop: 30, alignItems: 'center', flexGrow: 1, justifyContent: 'center' },
   logoContainer: { marginBottom: 20 },
+  mobileLogoWrapper: {
+    position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  mobileBadge: {
+    position: 'absolute',
+    bottom: -4,
+    right: -10,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 2,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+  },
   title: { fontSize: 26, fontWeight: '700', color: '#1A237E', textAlign: 'center', marginBottom: 5 },
   subtitle: { fontSize: 15, color: '#666', textAlign: 'center', marginBottom: 30, fontWeight: '600' },
   label: { fontSize: 15, fontWeight: '600', color: '#334155', marginBottom: 8, marginTop: 14, alignSelf: 'flex-start' },
