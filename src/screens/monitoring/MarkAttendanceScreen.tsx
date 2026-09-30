@@ -98,10 +98,13 @@ const isWithinLectureTime = (timeStr: string, shift: string): boolean => {
 };
 
 export default function MarkAttendanceScreen({ onBack }: any) {
+  const now = new Date();
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
   const [selectedShift, setSelectedShift] = useState<string | null>(null);
   const [selectedDept, setSelectedDept] = useState<string | null>(null);
-  const [selectedDay, setSelectedDay] = useState<string>('Monday');
-  const [currentDateStr, setCurrentDateStr] = useState<string>('');
+  const [selectedDay, setSelectedDay] = useState<string>(() => getDayFromDate(todayStr));
+  const [currentDateStr, setCurrentDateStr] = useState<string>(todayStr);
   
   const [showModal, setShowModal] = useState(false);
   const [selectedLecture, setSelectedLecture] = useState<any>(null);
@@ -138,31 +141,16 @@ export default function MarkAttendanceScreen({ onBack }: any) {
     init();
   }, []);
 
-  // ✅ STEP 2: Jab bhi selectedShift change ho, toh LOCAL FILTER lagao
+  // ✅ STEP 2: Filter duties STRICTLY for TODAY - No fallback to past/future dates
   useEffect(() => {
-    if (allFetchedDuties.length === 0) return;
-
-    const now = new Date();
-    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const today = new Date();
+    const currentTodayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
     
-    // 1. Filter duties matching today
-    let matchedDuties = allFetchedDuties.filter((d: any) => {
+    // 1. Filter duties matching TODAY only
+    const matchedDuties = allFetchedDuties.filter((d: any) => {
       const dDate = extractDateStr(d.duty_date);
-      return dDate === todayStr;
+      return dDate === currentTodayStr;
     });
-
-    // 2. Fallback: If no duties for today, pick duties of latest assigned date
-    if (matchedDuties.length === 0) {
-      const sortedDuties = [...allFetchedDuties].sort((a, b) => {
-        const da = extractDateStr(a.duty_date);
-        const db = extractDateStr(b.duty_date);
-        return db.localeCompare(da);
-      });
-      if (sortedDuties.length > 0) {
-        const latestDate = extractDateStr(sortedDuties[0].duty_date);
-        matchedDuties = allFetchedDuties.filter((d: any) => extractDateStr(d.duty_date) === latestDate);
-      }
-    }
 
     let filteredDuties = matchedDuties;
     if (selectedShift) {
@@ -170,7 +158,7 @@ export default function MarkAttendanceScreen({ onBack }: any) {
     }
 
     const uniqueDepts = [...new Map(filteredDuties.map((item: any) => {
-      const dutyDate = extractDateStr(item.duty_date) || todayStr;
+      const dutyDate = extractDateStr(item.duty_date) || currentTodayStr;
       return [item.dept_name + '-' + item.shift, { 
         id: item.id, 
         department: item.dept_name, 
@@ -179,7 +167,7 @@ export default function MarkAttendanceScreen({ onBack }: any) {
       }];
     })).values()];
     
-    console.log("✅ Final departments to show:", uniqueDepts.length);
+    console.log("✅ Final departments to show for today:", uniqueDepts.length);
     setAssignedDuties(uniqueDepts);
 
   }, [selectedShift, allFetchedDuties]);
@@ -384,11 +372,11 @@ export default function MarkAttendanceScreen({ onBack }: any) {
           <View style={styles.shiftContainer}>
             <TouchableOpacity style={styles.shiftCard} onPress={() => setSelectedShift('1st Shift')}>
               <Text style={styles.shiftTitle}>1st Shift</Text><Text style={styles.shiftSubtext}>Morning Classes</Text>
-              <Text style={styles.shiftCount}>{assignedDuties.filter(d => d.shift === '1st Shift').length} Departments</Text>
+              <Text style={styles.shiftCount}>{assignedDuties.filter(d => d.shift === '1st Shift' || d.shift === 'Both').length} Departments</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.shiftCard} onPress={() => setSelectedShift('2nd Shift')}>
               <Text style={styles.shiftTitle}>2nd Shift</Text><Text style={styles.shiftSubtext}>Evening Classes</Text>
-              <Text style={styles.shiftCount}>{assignedDuties.filter(d => d.shift === '2nd Shift').length} Departments</Text>
+              <Text style={styles.shiftCount}>{assignedDuties.filter(d => d.shift === '2nd Shift' || d.shift === 'Both').length} Departments</Text>
             </TouchableOpacity>
           </View>
         )}
