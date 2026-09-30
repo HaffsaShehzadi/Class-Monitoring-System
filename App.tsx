@@ -610,9 +610,15 @@ export default function App() {
               <TouchableOpacity 
                 onPress={() => go(role === 'admin' ? 'admin' : role === 'teacher' ? 'teacher' : 'monitoring')}
                 activeOpacity={0.8}
-                style={{ flex: 1 }}
+                style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}
               >
-                <Text style={styles.sidebarLogo}>🎓 Class Monitoring</Text>
+                <View style={{ position: 'relative', marginRight: 10 }}>
+                  <MaterialCommunityIcons name="school" size={24} color="#FFF" />
+                  <View style={{ position: 'absolute', bottom: -2, right: -4, backgroundColor: '#FFF', borderRadius: 8, padding: 1 }}>
+                    <MaterialCommunityIcons name="clipboard-check" size={10} color="#4CAF50" />
+                  </View>
+                </View>
+                <Text style={styles.sidebarLogo}>Class Monitoring</Text>
               </TouchableOpacity>
               <TouchableOpacity 
                 onPress={() => setSidebarOpen(false)} 
