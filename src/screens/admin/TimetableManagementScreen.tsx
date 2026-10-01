@@ -185,9 +185,17 @@ export default function TimetableManagementScreen({ onBack, onNavigate, params }
   };
 
   const handleDeleteSession = async (session: AcademicSession) => {
+    if (session.is_active) {
+      Alert.alert(
+        'Cannot Delete Active Session',
+        'This session is currently active. Please set another session as active before deleting this one.'
+      );
+      return;
+    }
+
     Alert.alert(
       'Delete Session',
-      `Are you sure you want to delete session "${session.session_name}"?`,
+      `Are you sure you want to delete session "${session.session_name}"? All timetable entries under this session will also be removed.`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -490,32 +498,34 @@ export default function TimetableManagementScreen({ onBack, onNavigate, params }
                   <MaterialCommunityIcons name="chevron-right" size={24} color="#9E9E9E" />
                 </View>
 
-                {!session.is_active && (
-                  <View style={styles.sessionCardFooter}>
-                    <TouchableOpacity
-                      style={styles.activateBtn}
-                      onPress={(e) => {
-                        e.stopPropagation();
+                <View style={styles.sessionCardFooter}>
+                  <TouchableOpacity
+                    style={session.is_active ? styles.sessionBtnCurrentActive : styles.sessionBtnSetActive}
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      if (!session.is_active) {
                         handleSetActiveSession(session);
-                      }}
-                    >
-                      <MaterialCommunityIcons name="check" size={15} color="#2E7D32" />
-                      <Text style={styles.activateBtnText}>Set as Active</Text>
-                    </TouchableOpacity>
+                      }
+                    }}
+                    disabled={!!session.is_active}
+                    activeOpacity={session.is_active ? 1 : 0.7}
+                  >
+                    <Text style={session.is_active ? styles.sessionBtnCurrentActiveText : styles.sessionBtnSetActiveText}>
+                      {session.is_active ? 'Active' : 'Set as Active'}
+                    </Text>
+                  </TouchableOpacity>
 
-                    {(!session.classes_count || session.classes_count === 0) && (
-                      <TouchableOpacity
-                        style={styles.deleteSessionBtn}
-                        onPress={(e) => {
-                          e.stopPropagation();
-                          handleDeleteSession(session);
-                        }}
-                      >
-                        <MaterialCommunityIcons name="trash-can-outline" size={18} color="#D32F2F" />
-                      </TouchableOpacity>
-                    )}
-                  </View>
-                )}
+                  <TouchableOpacity
+                    style={styles.sessionBtnDelete}
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      handleDeleteSession(session);
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.sessionBtnDeleteText}>Delete</Text>
+                  </TouchableOpacity>
+                </View>
               </TouchableOpacity>
             ))
           )}
@@ -897,29 +907,56 @@ const styles = StyleSheet.create({
   sessionCardFooter: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 12,
-    paddingTop: 10,
+    gap: 10,
+    marginTop: 14,
+    paddingTop: 12,
     borderTopWidth: 1,
     borderTopColor: '#F0F0F0',
   },
-  activateBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-    backgroundColor: '#F1F8E9',
+  sessionBtnSetActive: {
+    flex: 1,
+    backgroundColor: '#E8F5E9',
     borderWidth: 1,
-    borderColor: '#C8E6C9',
-    gap: 4,
-  },
-  activateBtnText: { fontSize: 12, fontWeight: '700', color: '#2E7D32' },
-  activeFooterText: { fontSize: 12, fontWeight: '600', color: '#4CAF50' },
-  deleteSessionBtn: {
-    padding: 6,
+    borderColor: '#A5D6A7',
+    paddingVertical: 9,
     borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sessionBtnSetActiveText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#2E7D32',
+  },
+  sessionBtnCurrentActive: {
+    flex: 1,
+    backgroundColor: '#2E7D32',
+    borderWidth: 1,
+    borderColor: '#2E7D32',
+    paddingVertical: 9,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sessionBtnCurrentActiveText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  sessionBtnDelete: {
+    flex: 1,
     backgroundColor: '#FFEBEE',
+    borderWidth: 1,
+    borderColor: '#FFCDD2',
+    paddingVertical: 9,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sessionBtnDeleteText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#D32F2F',
   },
   modalCheckboxRow: {
     flexDirection: 'row',

@@ -121,7 +121,7 @@ export default function ForgotPasswordScreen({ onBack, onSent }: { onBack: () =>
                 <MaterialCommunityIcons name="email-outline" size={20} color="#666" style={styles.inputIcon} />
                 <TextInput
                   style={styles.input}
-                  placeholder="your.email@example.com"
+                  placeholder="Enter your registered email"
                   keyboardType="email-address"
                   autoCapitalize="none"
                   value={email}
