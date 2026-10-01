@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Animated } from 'react-native';
+import { View, Text, StyleSheet, Animated, Image } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 export default function SplashScreen() {
@@ -55,17 +55,18 @@ export default function SplashScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Logo */}
+      {/* Official App Logo */}
       <Animated.View
         style={[
           styles.logoContainer,
           { opacity: logoOpacity, transform: [{ scale: logoScale }] },
         ]}
       >
-        <MaterialCommunityIcons name="school" size={100} color="#FFFFFF" />
-        <View style={styles.badge}>
-          <MaterialCommunityIcons name="clipboard-check" size={30} color="#4CAF50" />
-        </View>
+        <Image
+          source={require('../../../assets/icon.png')}
+          style={styles.logoImage}
+          resizeMode="contain"
+        />
       </Animated.View>
 
       {/* App Name */}
@@ -109,20 +110,13 @@ const styles = StyleSheet.create({
   },
   logoContainer: {
     marginBottom: 30,
-    position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  badge: {
-    position: 'absolute',
-    bottom: -5,
-    right: -10,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 25,
-    padding: 6,
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
+  logoImage: {
+    width: 120,
+    height: 120,
+    borderRadius: 24,
   },
   appName: {
     fontSize: 28,

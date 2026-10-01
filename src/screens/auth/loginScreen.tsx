@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { authService } from '../../services/authService';
@@ -108,12 +108,13 @@ export default function LoginScreen({
         {/* Left Column - Class Monitoring System Navy Blue Hero Panel */}
         <View style={styles.webHeroPanel}>
           <View style={styles.heroContent}>
-            {/* App's Official Logo with Green Badge */}
+            {/* App's Official Logo */}
             <View style={styles.heroLogoWrapper}>
-              <MaterialCommunityIcons name="school" size={88} color="#FFFFFF" />
-              <View style={styles.heroBadge}>
-                <MaterialCommunityIcons name="clipboard-check" size={26} color="#4CAF50" />
-              </View>
+              <Image
+                source={require('../../../assets/icon.png')}
+                style={styles.heroLogoImage}
+                resizeMode="contain"
+              />
             </View>
 
             <Text style={styles.heroTitle}>Class Monitoring System</Text>
@@ -234,12 +235,11 @@ export default function LoginScreen({
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.logoContainer}>
-            <View style={styles.mobileLogoWrapper}>
-              <MaterialCommunityIcons name="school" size={76} color="#1A237E" />
-              <View style={styles.mobileBadge}>
-                <MaterialCommunityIcons name="clipboard-check" size={24} color="#4CAF50" />
-              </View>
-            </View>
+            <Image
+              source={require('../../../assets/icon.png')}
+              style={styles.mobileLogoImage}
+              resizeMode="contain"
+            />
           </View>
 
           <Text style={styles.title}>Welcome</Text>
@@ -336,21 +336,14 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   heroLogoWrapper: {
-    position: 'relative',
-    marginBottom: 24,
+    marginBottom: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  heroBadge: {
-    position: 'absolute',
-    bottom: -4,
-    right: -8,
-    backgroundColor: '#FFFFFF',
+  heroLogoImage: {
+    width: 90,
+    height: 90,
     borderRadius: 20,
-    padding: 5,
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
   },
   heroTitle: {
     fontSize: 30,
@@ -438,24 +431,15 @@ const styles = StyleSheet.create({
   backArrow: { fontSize: 24, fontWeight: '700', color: '#1A237E' },
   headerTitle: { fontSize: 18, fontWeight: '800', color: '#1A237E', flex: 1, textAlign: 'center' },
   formContainer: { padding: 20, paddingTop: 30, alignItems: 'center', flexGrow: 1, justifyContent: 'center' },
-  logoContainer: { marginBottom: 20 },
-  mobileLogoWrapper: {
-    position: 'relative',
+  logoContainer: {
+    marginBottom: 20,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  mobileBadge: {
-    position: 'absolute',
-    bottom: -4,
-    right: -10,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 2,
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 2,
+  mobileLogoImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 18,
   },
   title: { fontSize: 26, fontWeight: '700', color: '#1A237E', textAlign: 'center', marginBottom: 5 },
   subtitle: { fontSize: 15, color: '#666', textAlign: 'center', marginBottom: 30, fontWeight: '600' },
