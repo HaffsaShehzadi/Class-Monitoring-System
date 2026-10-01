@@ -2,10 +2,11 @@ import { detectBackend } from './ipConfig';
 import { tokenStorage } from './tokenStorage';
 
 export const timetableService = {
-  getAll: async () => {
+  getAll: async (sessionId?: number | null) => {
     const BACKEND_URL = await detectBackend();
     const token = await tokenStorage.getToken();
-    const response = await fetch(`${BACKEND_URL}/api/timetable/all`, { headers: { 'Authorization': `Bearer ${token}` } });
+    const query = sessionId ? `?session_id=${sessionId}` : '';
+    const response = await fetch(`${BACKEND_URL}/api/timetable/all${query}`, { headers: { 'Authorization': `Bearer ${token}` } });
     if (!response.ok) throw new Error('Failed to fetch timetable');
     return await response.json();
   },

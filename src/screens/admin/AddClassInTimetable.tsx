@@ -13,18 +13,22 @@ export default function AddClassInTimetable({ onBack, onNavigate, params }: any)
   const defaultDay = params?.defaultDay || '';
   const defaultPeriod = params?.defaultPeriod || 0;
 
+  const selectedSession = params?.selectedSession || null;
+
   const [classTeacher, setClassTeacher] = useState(editData?.teacher || '');
   const [classCode, setClassCode] = useState(editData?.code || '');
   const [classRoom, setClassRoom] = useState(editData?.room || '');
   const [isLoading, setIsLoading] = useState(false);
 
+  const sessionPrefix = selectedSession?.session_name ? `${selectedSession.session_name} • ` : '';
   const contextText = mode === 'add' 
-    ? `${defaultDept} • ${defaultSem} Sem • ${defaultDay} • Period ${defaultPeriod}`
-    : `${editData.dept} • ${editData.sem} Sem • ${editData.day} • Period ${editData.period}`;
+    ? `${sessionPrefix}${defaultDept} • ${defaultSem} Sem • ${defaultDay} • Period ${defaultPeriod}`
+    : `${sessionPrefix}${editData.dept} • ${editData.sem} Sem • ${editData.day} • Period ${editData.period}`;
 
   const goBackToTimetable = (msg: string) => {
     onNavigate('timetableManagement', {
       returnStep: 'timetable',
+      returnSession: selectedSession,
       returnShift: defaultShift,
       returnDept: mode === 'edit' ? editData.dept : defaultDept,
       returnDay: mode === 'edit' ? editData.day : defaultDay,
@@ -41,7 +45,7 @@ export default function AddClassInTimetable({ onBack, onNavigate, params }: any)
 
     setIsLoading(true);
     try {
-      const payload = {
+      const payload: any = {
         teacher_name: classTeacher,
         subject_code: classCode,
         room_no: classRoom,
@@ -51,6 +55,10 @@ export default function AddClassInTimetable({ onBack, onNavigate, params }: any)
         period_number: mode === 'add' ? defaultPeriod : editData.period,
         shift: defaultShift, 
       };
+
+      if (selectedSession?.id) {
+        payload.session_id = selectedSession.id;
+      }
 
       if (mode === 'add') {
         await timetableService.create(payload);

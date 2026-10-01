@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Modal, Tex
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { timetableService } from '../../services/timetableService';
+import { sessionService, AcademicSession } from '../../services/sessionService';
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -63,7 +64,16 @@ const convertTo12Hour = (time24: string): string => {
 };
 
 export default function TimetableManagementScreen({ onBack, onNavigate, params }: any) {
-  const [currentStep, setCurrentStep] = useState<'shift' | 'department' | 'timetable'>(params?.returnStep || 'shift');
+  const [currentStep, setCurrentStep] = useState<'session' | 'shift' | 'department' | 'timetable'>(params?.returnStep || 'session');
+  const [selectedSession, setSelectedSession] = useState<AcademicSession | null>(params?.returnSession || null);
+  const [sessions, setSessions] = useState<AcademicSession[]>([]);
+  const [loadingSessions, setLoadingSessions] = useState(false);
+
+  const [showCreateSessionModal, setShowCreateSessionModal] = useState(false);
+  const [newSessionName, setNewSessionName] = useState('');
+  const [newSessionMakeActive, setNewSessionMakeActive] = useState(false);
+  const [creatingSession, setCreatingSession] = useState(false);
+
   const [selectedShift, setSelectedShift] = useState<string | null>(params?.returnShift || null);
   const [selectedDepartment, setSelectedDepartment] = useState<string | null>(params?.returnDept || null);
   const [selectedDay, setSelectedDay] = useState(params?.returnDay || 'Monday');
@@ -103,13 +113,98 @@ export default function TimetableManagementScreen({ onBack, onNavigate, params }
   }, []);
 
   useEffect(() => {
-    if (currentStep === 'timetable') {
+    if (currentStep === 'session') {
+      fetchSessions();
+    } else if (currentStep === 'timetable') {
       fetchConfig();
       fetchTimetable(); 
     } else if (currentStep === 'department') {
       fetchConfig();
     }
   }, [currentStep, selectedShift, selectedDay, params?.refreshKey]);
+
+  const fetchSessions = async () => {
+    setLoadingSessions(true);
+    try {
+      const data = await sessionService.getAll();
+      setSessions(data);
+      if (selectedSession) {
+        const fresh = data.find(s => s.id === selectedSession.id);
+        if (fresh) setSelectedSession(fresh);
+      }
+    } catch (error: any) {
+      console.error("Failed to load sessions:", error);
+      Alert.alert('Error', error.message || 'Failed to load sessions');
+    } finally {
+      setLoadingSessions(false);
+    }
+  };
+
+  const handleCreateSession = async () => {
+    const trimmed = newSessionName.trim();
+    if (!trimmed) {
+      Alert.alert('Error', 'Please enter a session name (e.g. Fall 2026, Spring 2027)');
+      return;
+    }
+    setCreatingSession(true);
+    try {
+      await sessionService.create(trimmed, newSessionMakeActive);
+      setShowCreateSessionModal(false);
+      setNewSessionName('');
+      setNewSessionMakeActive(false);
+      showToast(`Session "${trimmed}" created successfully!`);
+      await fetchSessions();
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to create session');
+    } finally {
+      setCreatingSession(false);
+    }
+  };
+
+  const handleSetActiveSession = async (session: AcademicSession) => {
+    Alert.alert(
+      'Activate Session',
+      `Set "${session.session_name}" as the ACTIVE session for the college?\n\nMonitoring officials and teachers will immediately see this session's timetable.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Set Active',
+          onPress: async () => {
+            try {
+              await sessionService.setActive(session.id);
+              showToast(`"${session.session_name}" is now Active`);
+              await fetchSessions();
+            } catch (error: any) {
+              Alert.alert('Error', error.message || 'Failed to activate session');
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const handleDeleteSession = async (session: AcademicSession) => {
+    Alert.alert(
+      'Delete Session',
+      `Are you sure you want to delete session "${session.session_name}"?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await sessionService.delete(session.id);
+              showToast('Session deleted');
+              await fetchSessions();
+            } catch (error: any) {
+              Alert.alert('Cannot Delete', error.message || 'Failed to delete session');
+            }
+          }
+        }
+      ]
+    );
+  };
 
   const fetchConfig = async () => {
     setLoadingConfig(true);
@@ -136,7 +231,7 @@ export default function TimetableManagementScreen({ onBack, onNavigate, params }
     if (!selectedDepartment || !selectedDay) return;
     setLoadingTimetable(true);
     try {
-      const data = await timetableService.getAll();
+      const data = await timetableService.getAll(selectedSession?.id);
       setTimetable(data.map((item: any) => ({
         id: item.id, 
         dept: item.dept_name, 
@@ -164,8 +259,12 @@ export default function TimetableManagementScreen({ onBack, onNavigate, params }
     onNavigate('addClassInTimetable', {
       mode: existingClass ? 'edit' : 'add',
       editData: existingClass,
-      defaultShift: selectedShift, defaultDept: dept, defaultSem: sem,
-      defaultDay: selectedDay, defaultPeriod: periodId,
+      selectedSession: selectedSession,
+      defaultShift: selectedShift, 
+      defaultDept: dept, 
+      defaultSem: sem,
+      defaultDay: selectedDay, 
+      defaultPeriod: periodId,
     });
   };
 
@@ -323,12 +422,197 @@ export default function TimetableManagementScreen({ onBack, onNavigate, params }
     setCurrentStep('shift'); 
   };
 
-  if (currentStep === 'shift') {
+  const handleBackFromShift = () => {
+    setSelectedShift(null);
+    setCurrentStep('session');
+  };
+
+  if (currentStep === 'session') {
     return (
       <SafeAreaView edges={['bottom']} style={styles.container}>
         <View style={styles.header}>
           <TouchableOpacity onPress={onBack}><Text style={styles.backArrow}>←</Text></TouchableOpacity>
-          <Text style={styles.headerTitle}>Select Shift</Text>
+          <Text style={styles.headerTitle}>Academic Sessions</Text>
+          <TouchableOpacity 
+            style={styles.addSessionBtn} 
+            onPress={() => setShowCreateSessionModal(true)}
+            activeOpacity={0.8}
+          >
+            <MaterialCommunityIcons name="plus" size={18} color="#FFFFFF" />
+            <Text style={styles.addSessionBtnText}>New Session</Text>
+          </TouchableOpacity>
+        </View>
+
+        <ScrollView contentContainerStyle={styles.sessionListContent}>
+          <View style={styles.sessionBannerCard}>
+            <MaterialCommunityIcons name="school" size={22} color="#1A237E" style={{ marginRight: 10 }} />
+            <Text style={styles.sessionBannerText}>
+              Select an academic session to manage its timetable, or create a new session for an upcoming semester without affecting past records.
+            </Text>
+          </View>
+
+          {loadingSessions ? (
+            <View style={{ padding: 40, alignItems: 'center' }}>
+              <ActivityIndicator size="large" color="#1A237E" />
+              <Text style={{ marginTop: 10, color: '#666' }}>Loading sessions...</Text>
+            </View>
+          ) : sessions.length === 0 ? (
+            <View style={styles.emptyBox}>
+              <MaterialCommunityIcons name="calendar-blank-outline" size={48} color="#9E9E9E" />
+              <Text style={styles.emptyText}>No academic sessions found.</Text>
+              <TouchableOpacity 
+                style={[styles.savePeriodBtn, { marginTop: 15, paddingHorizontal: 25 }]} 
+                onPress={() => setShowCreateSessionModal(true)}
+              >
+                <Text style={styles.savePeriodText}>+ Create First Session</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            sessions.map((session) => (
+              <TouchableOpacity
+                key={session.id}
+                style={[styles.sessionCard, session.is_active ? styles.sessionCardActive : null]}
+                onPress={() => {
+                  setSelectedSession(session);
+                  setCurrentStep('shift');
+                }}
+                activeOpacity={0.7}
+              >
+                <View style={styles.sessionCardHeader}>
+                  <View style={[styles.sessionIconBox, session.is_active ? styles.sessionIconBoxActive : null]}>
+                    <MaterialCommunityIcons 
+                      name="calendar-clock" 
+                      size={24} 
+                      color={session.is_active ? "#2E7D32" : "#1A237E"} 
+                    />
+                  </View>
+                  <View style={styles.sessionCardInfo}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+                      <Text style={styles.sessionCardTitle}>{session.session_name}</Text>
+                      {!!session.is_active && (
+                        <View style={styles.activeBadge}>
+                          <MaterialCommunityIcons name="check-circle" size={13} color="#2E7D32" />
+                          <Text style={styles.activeBadgeText}>Live Active</Text>
+                        </View>
+                      )}
+                    </View>
+                    <Text style={styles.sessionCardSubtitle}>
+                      {session.classes_count || 0} classes scheduled
+                    </Text>
+                  </View>
+                  <MaterialCommunityIcons name="chevron-right" size={24} color="#9E9E9E" />
+                </View>
+
+                <View style={styles.sessionCardFooter}>
+                  {!session.is_active ? (
+                    <TouchableOpacity
+                      style={styles.activateBtn}
+                      onPress={(e) => {
+                        e.stopPropagation();
+                        handleSetActiveSession(session);
+                      }}
+                    >
+                      <MaterialCommunityIcons name="check" size={15} color="#2E7D32" />
+                      <Text style={styles.activateBtnText}>Set as Active</Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#4CAF50', marginRight: 6 }} />
+                      <Text style={styles.activeFooterText}>Currently active for MO & Teachers</Text>
+                    </View>
+                  )}
+
+                  {!session.is_active && (!session.classes_count || session.classes_count === 0) && (
+                    <TouchableOpacity
+                      style={styles.deleteSessionBtn}
+                      onPress={(e) => {
+                        e.stopPropagation();
+                        handleDeleteSession(session);
+                      }}
+                    >
+                      <MaterialCommunityIcons name="trash-can-outline" size={18} color="#D32F2F" />
+                    </TouchableOpacity>
+                  )}
+                </View>
+              </TouchableOpacity>
+            ))
+          )}
+        </ScrollView>
+
+        {/* Modal: Create Session */}
+        <Modal visible={showCreateSessionModal} transparent animationType="fade">
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Create Academic Session</Text>
+                <TouchableOpacity onPress={() => setShowCreateSessionModal(false)}>
+                  <Text style={styles.modalCloseIcon}>✕</Text>
+                </TouchableOpacity>
+              </View>
+
+              <Text style={styles.inputLabel}>Session Name *</Text>
+              <TextInput
+                style={styles.modalInput}
+                placeholder="e.g. Fall 2026, Spring 2027"
+                placeholderTextColor="#999"
+                value={newSessionName}
+                onChangeText={setNewSessionName}
+                autoFocus
+              />
+
+              <TouchableOpacity 
+                style={styles.modalCheckboxRow} 
+                onPress={() => setNewSessionMakeActive(prev => !prev)}
+                activeOpacity={0.8}
+              >
+                <View style={[styles.checkboxBox, newSessionMakeActive && styles.checkboxBoxChecked]}>
+                  {newSessionMakeActive && <MaterialCommunityIcons name="check" size={14} color="#FFF" />}
+                </View>
+                <Text style={styles.checkboxLabel}>Set as Active Session immediately</Text>
+              </TouchableOpacity>
+
+              <View style={styles.modalBtnRow}>
+                <TouchableOpacity 
+                  style={styles.modalCancelBtn} 
+                  onPress={() => setShowCreateSessionModal(false)}
+                  disabled={creatingSession}
+                >
+                  <Text style={styles.modalCancelText}>Cancel</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                  style={styles.modalSubmitBtn} 
+                  onPress={handleCreateSession}
+                  disabled={creatingSession}
+                >
+                  {creatingSession ? (
+                    <ActivityIndicator size="small" color="#FFF" />
+                  ) : (
+                    <Text style={styles.modalSubmitText}>Create Session</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+
+        {toast && (
+          <View style={styles.toastOverlay} pointerEvents="none">
+            <Animated.View style={[styles.toast, { opacity: toastAnim, transform: [{ scale: toastAnim.interpolate({ inputRange: [0, 1], outputRange: [0.8, 1] }) }] }]}>
+              <Text style={styles.toastText}>{toast.msg}</Text>
+            </Animated.View>
+          </View>
+        )}
+      </SafeAreaView>
+    );
+  }
+
+  if (currentStep === 'shift') {
+    return (
+      <SafeAreaView edges={['bottom']} style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={handleBackFromShift}><Text style={styles.backArrow}>←</Text></TouchableOpacity>
+          <Text style={styles.headerTitle}>{selectedSession?.session_name || 'Select Shift'}</Text>
           <View style={{ width: 36 }} />
         </View>
         <View style={styles.shiftContainer}>
@@ -357,7 +641,7 @@ export default function TimetableManagementScreen({ onBack, onNavigate, params }
       <SafeAreaView edges={['bottom']} style={styles.container}>
         <View style={styles.header}>
           <TouchableOpacity onPress={handleBackFromDepartment}><Text style={styles.backArrow}>←</Text></TouchableOpacity>
-          <Text style={styles.headerTitle}>{selectedShift} - Departments</Text>
+          <Text style={styles.headerTitle}>{selectedSession?.session_name ? `${selectedSession.session_name} • ` : ''}{selectedShift}</Text>
           <View style={{ width: 36 }} />
         </View>
         <ScrollView contentContainerStyle={styles.deptListContent}>
@@ -392,6 +676,9 @@ export default function TimetableManagementScreen({ onBack, onNavigate, params }
         <TouchableOpacity onPress={handleBackFromTimetable}><Text style={styles.backArrow}>←</Text></TouchableOpacity>
         <View style={styles.headerTitleContainer}>
           <Text style={styles.headerTitle}>{selectedDepartment} - {selectedShift}</Text>
+          {selectedSession?.session_name ? (
+            <Text style={{ fontSize: 12, color: '#546E7A', fontWeight: '600', marginTop: 2 }}>{selectedSession.session_name}</Text>
+          ) : null}
         </View>
         <View style={{ width: 36 }} /> 
       </View>
@@ -540,6 +827,151 @@ const styles = StyleSheet.create({
   backArrow: { fontSize: 24, fontWeight: '700', color: '#1A237E' },
   headerTitle: { fontSize: 18, fontWeight: '800', color: '#1A237E' },
   headerTitleContainer: { flex: 1, alignItems: 'center' },
+  addSessionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1A237E',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    gap: 4,
+  },
+  addSessionBtnText: { color: '#FFF', fontSize: 13, fontWeight: '700' },
+  sessionListContent: {
+    padding: 20,
+    maxWidth: 800,
+    width: '100%',
+    alignSelf: 'center',
+  },
+  sessionBannerCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E8EAF6',
+    padding: 14,
+    borderRadius: 12,
+    marginBottom: 20,
+    borderLeftWidth: 4,
+    borderLeftColor: '#1A237E',
+  },
+  sessionBannerText: {
+    flex: 1,
+    fontSize: 13,
+    color: '#283593',
+    fontWeight: '500',
+    lineHeight: 18,
+  },
+  sessionCard: {
+    backgroundColor: '#FFF',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 15,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    borderWidth: 1.5,
+    borderColor: '#E0E0E0',
+  },
+  sessionCardActive: {
+    borderColor: '#4CAF50',
+    backgroundColor: '#FAFFFA',
+  },
+  sessionCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  sessionIconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: '#E8EAF6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  sessionIconBoxActive: {
+    backgroundColor: '#E8F5E9',
+  },
+  sessionCardInfo: { flex: 1 },
+  sessionCardTitle: { fontSize: 17, fontWeight: '800', color: '#1A237E' },
+  activeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E8F5E9',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+    gap: 4,
+    borderWidth: 1,
+    borderColor: '#A5D6A7',
+  },
+  activeBadgeText: { fontSize: 11, fontWeight: '700', color: '#2E7D32' },
+  sessionCardSubtitle: { fontSize: 13, color: '#666', marginTop: 4 },
+  sessionCardFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 12,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#F0F0F0',
+  },
+  activateBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: '#F1F8E9',
+    borderWidth: 1,
+    borderColor: '#C8E6C9',
+    gap: 4,
+  },
+  activateBtnText: { fontSize: 12, fontWeight: '700', color: '#2E7D32' },
+  activeFooterText: { fontSize: 12, fontWeight: '600', color: '#4CAF50' },
+  deleteSessionBtn: {
+    padding: 6,
+    borderRadius: 8,
+    backgroundColor: '#FFEBEE',
+  },
+  modalCheckboxRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 14,
+    marginBottom: 5,
+  },
+  checkboxBox: {
+    width: 20,
+    height: 20,
+    borderRadius: 4,
+    borderWidth: 2,
+    borderColor: '#1A237E',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
+  },
+  checkboxBoxChecked: {
+    backgroundColor: '#1A237E',
+  },
+  checkboxLabel: { fontSize: 14, color: '#333', fontWeight: '600' },
+  modalBtnRow: { flexDirection: 'row', gap: 10, marginTop: 20 },
+  modalCancelBtn: {
+    flex: 1,
+    backgroundColor: '#ECEFF1',
+    paddingVertical: 13,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  modalCancelText: { color: '#546E7A', fontSize: 14, fontWeight: '700' },
+  modalSubmitBtn: {
+    flex: 1,
+    backgroundColor: '#1A237E',
+    paddingVertical: 13,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  modalSubmitText: { color: '#FFF', fontSize: 14, fontWeight: '700' },
   shiftContainer: { 
     flex: 1, 
     justifyContent: 'center', 
