@@ -444,13 +444,6 @@ export default function TimetableManagementScreen({ onBack, onNavigate, params }
         </View>
 
         <ScrollView contentContainerStyle={styles.sessionListContent}>
-          <View style={styles.sessionBannerCard}>
-            <MaterialCommunityIcons name="school" size={22} color="#1A237E" style={{ marginRight: 10 }} />
-            <Text style={styles.sessionBannerText}>
-              Select an academic session to manage its timetable, or create a new session for an upcoming semester without affecting past records.
-            </Text>
-          </View>
-
           {loadingSessions ? (
             <View style={{ padding: 40, alignItems: 'center' }}>
               <ActivityIndicator size="large" color="#1A237E" />
@@ -458,14 +451,8 @@ export default function TimetableManagementScreen({ onBack, onNavigate, params }
             </View>
           ) : sessions.length === 0 ? (
             <View style={styles.emptyBox}>
-              <MaterialCommunityIcons name="calendar-blank-outline" size={48} color="#9E9E9E" />
+              <MaterialCommunityIcons name="calendar-blank-outline" size={54} color="#9E9E9E" />
               <Text style={styles.emptyText}>No academic sessions found.</Text>
-              <TouchableOpacity 
-                style={[styles.savePeriodBtn, { marginTop: 15, paddingHorizontal: 25 }]} 
-                onPress={() => setShowCreateSessionModal(true)}
-              >
-                <Text style={styles.savePeriodText}>+ Create First Session</Text>
-              </TouchableOpacity>
             </View>
           ) : (
             sessions.map((session) => (
@@ -552,7 +539,7 @@ export default function TimetableManagementScreen({ onBack, onNavigate, params }
 
               <Text style={styles.inputLabel}>Session Name *</Text>
               <TextInput
-                style={styles.modalInput}
+                style={styles.sessionInput}
                 placeholder="e.g. Fall 2026, Spring 2027"
                 placeholderTextColor="#999"
                 value={newSessionName}
@@ -843,22 +830,19 @@ const styles = StyleSheet.create({
     width: '100%',
     alignSelf: 'center',
   },
-  sessionBannerCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#E8EAF6',
-    padding: 14,
+  sessionInput: {
+    width: '100%',
+    height: 52,
+    backgroundColor: '#F8F9FA',
     borderRadius: 12,
-    marginBottom: 20,
-    borderLeftWidth: 4,
-    borderLeftColor: '#1A237E',
-  },
-  sessionBannerText: {
-    flex: 1,
-    fontSize: 13,
-    color: '#283593',
-    fontWeight: '500',
-    lineHeight: 18,
+    paddingHorizontal: 16,
+    fontSize: 15,
+    fontWeight: '600',
+    borderWidth: 1.5,
+    borderColor: '#C5CAE9',
+    color: '#1A237E',
+    marginTop: 6,
+    marginBottom: 12,
   },
   sessionCard: {
     backgroundColor: '#FFF',
