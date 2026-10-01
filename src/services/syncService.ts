@@ -64,9 +64,15 @@ export const syncOfflineData = async () => {
 };
 
 export const startAutoSync = () => {
-  NetInfo.addEventListener((state) => {
-    if (state.isConnected) {
-      syncOfflineData();
-    }
-  });
+  try {
+    NetInfo.addEventListener((state) => {
+      if (state.isConnected) {
+        syncOfflineData().catch(err => {
+          console.log('⚠️ Auto-sync background error handled:', err?.message || err);
+        });
+      }
+    });
+  } catch (err: any) {
+    console.log('⚠️ NetInfo event listener error:', err?.message || err);
+  }
 };

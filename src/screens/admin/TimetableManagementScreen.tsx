@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Modal, TextInput, Animated, ActivityIndicator, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Modal, TextInput, Animated, ActivityIndicator, Platform, KeyboardAvoidingView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { timetableService } from '../../services/timetableService';
@@ -127,9 +127,10 @@ export default function TimetableManagementScreen({ onBack, onNavigate, params }
     setLoadingSessions(true);
     try {
       const data = await sessionService.getAll();
-      setSessions(data);
+      const list = Array.isArray(data) ? data : [];
+      setSessions(list);
       if (selectedSession) {
-        const fresh = data.find(s => s.id === selectedSession.id);
+        const fresh = list.find(s => s.id === selectedSession.id);
         if (fresh) setSelectedSession(fresh);
       }
     } catch (error: any) {
@@ -210,10 +211,11 @@ export default function TimetableManagementScreen({ onBack, onNavigate, params }
     setLoadingConfig(true);
     try {
       const config = await timetableService.getConfig();
-      setDepartments(config.departments || []);
-      setSemesters(config.semesters || []);
+      setDepartments(Array.isArray(config?.departments) ? config.departments : []);
+      setSemesters(Array.isArray(config?.semesters) ? config.semesters : []);
       
-      const filteredPeriods = (config.periods || []).filter((p: any) => {
+      const rawPeriods = Array.isArray(config?.periods) ? config.periods : [];
+      const filteredPeriods = rawPeriods.filter((p: any) => {
         if (p.shift !== selectedShift) return false;
         if (selectedDay === 'Friday') return p.day === 'Friday';
         return p.day === 'Regular' || p.day === null || p.day === undefined;
@@ -232,7 +234,8 @@ export default function TimetableManagementScreen({ onBack, onNavigate, params }
     setLoadingTimetable(true);
     try {
       const data = await timetableService.getAll(selectedSession?.id);
-      setTimetable(data.map((item: any) => ({
+      const list = Array.isArray(data) ? data : [];
+      setTimetable(list.map((item: any) => ({
         id: item.id, 
         dept: item.dept_name, 
         sem: item.semester, 
@@ -483,15 +486,12 @@ export default function TimetableManagementScreen({ onBack, onNavigate, params }
                         </View>
                       )}
                     </View>
-                    <Text style={styles.sessionCardSubtitle}>
-                      {session.classes_count || 0} classes scheduled
-                    </Text>
                   </View>
                   <MaterialCommunityIcons name="chevron-right" size={24} color="#9E9E9E" />
                 </View>
 
-                <View style={styles.sessionCardFooter}>
-                  {!session.is_active ? (
+                {!session.is_active && (
+                  <View style={styles.sessionCardFooter}>
                     <TouchableOpacity
                       style={styles.activateBtn}
                       onPress={(e) => {
@@ -502,33 +502,36 @@ export default function TimetableManagementScreen({ onBack, onNavigate, params }
                       <MaterialCommunityIcons name="check" size={15} color="#2E7D32" />
                       <Text style={styles.activateBtnText}>Set as Active</Text>
                     </TouchableOpacity>
-                  ) : (
-                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                      <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#4CAF50', marginRight: 6 }} />
-                      <Text style={styles.activeFooterText}>Currently active for MO & Teachers</Text>
-                    </View>
-                  )}
 
-                  {!session.is_active && (!session.classes_count || session.classes_count === 0) && (
-                    <TouchableOpacity
-                      style={styles.deleteSessionBtn}
-                      onPress={(e) => {
-                        e.stopPropagation();
-                        handleDeleteSession(session);
-                      }}
-                    >
-                      <MaterialCommunityIcons name="trash-can-outline" size={18} color="#D32F2F" />
-                    </TouchableOpacity>
-                  )}
-                </View>
+                    {(!session.classes_count || session.classes_count === 0) && (
+                      <TouchableOpacity
+                        style={styles.deleteSessionBtn}
+                        onPress={(e) => {
+                          e.stopPropagation();
+                          handleDeleteSession(session);
+                        }}
+                      >
+                        <MaterialCommunityIcons name="trash-can-outline" size={18} color="#D32F2F" />
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                )}
               </TouchableOpacity>
             ))
           )}
         </ScrollView>
 
         {/* Modal: Create Session */}
-        <Modal visible={showCreateSessionModal} transparent animationType="fade">
-          <View style={styles.modalOverlay}>
+        <Modal 
+          visible={showCreateSessionModal} 
+          transparent 
+          animationType="fade"
+          onRequestClose={() => setShowCreateSessionModal(false)}
+        >
+          <KeyboardAvoidingView 
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
+            style={styles.modalOverlay}
+          >
             <View style={styles.modalContent}>
               <View style={styles.modalHeader}>
                 <Text style={styles.modalTitle}>Create Academic Session</Text>
@@ -540,11 +543,10 @@ export default function TimetableManagementScreen({ onBack, onNavigate, params }
               <Text style={styles.inputLabel}>Session Name *</Text>
               <TextInput
                 style={styles.sessionInput}
-                placeholder="e.g. Fall 2026, Spring 2027"
-                placeholderTextColor="#999"
+                placeholder="e.g. Spring 2026, Fall 2026"
+                placeholderTextColor="#9E9E9E"
                 value={newSessionName}
                 onChangeText={setNewSessionName}
-                autoFocus
               />
 
               <TouchableOpacity 
@@ -580,7 +582,7 @@ export default function TimetableManagementScreen({ onBack, onNavigate, params }
                 </TouchableOpacity>
               </View>
             </View>
-          </View>
+          </KeyboardAvoidingView>
         </Modal>
 
         {toast && (
@@ -832,15 +834,15 @@ const styles = StyleSheet.create({
   },
   sessionInput: {
     width: '100%',
-    height: 52,
-    backgroundColor: '#F8F9FA',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    fontSize: 15,
-    fontWeight: '600',
-    borderWidth: 1.5,
-    borderColor: '#C5CAE9',
-    color: '#1A237E',
+    height: 48,
+    backgroundColor: '#F5F5F5',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    fontSize: 14,
+    fontWeight: 'normal',
+    borderWidth: 1,
+    borderColor: '#DDD',
+    color: '#333333',
     marginTop: 6,
     marginBottom: 12,
   },

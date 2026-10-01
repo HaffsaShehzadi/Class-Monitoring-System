@@ -110,6 +110,61 @@ const MO_WEB_MENU = [
   { id: 'monitoringAttendanceHistory', title: 'Attendance History', icon: 'history' },
 ];
 
+interface ErrorBoundaryProps {
+  children: React.ReactNode;
+  onReset?: () => void;
+}
+
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error: any;
+}
+
+class GlobalErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  constructor(props: ErrorBoundaryProps) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: any) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: any, errorInfo: any) {
+    console.error('⚠️ [GlobalErrorBoundary] Caught unexpected error:', error, errorInfo);
+  }
+
+  handleRestart = () => {
+    this.setState({ hasError: false, error: null });
+    if (this.props.onReset) {
+      this.props.onReset();
+    }
+  };
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <View style={{ flex: 1, backgroundColor: '#F5F5F5', justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+          <MaterialCommunityIcons name="alert-circle-outline" size={60} color="#D32F2F" />
+          <Text style={{ fontSize: 20, fontWeight: '800', color: '#1A237E', marginTop: 16, marginBottom: 8, textAlign: 'center' }}>
+            Something went wrong
+          </Text>
+          <Text style={{ fontSize: 13, color: '#666', textAlign: 'center', marginBottom: 24, lineHeight: 18 }}>
+            An unexpected error occurred, but your app has recovered safely.
+          </Text>
+          <TouchableOpacity
+            style={{ backgroundColor: '#1A237E', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 10 }}
+            onPress={this.handleRestart}
+          >
+            <Text style={{ color: '#FFF', fontWeight: '700', fontSize: 14 }}>Return to Home</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 export default function App() {
   const [screen, setScreen] = useState('splash');
   const [params, setParams] = useState<any>({});
@@ -185,8 +240,15 @@ export default function App() {
         console.log('✅ Database schema ready');
       }
       console.log('✅ SQLite Database initialized');
+    }).catch(err => {
+      console.log('⚠️ SQLite init warning:', err?.message || err);
     });
-    startAutoSync();
+
+    try {
+      startAutoSync();
+    } catch (syncErr: any) {
+      console.log('⚠️ Sync service error:', syncErr?.message || syncErr);
+    }
   }, []);
 
   useEffect(() => {
@@ -579,11 +641,13 @@ export default function App() {
   if (isAuthScreen) {
     return (
       <SafeAreaProvider>
-        <View style={[styles.webWrapper, styles.webWrapperAuth]}>
-          <View style={[styles.container, styles.containerAuth]}>
-            {renderScreen()}
+        <GlobalErrorBoundary onReset={() => setScreen('signin')}>
+          <View style={[styles.webWrapper, styles.webWrapperAuth]}>
+            <View style={[styles.container, styles.containerAuth]}>
+              {renderScreen()}
+            </View>
           </View>
-        </View>
+        </GlobalErrorBoundary>
       </SafeAreaProvider>
     );
   }
@@ -592,9 +656,11 @@ export default function App() {
   if (!isWeb) {
     return (
       <SafeAreaProvider>
-        <View style={styles.container}>
-          {renderScreen()}
-        </View>
+        <GlobalErrorBoundary onReset={() => setScreen(role || 'signin')}>
+          <View style={styles.container}>
+            {renderScreen()}
+          </View>
+        </GlobalErrorBoundary>
       </SafeAreaProvider>
     );
   }
@@ -602,65 +668,67 @@ export default function App() {
   // ✅ WEB: Side-by-side in-flow sidebar on left and adjusting content on right
   return (
     <SafeAreaProvider>
-      <View style={styles.appShell}>
-        {/* ✅ IN-FLOW NAVIGATION BAR: Adjusts side-by-side on the left; screen content on right adjusts smoothly */}
-        {sidebarOpen && currentMenu.length > 0 && (
-          <View style={styles.inFlowSidebar}>
-            <View style={styles.sidebarHeader}>
-              <TouchableOpacity 
-                onPress={() => go(role === 'admin' ? 'admin' : role === 'teacher' ? 'teacher' : 'monitoring')}
-                activeOpacity={0.8}
-                style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}
-              >
-                <View style={{ position: 'relative', marginRight: 10 }}>
-                  <MaterialCommunityIcons name="school" size={24} color="#FFF" />
-                  <View style={{ position: 'absolute', bottom: -2, right: -4, backgroundColor: '#FFF', borderRadius: 8, padding: 1 }}>
-                    <MaterialCommunityIcons name="clipboard-check" size={10} color="#4CAF50" />
+      <GlobalErrorBoundary onReset={() => setScreen(role || 'signin')}>
+        <View style={styles.appShell}>
+          {/* ✅ IN-FLOW NAVIGATION BAR: Adjusts side-by-side on the left; screen content on right adjusts smoothly */}
+          {sidebarOpen && currentMenu.length > 0 && (
+            <View style={styles.inFlowSidebar}>
+              <View style={styles.sidebarHeader}>
+                <TouchableOpacity 
+                  onPress={() => go(role === 'admin' ? 'admin' : role === 'teacher' ? 'teacher' : 'monitoring')}
+                  activeOpacity={0.8}
+                  style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}
+                >
+                  <View style={{ position: 'relative', marginRight: 10 }}>
+                    <MaterialCommunityIcons name="school" size={24} color="#FFF" />
+                    <View style={{ position: 'absolute', bottom: -2, right: -4, backgroundColor: '#FFF', borderRadius: 8, padding: 1 }}>
+                      <MaterialCommunityIcons name="clipboard-check" size={10} color="#4CAF50" />
+                    </View>
                   </View>
-                </View>
-                <Text style={styles.sidebarLogo}>Class Monitoring</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                onPress={() => setSidebarOpen(false)} 
-                style={styles.sidebarCloseBtn}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                activeOpacity={0.7}
-              >
-                <MaterialCommunityIcons name="close" size={22} color="#FFF" />
-              </TouchableOpacity>
+                  <Text style={styles.sidebarLogo}>Class Monitoring</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  onPress={() => setSidebarOpen(false)} 
+                  style={styles.sidebarCloseBtn}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  activeOpacity={0.7}
+                >
+                  <MaterialCommunityIcons name="close" size={22} color="#FFF" />
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView style={{ flex: 1, paddingVertical: 10 }} showsVerticalScrollIndicator={false}>
+                {currentMenu.map(item => {
+                  const isActive = screen === item.id;
+                  return (
+                    <TouchableOpacity
+                      key={item.id}
+                      style={[styles.sidebarItem, isActive && styles.sidebarItemActive]}
+                      onPress={() => go(item.id)}
+                      activeOpacity={0.75}
+                    >
+                      <MaterialCommunityIcons
+                        name={item.icon as any}
+                        size={20}
+                        color={isActive ? '#FFF' : '#C5CAE9'}
+                        style={{ marginRight: 12 }}
+                      />
+                      <Text style={[styles.sidebarItemText, isActive && styles.sidebarItemTextActive]}>
+                        {item.title}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
             </View>
+          )}
 
-            <ScrollView style={{ flex: 1, paddingVertical: 10 }} showsVerticalScrollIndicator={false}>
-              {currentMenu.map(item => {
-                const isActive = screen === item.id;
-                return (
-                  <TouchableOpacity
-                    key={item.id}
-                    style={[styles.sidebarItem, isActive && styles.sidebarItemActive]}
-                    onPress={() => go(item.id)}
-                    activeOpacity={0.75}
-                  >
-                    <MaterialCommunityIcons
-                      name={item.icon as any}
-                      size={20}
-                      color={isActive ? '#FFF' : '#C5CAE9'}
-                      style={{ marginRight: 12 }}
-                    />
-                    <Text style={[styles.sidebarItemText, isActive && styles.sidebarItemTextActive]}>
-                      {item.title}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
+          {/* ✅ RIGHT MAIN CONTENT AREA: Never hidden; fills remaining space seamlessly */}
+          <View style={styles.mainContentArea}>
+            {renderScreen()}
           </View>
-        )}
-
-        {/* ✅ RIGHT MAIN CONTENT AREA: Never hidden; fills remaining space seamlessly */}
-        <View style={styles.mainContentArea}>
-          {renderScreen()}
         </View>
-      </View>
+      </GlobalErrorBoundary>
     </SafeAreaProvider>
   );
 }
