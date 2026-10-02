@@ -95,5 +95,25 @@ export const dashboardService = {
       throw new Error(data.message || 'Failed to fetch rejected users');
     }
     return data;
+  },
+
+  // ✅ 6. Rejected user ko system se delete karna
+  deleteRejectedUser: async (id: number) => {
+    const BACKEND_URL = await detectBackend();
+    const token = await tokenStorage.getToken();
+
+    const response = await fetch(`${BACKEND_URL}/api/dashboard/rejected/${id}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.message || 'Failed to delete user');
+    }
+    return data;
   }
 };

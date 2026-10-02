@@ -95,23 +95,60 @@ export default function PendingApprovalsScreen({ onBack }: PendingApprovalsScree
     ]);
   };
 
-  // Rejected user ko Re-Approve karna (Sirf Approve ka button)
+  // Rejected user ko Re-Approve karna
   const handleApproveRejected = (id: number, name: string) => {
-    Alert.alert('Confirm Approval', `Are you sure you want to approve ${name}?`, [
-      { text: 'Cancel', style: 'cancel' },
-      { 
-        text: 'Approve', 
-        onPress: async () => {
-          try {
-            await dashboardService.approveUser(id);
-            setRejectedUsers(prev => prev.filter(u => u.id !== id));
-            showToast(`${name} approved successfully`);
-          } catch (error: any) {
-            Alert.alert('Error', error.message || 'Failed to approve user');
-          }
-        }
+    const doApprove = async () => {
+      try {
+        await dashboardService.approveUser(id);
+        setRejectedUsers(prev => prev.filter(u => u.id !== id));
+        showToast(`${name} approved successfully`);
+      } catch (error: any) {
+        Alert.alert('Error', error.message || 'Failed to approve user');
       }
-    ]);
+    };
+
+    if (Platform.OS === 'web') {
+      if (window.confirm(`Are you sure you want to approve ${name}?`)) {
+        doApprove();
+      }
+    } else {
+      Alert.alert('Confirm Approval', `Are you sure you want to approve ${name}?`, [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Approve', onPress: doApprove }
+      ]);
+    }
+  };
+
+  // Rejected user ko System se Permanently Delete karna
+  const handleDeleteRejected = (id: number, name: string) => {
+    const doDelete = async () => {
+      try {
+        await dashboardService.deleteRejectedUser(id);
+        setRejectedUsers(prev => prev.filter(u => u.id !== id));
+        showToast(`${name} deleted from system`, 'error');
+      } catch (error: any) {
+        Alert.alert('Error', error.message || 'Failed to delete user');
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      if (window.confirm(`Are you sure you want to permanently delete ${name} from the system? They will have to register again to access the system.`)) {
+        doDelete();
+      }
+    } else {
+      Alert.alert(
+        'Delete User', 
+        `Are you sure you want to permanently delete ${name} from the system? They will have to register again to access the system.`, 
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { 
+            text: 'Delete', 
+            style: 'destructive',
+            onPress: doDelete
+          }
+        ]
+      );
+    }
   };
 
   const handleHeaderBack = () => {
@@ -246,7 +283,7 @@ export default function PendingApprovalsScreen({ onBack }: PendingApprovalsScree
                   )}
                 </View>
                 
-                {/* Single Approve button per user requirement */}
+                {/* 2 Buttons: Approve aur Delete */}
                 <View style={styles.actions}>
                   <TouchableOpacity 
                     style={[styles.btn, styles.approve]} 
@@ -254,6 +291,13 @@ export default function PendingApprovalsScreen({ onBack }: PendingApprovalsScree
                     activeOpacity={0.8}
                   >
                     <Text style={styles.btnText}>Approve</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={[styles.btn, styles.remove]} 
+                    onPress={() => handleDeleteRejected(user.id, user.name)}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.btnText}>Delete</Text>
                   </TouchableOpacity>
                 </View>
               </View>
