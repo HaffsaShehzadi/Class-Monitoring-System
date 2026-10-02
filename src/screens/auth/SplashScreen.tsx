@@ -62,12 +62,11 @@ export default function SplashScreen() {
           { opacity: logoOpacity, transform: [{ scale: logoScale }] },
         ]}
       >
-        <View style={styles.splashLogoWrapper}>
-          <MaterialCommunityIcons name="school" size={100} color="#FFFFFF" />
-          <View style={styles.badge}>
-            <MaterialCommunityIcons name="clipboard-check" size={30} color="#4CAF50" />
-          </View>
-        </View>
+        <Image
+          source={require('../../../assets/logo-white.png')}
+          style={styles.splashLogo}
+          resizeMode="contain"
+        />
       </Animated.View>
 
       {/* App Name */}
@@ -114,23 +113,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  splashLogoWrapper: {
-    position: 'relative',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  badge: {
-    position: 'absolute',
-    bottom: -5,
-    right: -10,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 25,
-    padding: 6,
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
+  splashLogo: {
+    width: 140,
+    height: 140,
   },
   appName: {
     fontSize: 28,

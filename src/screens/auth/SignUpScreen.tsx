@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert, KeyboardAvoidingView, Platform, ActivityIndicator, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { authService } from '../../services/authService';
@@ -207,13 +207,12 @@ export default function SignUpScreen({ onBack, onSignUp }: SignUpScreenProps) {
         {/* Left Column - Class Monitoring System Navy Blue Hero Panel */}
         <View style={styles.webHeroPanel}>
           <View style={styles.heroContent}>
-            {/* App's Official Logo with Green Badge */}
-            <View style={styles.heroLogoWrapper}>
-              <MaterialCommunityIcons name="school" size={88} color="#FFFFFF" />
-              <View style={styles.heroBadge}>
-                <MaterialCommunityIcons name="clipboard-check" size={26} color="#4CAF50" />
-              </View>
-            </View>
+            {/* App's Official Logo */}
+            <Image
+              source={require('../../../assets/logo-white.png')}
+              style={styles.heroLogo}
+              resizeMode="contain"
+            />
 
             <Text style={styles.heroTitle}>Class Monitoring System</Text>
             <Text style={styles.heroSubtitle}>Teachers Attendance Management</Text>
@@ -721,22 +720,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     width: '100%',
   },
-  heroLogoWrapper: {
-    position: 'relative',
-    marginBottom: 24,
-  },
-  heroBadge: {
-    position: 'absolute',
-    bottom: -4,
-    right: -8,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 5,
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
+  heroLogo: {
+    width: 120,
+    height: 120,
+    marginBottom: 20,
   },
   heroTitle: {
     fontSize: 30,
