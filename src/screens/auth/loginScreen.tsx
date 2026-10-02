@@ -334,8 +334,8 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   heroLogo: {
-    width: 120,
-    height: 120,
+    width: 110,
+    height: 101,
     marginBottom: 20,
   },
   heroTitle: {
@@ -426,8 +426,8 @@ const styles = StyleSheet.create({
   formContainer: { padding: 20, paddingTop: 30, alignItems: 'center', flexGrow: 1, justifyContent: 'center' },
   logoContainer: { marginBottom: 20 },
   mobileLogo: {
-    width: 90,
-    height: 90,
+    width: 95,
+    height: 87,
   },
   title: { fontSize: 26, fontWeight: '700', color: '#1A237E', textAlign: 'center', marginBottom: 5 },
   subtitle: { fontSize: 15, color: '#666', textAlign: 'center', marginBottom: 30, fontWeight: '600' },

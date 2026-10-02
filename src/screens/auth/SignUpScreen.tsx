@@ -721,8 +721,8 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   heroLogo: {
-    width: 120,
-    height: 120,
+    width: 110,
+    height: 101,
     marginBottom: 20,
   },
   heroTitle: {

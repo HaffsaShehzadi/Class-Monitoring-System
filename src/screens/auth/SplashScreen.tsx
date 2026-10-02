@@ -114,8 +114,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   splashLogo: {
-    width: 140,
-    height: 140,
+    width: 130,
+    height: 119,
   },
   appName: {
     fontSize: 28,
