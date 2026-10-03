@@ -45,12 +45,10 @@ export default function SignUpScreen({ onBack, onSignUp }: SignUpScreenProps) {
 
   const [step, setStep] = useState<'form' | 'otp' | 'success'>('form');
   
-  // ✅ CHANGED: 6 digits se 4 digits kar diye
   const [otp, setOtp] = useState(['', '', '', '']);
   const [otpLoading, setOtpLoading] = useState(false);
   const [resendTimer, setResendTimer] = useState(0);
-  
-  // ✅ CHANGED: 4 refs for 4 inputs
+
   const otpRefs = [useRef<any>(null), useRef<any>(null), useRef<any>(null), useRef<any>(null)];
 
   const validateForm = () => {
@@ -82,7 +80,6 @@ export default function SignUpScreen({ onBack, onSignUp }: SignUpScreenProps) {
     try {
       const roleBackend = role.toLowerCase().includes('monitor') ? 'monitoring' : 'teacher';
       
-      // ✅ REAL backend signup call
       await authService.signup({
         name: fullName,
         email,
@@ -90,12 +87,11 @@ export default function SignUpScreen({ onBack, onSignUp }: SignUpScreenProps) {
         role: roleBackend as 'teacher' | 'monitoring',
         department: role === 'Teacher' ? department : undefined,
       });
-      
-      // ✅ OTP screen pe jao (demo_otp logic hata di)
+   
       setStep('otp');
       
       Alert.alert(
-        '✅ Account Created - Verify Email',
+        ' Account Created - Verify Email',
         `Account created successfully!\n\nA 4-digit OTP has been sent to:\n${email}`
       );
       
@@ -147,7 +143,6 @@ export default function SignUpScreen({ onBack, onSignUp }: SignUpScreenProps) {
     newOtp[index] = value;
     setOtp(newOtp);
 
-    // ✅ CHANGED: index < 3 (kyunke ab 4 boxes hain, max index 3 hai)
     if (value && index < 3) {
       otpRefs[index + 1].current?.focus();
     }
@@ -162,7 +157,6 @@ export default function SignUpScreen({ onBack, onSignUp }: SignUpScreenProps) {
   const handleVerifyOtp = async () => {
     const enteredOtp = otp.join('');
     
-    // ✅ CHANGED: 6 ki jagah 4 check karein
     if (enteredOtp.length !== 4) {
       Alert.alert('Invalid Code', 'Please enter the 4-digit verification code');
       return;
@@ -171,7 +165,6 @@ export default function SignUpScreen({ onBack, onSignUp }: SignUpScreenProps) {
     setOtpLoading(true);
 
     try {
-      // ✅ REAL backend OTP verification
       await authService.verifyOTP(email, enteredOtp);
       setOtpLoading(false);
       
@@ -195,12 +188,11 @@ export default function SignUpScreen({ onBack, onSignUp }: SignUpScreenProps) {
     } catch (error: any) {
       setOtpLoading(false);
       Alert.alert('❌ Verification Failed', error?.message || 'Invalid OTP. Please try again.');
-      setOtp(['', '', '', '']); // ✅ 4 empty strings
+      setOtp(['', '', '', '']);
       otpRefs[0].current?.focus();
     }
   };
 
-  // ✅ WEB SMART DESK 2-COLUMN SPLIT LAYOUT
   if (Platform.OS === 'web') {
     return (
       <View style={styles.webContainer}>
@@ -235,7 +227,6 @@ export default function SignUpScreen({ onBack, onSignUp }: SignUpScreenProps) {
           </View>
         </View>
 
-        {/* Right Column - Clean Form / OTP / Success Panel */}
         <View style={styles.webFormPanel}>
           <ScrollView 
             style={styles.webFormScrollView} 
@@ -452,7 +443,6 @@ export default function SignUpScreen({ onBack, onSignUp }: SignUpScreenProps) {
     );
   }
 
-  // ✅ MOBILE LAYOUT
   if (step === 'otp') {
     return (
       <SafeAreaView edges={['bottom']} style={styles.container}>
@@ -615,7 +605,6 @@ export default function SignUpScreen({ onBack, onSignUp }: SignUpScreenProps) {
             />
 
             <Text style={styles.label}>Password *</Text>
-            {/* ✅ FIXED: Password field with eye toggle icon */}
             <View style={styles.passwordInputContainer}>
               <TextInput 
                 style={styles.passwordInput} 
@@ -699,7 +688,6 @@ export default function SignUpScreen({ onBack, onSignUp }: SignUpScreenProps) {
 }
 
 const styles = StyleSheet.create({
-  // Web 2-Column Split Styles (Smart Desk Style)
   webContainer: {
     flex: 1,
     flexDirection: 'row',
@@ -817,7 +805,6 @@ const styles = StyleSheet.create({
     shadowRadius: 3.84,
   },
 
-  // Form Fields & Icons
   inputContainer: {
     backgroundColor: '#FFF',
     borderWidth: 1,
@@ -857,7 +844,6 @@ const styles = StyleSheet.create({
   },
   eyeIcon: { padding: 4 },
 
-  // Mobile & Common Styles
   container: { flex: 1, backgroundColor: '#F5F5F5' },
   header: {
     backgroundColor: '#FFF',
@@ -956,7 +942,6 @@ const styles = StyleSheet.create({
   footerText: { fontSize: 14, color: '#666' },
   linkText: { fontSize: 14, color: '#1A237E', fontWeight: '700' },
 
-  // OTP Styles
   otpContainer: { flexGrow: 1, padding: 20, alignItems: 'center', paddingTop: 40 },
   otpIconBox: {
     width: 120, height: 120, borderRadius: 60, backgroundColor: '#E8EAF6',
@@ -984,7 +969,6 @@ const styles = StyleSheet.create({
   resendLink: { fontSize: 14, color: '#1A237E', fontWeight: '700' },
   resendTimer: { fontSize: 14, color: '#999', fontWeight: '600' },
 
-  // Success Styles
   successContainer: {
     flex: 1, backgroundColor: '#F5F5F5', alignItems: 'center',
     justifyContent: 'center', padding: 20,

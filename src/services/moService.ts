@@ -49,7 +49,6 @@ export const moService = {
     return await response.json();
   },
 
-  // ✅ NEW: Added specifically for MonitoringAttendanceHistory.tsx
   getMOHistory: async (date: string, departmentId: number) => {
     const BACKEND_URL = await detectBackend();
     const token = await tokenStorage.getToken();

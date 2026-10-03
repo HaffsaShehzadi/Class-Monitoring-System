@@ -3,12 +3,11 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Modal,
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system/legacy';
-import * as Sharing from 'expo-sharing'; // ✅ Yeh import wapis add kar diya
+import * as Sharing from 'expo-sharing';
 import { detectBackend } from '../../services/ipConfig';
 import { tokenStorage } from '../../services/tokenStorage';
 import { attendanceService } from '../../services/attendanceService';
 
-// ✅ Full 7 Periods for 1st Shift
 const PERIODS_1ST = [
   { id: 1, time: '08:00 AM - 08:45 AM' },
   { id: 2, time: '08:45 AM - 09:30 AM' },
@@ -19,7 +18,6 @@ const PERIODS_1ST = [
   { id: 7, time: '12:30 PM - 01:15 PM' },
 ];
 
-// ✅ Full 7 Periods for 2nd Shift
 const PERIODS_2ND = [
   { id: 1, time: '01:00 PM - 01:45 PM' },
   { id: 2, time: '01:45 PM - 02:30 PM' },
@@ -30,7 +28,6 @@ const PERIODS_2ND = [
   { id: 7, time: '05:30 PM - 06:15 PM' },
 ];
 
-// ✅ HELPER: 24-hour ko 12-hour (AM/PM) format mein convert kare
 const formatTime12Hour = (time24: string): string => {
   if (!time24) return '';
   if (time24.toUpperCase().includes('AM') || time24.toUpperCase().includes('PM')) {
@@ -54,7 +51,7 @@ export default function TeacherAttendanceHistory({ onBack }: any) {
   const [filteredDates, setFilteredDates] = useState<any[]>([]);
   const [teacherInfo, setTeacherInfo] = useState({ name: 'Teacher', department: 'N/A' });
   const [loading, setLoading] = useState(false);
-  const [downloading, setDownloading] = useState(false); // ✅ Sirf EK baar declare kiya
+  const [downloading, setDownloading] = useState(false); 
 
   useEffect(() => {
     const loadUser = async () => {
@@ -90,7 +87,7 @@ export default function TeacherAttendanceHistory({ onBack }: any) {
         return;
       }
 
-      setDownloading(true); // ✅ Table chhupayega nahi
+      setDownloading(true);
       
       const BACKEND_URL = await detectBackend();
       const token = await tokenStorage.getToken();
@@ -242,7 +239,6 @@ export default function TeacherAttendanceHistory({ onBack }: any) {
     }
   };
 
-  // ✅ SEARCH SCREEN WITH CENTERED CARD
   if (!showHistory) {
     return (
       <SafeAreaView style={styles.container}>
@@ -345,10 +341,8 @@ export default function TeacherAttendanceHistory({ onBack }: any) {
     );
   }
 
-  // ✅ Current shift periods
   const currentPeriods = selectedShift === '2nd Shift' ? PERIODS_2ND : PERIODS_1ST;
 
-  // ✅ HISTORY TABLE SCREEN
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
@@ -371,7 +365,6 @@ export default function TeacherAttendanceHistory({ onBack }: any) {
             </View>
           </View>
 
-          {/* ✅ Ab download ke waqt table nahi chhupayega */}
           {loading && filteredDates.length === 0 ? (
             <View style={{ alignItems: 'center', marginTop: 40 }}>
               <ActivityIndicator size="large" color="#1A237E" />
@@ -458,7 +451,6 @@ export default function TeacherAttendanceHistory({ onBack }: any) {
             ))
           )}
 
-          {/* ✅ Download button with spinner */}
           {filteredDates.length > 0 && (
             <TouchableOpacity 
               style={styles.exportBtn} 
@@ -478,7 +470,6 @@ export default function TeacherAttendanceHistory({ onBack }: any) {
   );
 }
 
-// ✅ STYLES WITH CENTERED CARD DESIGN
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F5F5' },
   header: {

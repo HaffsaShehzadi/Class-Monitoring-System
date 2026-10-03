@@ -68,7 +68,7 @@ export default function RequestStatusScreen({
         }
 
         if (res.status === 'approved') {
-          Alert.alert('✅ Approved!', 'Your account has been approved by Admin. Please sign in to continue.', [
+          Alert.alert(' Approved!', 'Your account has been approved by Admin. Please sign in to continue.', [
             { text: 'Go to Sign In', onPress: onBack }
           ]);
           return;

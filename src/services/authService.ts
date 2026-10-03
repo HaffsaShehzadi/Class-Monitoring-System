@@ -22,7 +22,7 @@ export interface SignupData {
 }
 
 export const authService = {
-  // POST /api/auth/login
+  
   login: async (email: string, password: string): Promise<LoginResponse> => {
     console.log('\n [authService] Starting login request...');
     const BACKEND_URL = await detectBackend();
@@ -39,7 +39,6 @@ export const authService = {
     return data;
   },
 
-  // POST /api/auth/signup
   signup: async (data: SignupData): Promise<{ message: string }> => {
     const BACKEND_URL = await detectBackend();
     const response = await fetch(`${BACKEND_URL}/api/auth/signup`, {
@@ -52,7 +51,6 @@ export const authService = {
     return result;
   },
 
-  // POST /api/auth/verify-otp
   verifyOTP: async (email: string, otp: string): Promise<{ message: string }> => {
     const BACKEND_URL = await detectBackend();
     const response = await fetch(`${BACKEND_URL}/api/auth/verify-otp`, {
@@ -65,7 +63,6 @@ export const authService = {
     return data;
   },
 
-  // POST /api/auth/resend-otp
   resendOTP: async (email: string): Promise<{ message: string }> => {
     const BACKEND_URL = await detectBackend();
     const response = await fetch(`${BACKEND_URL}/api/auth/resend-otp`, {
@@ -78,7 +75,6 @@ export const authService = {
     return data;
   },
 
-  // POST /api/auth/forgot-password (OTP bhejne ke liye)
   forgotPassword: async (email: string): Promise<{ message: string }> => {
     const BACKEND_URL = await detectBackend();
     const response = await fetch(`${BACKEND_URL}/api/auth/forgot-password`, {
@@ -91,7 +87,6 @@ export const authService = {
     return data;
   },
 
-  // ✅ NEW: POST /api/auth/reset-password (OTP verify kar ke password change karne ke liye)
   resetPassword: async (email: string, otp: string, newPassword: string): Promise<{ message: string }> => {
     console.log('\n📡 [authService] Starting reset password request...');
     const BACKEND_URL = await detectBackend();
@@ -109,7 +104,6 @@ export const authService = {
     return data;
   },
 
-  // GET /api/auth/profile
   getProfile: async (token: string): Promise<any> => {
     const BACKEND_URL = await detectBackend();
     const response = await fetch(`${BACKEND_URL}/api/auth/profile`, {
@@ -121,7 +115,6 @@ export const authService = {
     return data;
   },
 
-  // GET /api/departments/all
   getDepartments: async (): Promise<string[]> => {
     const BACKEND_URL = await detectBackend();
     const response = await fetch(`${BACKEND_URL}/api/departments/all`, {
@@ -133,7 +126,6 @@ export const authService = {
     return (data || []).map((d: any) => d.dept_name || d.name);
   },
 
-  // GET /api/auth/status?email=...
   checkStatus: async (email: string): Promise<{ status: 'pending' | 'approved' | 'rejected'; role?: string; name?: string; department?: string; message?: string }> => {
     const BACKEND_URL = await detectBackend();
     const response = await fetch(`${BACKEND_URL}/api/auth/status?email=${encodeURIComponent(email)}`, {

@@ -7,7 +7,7 @@ import { moService } from '../../services/moService';
 import { tokenStorage } from '../../services/tokenStorage';
 import { attendanceService } from '../../services/attendanceService';
 
-const USE_TEST_LOCATION = false; // Real GPS activate kar diya (testing ke liye true kar sakte hain)
+const USE_TEST_LOCATION = false;
 const ENFORCE_TIME_CHECK = true;
 
 const SEMESTERS = ['2nd', '4th', '6th', '8th'];
@@ -119,7 +119,6 @@ export default function MarkAttendanceScreen({ onBack }: any) {
   const [loading, setLoading] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>({ name: 'Loading...', role: 'Monitoring Official' });
 
-  // ✅ STEP 1: API Call SIRF 1 BAAR jab screen load ho
   useEffect(() => {
     const init = async () => {
       setLoading(true);
@@ -141,12 +140,10 @@ export default function MarkAttendanceScreen({ onBack }: any) {
     init();
   }, []);
 
-  // ✅ STEP 2: Filter duties STRICTLY for TODAY - No fallback to past/future dates
   useEffect(() => {
     const today = new Date();
     const currentTodayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
     
-    // 1. Filter duties matching TODAY only
     const matchedDuties = allFetchedDuties.filter((d: any) => {
       const dDate = extractDateStr(d.duty_date);
       return dDate === currentTodayStr;
@@ -190,7 +187,6 @@ export default function MarkAttendanceScreen({ onBack }: any) {
       });
       setPeriods(filteredPeriods);
 
-      // 1. Timetable fetch karo for selected day & shift
       const data = await moService.getTimetableByDayAndShift(selectedDay, selectedShift);
       const mappedData = data.map((item: any) => ({
         id: item.id, dept: item.dept_name, semester: item.semester, day: item.day,
@@ -199,7 +195,6 @@ export default function MarkAttendanceScreen({ onBack }: any) {
       }));
       setTimetableData(mappedData);
 
-      // 2. Iss date ki marked attendance backend se fetch karo
       const targetDate = currentDateStr || extractDateStr(new Date());
       const todayAttendance = await attendanceService.getTodayAttendance(targetDate);
       const recordsMap: any = {};
@@ -215,7 +210,6 @@ export default function MarkAttendanceScreen({ onBack }: any) {
         });
       }
 
-      // 3. Local SQLite unsynced records bhi merge karo
       try {
         const { getUnsyncedRecords } = await import('../../services/offlineStorage');
         const unsynced = await getUnsyncedRecords();
@@ -255,17 +249,16 @@ export default function MarkAttendanceScreen({ onBack }: any) {
   const getAttendance = (sem: string, periodId: number) => timetableData.find(t => t.dept === selectedDept && t.semester === sem && t.day === selectedDay && t.period === periodId);
   const getRecord = (id: number) => savedRecords[id] || null;
 
-  // ✅ UI FIX: Sirf Green aur Red. Yellow nahi.
   const getStatusColor = (r: any) => {
     if (!r) return '#999';
-    if (r.status === 'absent') return '#F44336'; // Red
-    return '#4CAF50'; // Green (Chahe online ho ya offline)
+    if (r.status === 'absent') return '#F44336';
+    return '#4CAF50';
   };
 
   const getStatusDisplay = (r: any) => {
     if (!r) return '';
     if (r.status === 'absent') return 'Absent';
-    return 'Present'; // Sirf Present (Offline text nahi)
+    return 'Present'; 
   };
 
   const handleCellPress = (lecture: any) => {
@@ -279,7 +272,6 @@ export default function MarkAttendanceScreen({ onBack }: any) {
     if (status === 'present') setSubstituteName('');
   };
 
-  // ✅ MAIN LOGIC: Save + UI Green/Red
   const handleSave = async () => {
     if (!selectedStatus) { Alert.alert('Error', 'Please select Present or Absent'); return; }
 
@@ -290,7 +282,6 @@ export default function MarkAttendanceScreen({ onBack }: any) {
         return;
       }
 
-      // 2. Location Check (Live GPS)
       let moLocation: any;
       if (USE_TEST_LOCATION) {
         const { checkLocationTestMode } = await import('../../services/locationService');
@@ -303,7 +294,6 @@ export default function MarkAttendanceScreen({ onBack }: any) {
         }
       }
 
-      // 3. Save Attempt
       try {
         await attendanceService.markAttendance(
           selectedLecture.id,
@@ -314,7 +304,6 @@ export default function MarkAttendanceScreen({ onBack }: any) {
           currentDateStr || extractDateStr(new Date())
         );
 
-        // SUCCESS: Online Save
         setSavedRecords((prev: any) => ({ 
           ...prev, 
           [selectedLecture.id]: { status: selectedStatus, substituteName: selectedStatus === 'absent' ? substituteName : '', isOffline: false } 
@@ -323,9 +312,8 @@ export default function MarkAttendanceScreen({ onBack }: any) {
         Alert.alert('✅ Success', 'Attendance marked successfully!');
         
       } catch (apiError: any) {
-        // ❌ ERROR: Check if it's a Network Error (Offline)
         if (apiError.isNetworkError) {
-          // ✅ OFFLINE SAVE (Data locally save hoga, sync baad mein hoga)
+         
           const targetDate = currentDateStr || extractDateStr(new Date());
           await saveOfflineAttendance({
             timetable_id: selectedLecture.id,
@@ -338,20 +326,19 @@ export default function MarkAttendanceScreen({ onBack }: any) {
             longitude: moLocation.longitude!,
           });
 
-          // ✅ UI UPDATE: Green/Red dikhayega (Yellow nahi)
           setSavedRecords((prev: any) => ({ 
             ...prev, 
             [selectedLecture.id]: { 
               status: selectedStatus, 
               substituteName: selectedStatus === 'absent' ? substituteName : '',
-              isOffline: true // Internal flag for sync
+              isOffline: true 
             } 
           }));
 
           setShowModal(false);
           Alert.alert('📴 Saved Locally', 'No internet. Attendance saved and will sync automatically.');
         } else {
-          // ❌ BACKEND VALIDATION ERROR (e.g. Radius issue or Already Marked)
+        
           Alert.alert('❌ Error', apiError.message || 'Attendance could not be marked.');
         }
       }

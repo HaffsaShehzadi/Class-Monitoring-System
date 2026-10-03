@@ -2,7 +2,7 @@ import { detectBackend } from './ipConfig';
 import { tokenStorage } from './tokenStorage';
 
 export const dashboardService = {
-  // ✅ 1. EXISTING: Admin dashboard stats fetch karna (Bilkul safe, koi change nahi)
+
   getAdminStats: async () => {
     const BACKEND_URL = await detectBackend();
     const token = await tokenStorage.getToken();
@@ -21,7 +21,6 @@ export const dashboardService = {
     return data;
   },
 
-  // ✅ 2. NEW: Pending users ki list fetch karna
   getPendingUsers: async () => {
     const BACKEND_URL = await detectBackend();
     const token = await tokenStorage.getToken();
@@ -40,7 +39,6 @@ export const dashboardService = {
     return data;
   },
 
-  // ✅ 3. NEW: User ko approve karna
   approveUser: async (id: number) => {
     const BACKEND_URL = await detectBackend();
     const token = await tokenStorage.getToken();
@@ -59,7 +57,6 @@ export const dashboardService = {
     return data;
   },
 
-  // ✅ 4. NEW: User ko reject (remove) karna
   rejectUser: async (id: number) => {
     const BACKEND_URL = await detectBackend();
     const token = await tokenStorage.getToken();
@@ -78,7 +75,6 @@ export const dashboardService = {
     return data;
   },
 
-  // ✅ 5. NEW: Rejected users ki list fetch karna
   getRejectedUsers: async () => {
     const BACKEND_URL = await detectBackend();
     const token = await tokenStorage.getToken();
@@ -97,7 +93,6 @@ export const dashboardService = {
     return data;
   },
 
-  // ✅ 6. Rejected user ko system se delete karna
   deleteRejectedUser: async (id: number) => {
     const BACKEND_URL = await detectBackend();
     const token = await tokenStorage.getToken();

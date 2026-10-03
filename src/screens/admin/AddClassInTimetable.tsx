@@ -70,8 +70,6 @@ export default function AddClassInTimetable({ onBack, onNavigate, params }: any)
     } catch (error: any) {
       console.error("❌ Save error:", error);
       
-      // ✅ FIXED: Ab backend ka EXACT error message UI par show hoga
-      // Chahe wo "Teacher busy" ho, "Room not found" ho, ya koi aur masla
       const errorMsg = error.message || 'Failed to save class. Please check your inputs.';
       Alert.alert('Error', errorMsg);
       
@@ -137,7 +135,7 @@ export default function AddClassInTimetable({ onBack, onNavigate, params }: any)
             <View style={styles.inputWrapper}>
               <TextInput 
                 style={styles.input} 
-                placeholder="e.g., Hassan Raza" 
+                placeholder="Enter teacher name" 
                 value={classTeacher} 
                 onChangeText={setClassTeacher} 
                 placeholderTextColor="#999" 
@@ -148,7 +146,7 @@ export default function AddClassInTimetable({ onBack, onNavigate, params }: any)
             <View style={styles.inputWrapper}>
               <TextInput 
                 style={styles.input} 
-                placeholder="e.g., UE-272" 
+                placeholder="Enter subject code" 
                 value={classCode} 
                 onChangeText={setClassCode} 
                 placeholderTextColor="#999" 
@@ -159,7 +157,7 @@ export default function AddClassInTimetable({ onBack, onNavigate, params }: any)
             <View style={styles.inputWrapper}>
               <TextInput 
                 style={styles.input} 
-                placeholder="e.g., R58" 
+                placeholder="Enter room number" 
                 value={classRoom} 
                 onChangeText={setClassRoom} 
                 placeholderTextColor="#999" 

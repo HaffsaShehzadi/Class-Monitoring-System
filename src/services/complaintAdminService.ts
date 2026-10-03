@@ -2,7 +2,7 @@ import { detectBackend } from './ipConfig';
 import { tokenStorage } from './tokenStorage';
 
 export const complaintAdminService = {
-  // Sari complaints fetch karna (Admin ke liye)
+  
   getAllComplaints: async () => {
     const BACKEND_URL = await detectBackend();
     const token = await tokenStorage.getToken();
@@ -21,7 +21,6 @@ export const complaintAdminService = {
     return data;
   },
 
-  // Complaint ka status update karna (Resolve / Reject)
   updateStatus: async (id: number, status: 'resolved' | 'rejected') => {
     const BACKEND_URL = await detectBackend();
     const token = await tokenStorage.getToken();

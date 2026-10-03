@@ -2,7 +2,7 @@ import { detectBackend } from './ipConfig';
 import { tokenStorage } from './tokenStorage';
 
 export const teacherService = {
-  // Teacher ka specific day aur shift ka timetable fetch karna
+  
   getTimetableByDayAndShift: async (day: string, shift: string) => {
     const BACKEND_URL = await detectBackend();
     const token = await tokenStorage.getToken();

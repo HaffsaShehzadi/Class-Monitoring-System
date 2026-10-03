@@ -35,8 +35,8 @@ export const syncOfflineData = async () => {
           local_id: r.id,
           timetable_id: r.timetable_id,
           date: r.date,
-          status: r.status.toLowerCase(), // Backend expects 'present' or 'absent'
-          substitute_teacher_name: r.substitute || null, // ✅ FIXED: Sending name instead of null ID
+          status: r.status.toLowerCase(), 
+          substitute_teacher_name: r.substitute || null,
           mo_lat: r.latitude,
           mo_lng: r.longitude,
         })),
@@ -50,16 +50,16 @@ export const syncOfflineData = async () => {
           await markAsSynced(result.local_id);
           console.log(`✅ Record ${result.local_id} synced (server_id: ${result.server_id})`);
         } else {
-          console.log(`⚠️ Record ${result.local_id} failed: ${result.error}`);
+          console.log(` Record ${result.local_id} failed: ${result.error}`);
         }
       }
       console.log(`📊 ${data.message}`);
     } else {
       const errorData = await response.json().catch(() => ({}));
-      console.log(`⚠️ Sync failed:`, errorData.message || response.status);
+      console.log(` Sync failed:`, errorData.message || response.status);
     }
   } catch (error: any) {
-    console.log('⏳ Sync skipped - will retry later:', error.message);
+    console.log(' Sync skipped - will retry later:', error.message);
   }
 };
 
@@ -68,11 +68,11 @@ export const startAutoSync = () => {
     NetInfo.addEventListener((state) => {
       if (state.isConnected) {
         syncOfflineData().catch(err => {
-          console.log('⚠️ Auto-sync background error handled:', err?.message || err);
+          console.log(' Auto-sync background error handled:', err?.message || err);
         });
       }
     });
   } catch (err: any) {
-    console.log('⚠️ NetInfo event listener error:', err?.message || err);
+    console.log(' NetInfo event listener error:', err?.message || err);
   }
 };

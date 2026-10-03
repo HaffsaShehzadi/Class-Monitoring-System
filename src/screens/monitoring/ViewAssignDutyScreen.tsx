@@ -31,13 +31,11 @@ export default function ViewAssignDutyScreen({ onBack }: any) {
     loadData();
   }, []);
 
-  // ✅ Aaj ki date nikalein (Local timezone)
   const now = new Date();
   const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
   
   console.log("📅 TODAY:", todayStr);
 
-  // ✅ Sirf aaj ki duties filter karein
   const todaysDuties = duties.filter((d: any) => {
     const dDate = d.duty_date ? String(d.duty_date).split('T')[0] : '';
     return dDate === todayStr;
@@ -45,25 +43,21 @@ export default function ViewAssignDutyScreen({ onBack }: any) {
 
   console.log("📋 Today's duties:", todaysDuties.length);
 
-  // ✅ UNIQUE departments nikalne ka function
   const getUniqueDepartments = (shiftDuties: any[]) => {
     const uniqueDeptNames = [...new Set(shiftDuties.map((d: any) => d.dept_name))];
     return uniqueDeptNames;
   };
 
-  // ✅ Sirf aaj ki duties se count nikalein
   const firstShiftDepts = getUniqueDepartments(todaysDuties.filter((d: any) => d.shift === '1st Shift'));
   const secondShiftDepts = getUniqueDepartments(todaysDuties.filter((d: any) => d.shift === '2nd Shift'));
   
   console.log("1st Shift unique depts:", firstShiftDepts);
   console.log("2nd Shift unique depts:", secondShiftDepts);
 
-  // Selected shift ke mutabiq duties filter karein (sirf aaj ki)
   const filteredDuties = selectedShift 
     ? todaysDuties.filter((d: any) => d.shift === selectedShift)
     : [];
 
-  // Step 1: Select Shift
   if (!selectedShift) {
     return (
       <SafeAreaView style={styles.container}>
@@ -107,8 +101,6 @@ export default function ViewAssignDutyScreen({ onBack }: any) {
       </SafeAreaView>
     );
   }
-
-  // Step 2: Show Assigned Departments
   const uniqueDeptNames = getUniqueDepartments(filteredDuties);
   const uniqueFilteredDuties = uniqueDeptNames.map(deptName => 
     filteredDuties.find((d: any) => d.dept_name === deptName)

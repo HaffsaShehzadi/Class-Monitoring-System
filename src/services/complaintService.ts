@@ -2,7 +2,7 @@ import { detectBackend } from './ipConfig';
 import { tokenStorage } from './tokenStorage';
 
 export const complaintService = {
-  // Nayi complaint submit karna
+
   createComplaint: async (text: string) => {
     const BACKEND_URL = await detectBackend();
     const token = await tokenStorage.getToken();
@@ -23,7 +23,6 @@ export const complaintService = {
     return data;
   },
 
-  // Apni complaints fetch karna
   getMyComplaints: async () => {
     const BACKEND_URL = await detectBackend();
     const token = await tokenStorage.getToken();

@@ -20,7 +20,7 @@ interface Department {
 export default function AssignDutyScreen({ onBack }: any) {
   const [officials, setOfficials] = useState<OfficialData[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
-  const [allDuties, setAllDuties] = useState<any[]>([]); // ✅ NEW: Store all duties to check conflicts
+  const [allDuties, setAllDuties] = useState<any[]>([]); 
   const [loading, setLoading] = useState(true);
 
   const [screen, setScreen] = useState<'list' | 'form' | 'view'>('list');
@@ -59,7 +59,6 @@ export default function AssignDutyScreen({ onBack }: any) {
       const allUsers = await usersRes.json();
       const mos = allUsers.filter((u: any) => String(u.role).toLowerCase().includes('monitor'));
 
-      // ✅ Fetch all duties to check for conflicts
       const dutiesData = await monitoringDutyService.getAllDuties();
       setAllDuties(dutiesData);
 
@@ -233,13 +232,10 @@ export default function AssignDutyScreen({ onBack }: any) {
 
       const deptName = d.dept_name || d.department;
       
-      // If duty is 'Both', it conflicts with everything
       if (d.shift === 'Both') return true;
       
-      // If duty is '1st Shift', it conflicts with '1st Shift' and 'Both'
       if (d.shift === '1st Shift' && (selectedShift === '1st Shift' || selectedShift === 'Both')) return true;
       
-      // If duty is '2nd Shift', it conflicts with '2nd Shift' and 'Both'
       if (d.shift === '2nd Shift' && (selectedShift === '2nd Shift' || selectedShift === 'Both')) return true;
 
       return false;
@@ -247,7 +243,6 @@ export default function AssignDutyScreen({ onBack }: any) {
 
     const assignedDeptNames = new Set(conflictingDuties.map((d: any) => d.dept_name || d.department));
 
-    // If editing, allow the departments currently assigned to THIS official to remain selectable
     let currentOfficialDepts: string[] = [];
     if (isEditing && activeOfficial?.assignment) {
       currentOfficialDepts = activeOfficial.assignment.departments;
@@ -255,12 +250,11 @@ export default function AssignDutyScreen({ onBack }: any) {
 
     return departments.filter(dept => {
       const deptName = dept.dept_name || dept.name;
-      // Keep if NOT assigned to someone else, OR if it's currently assigned to this official (for editing)
+      
       return !assignedDeptNames.has(deptName) || currentOfficialDepts.includes(deptName);
     });
   };
 
-  // ==================== FORM SCREEN ====================
   if (screen === 'form' && activeOfficial) {
     const availableDepts = getAvailableDepartments();
 
@@ -296,7 +290,6 @@ export default function AssignDutyScreen({ onBack }: any) {
                 ))}
               </View>
 
-              {/* 2. DATE */}
               <Text style={styles.label}>Date *</Text>
               <TextInput 
                 style={styles.dateInput} 
@@ -306,7 +299,6 @@ export default function AssignDutyScreen({ onBack }: any) {
                 placeholderTextColor="#999" 
               />
 
-              {/* 3. DEPARTMENTS BAAD MEIN (Filtered) */}
               <Text style={styles.label}>Departments *</Text>
               <TouchableOpacity 
                 style={[styles.selectBtn, (!selectedShift || !date) && { opacity: 0.5 }]} 
@@ -334,7 +326,7 @@ export default function AssignDutyScreen({ onBack }: any) {
                 </View>
               )}
 
-              {/* 4. SAVE BUTTON */}
+
               <TouchableOpacity style={styles.confirmBtn} onPress={handleSave} disabled={saving}>
                 <Text style={styles.confirmText}>{saving ? 'Saving...' : (isEditing ? 'Save Changes' : 'Assign Duty')}</Text>
               </TouchableOpacity>
@@ -380,7 +372,6 @@ export default function AssignDutyScreen({ onBack }: any) {
     );
   }
 
-  // ==================== VIEW SCREEN ====================
   if (screen === 'view' && activeOfficial && activeOfficial.assignment) {
     const a = activeOfficial.assignment;
     return (
@@ -430,7 +421,6 @@ export default function AssignDutyScreen({ onBack }: any) {
     );
   }
 
-  // ==================== LIST SCREEN ====================
   return (
     <SafeAreaView edges={['bottom']} style={styles.container}>
       <View style={styles.header}>
@@ -545,7 +535,6 @@ const styles = StyleSheet.create({
   toast: { paddingHorizontal: 30, paddingVertical: 16, borderRadius: 12, alignItems: 'center', elevation: 10, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, maxWidth: '80%', backgroundColor: '#FFF' },
   toastText: { color: '#333', fontSize: 16, fontWeight: '700', textAlign: 'center' },
   
-  // ✅ NEW STYLES FOR INFO BOX AND EMPTY STATE
   infoBox: {
     backgroundColor: '#E8EAF6',
     borderRadius: 8,

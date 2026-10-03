@@ -9,11 +9,10 @@ export const checkLocation = async (): Promise<{
   try {
     console.log('📍 Requesting location...');
     
-    // ✅ Step 1: Check permissions
     let { status } = await Location.getForegroundPermissionsAsync();
     
     if (status !== 'granted') {
-      // Request permission
+  
       const { status: newStatus } = await Location.requestForegroundPermissionsAsync();
       if (newStatus !== 'granted') {
         return {
@@ -23,17 +22,15 @@ export const checkLocation = async (): Promise<{
       }
     }
 
-    // ✅ Step 2: Get location with TIMEOUT and FALLBACK options
     const location = await Location.getCurrentPositionAsync({
-      accuracy: Location.Accuracy.High, // ✅ High accuracy uses GPS satellites for classroom precision
-      timeInterval: 5000, // ✅ Max wait time: 5 seconds
-      distanceInterval: 5, // ✅ Update every 5 meters
+      accuracy: Location.Accuracy.High,
+      timeInterval: 5000, 
+      distanceInterval: 5, 
     }).catch(async (err) => {
-      console.warn('⚠️ GPS location failed, trying network location...', err);
+      console.warn(' GPS location failed, trying network location...', err);
       
-      // ✅ Fallback: Use network-based location (faster but less accurate)
       try {
-        // ❌ REMOVED: accuracy parameter (getLastKnownPositionAsync doesn't accept it)
+        
         const networkLocation = await Location.getLastKnownPositionAsync();
         
         if (networkLocation) {
@@ -75,17 +72,16 @@ export const checkLocation = async (): Promise<{
   }
 };
 
-// ✅ TESTING MODE: Bypass location check (VIVA/DEMO ke liye)
 export const checkLocationTestMode = async (): Promise<{
   success: boolean;
   latitude: number;
   longitude: number;
 }> => {
-  // ⚠️ TESTING KE LIYE - Fake location return karein
-  console.warn('⚠️ TEST MODE: Using fake location');
+  
+  console.warn(' TEST MODE: Using fake location');
   return {
     success: true,
-    latitude: 31.5204, // Example: Lahore coordinates
+    latitude: 31.5204, 
     longitude: 74.3587,
   };
 };

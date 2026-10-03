@@ -47,7 +47,6 @@ export const adminReportService = {
     }
   },
 
-  // ✅ UPDATED: Matches new backend route /api/reports/department/:id
   getDepartmentAttendance: async (departmentId: number, startDate: string, endDate: string) => {
     const BACKEND_URL = await detectBackend();
     const token = await tokenStorage.getToken();
@@ -68,7 +67,6 @@ export const adminReportService = {
     return data;
   },
 
-  // ✅ UPDATED: Matches new backend route /api/reports/teacher/:id
   getTeacherAttendance: async (teacherId: number, startDate: string, endDate: string) => {
     const BACKEND_URL = await detectBackend();
     const token = await tokenStorage.getToken();

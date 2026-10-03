@@ -11,18 +11,16 @@ export default function SubmitComplaintScreen({ onBack }: any) {
   const [showHistory, setShowHistory] = useState(false);
   const [viewingComplaint, setViewingComplaint] = useState<any>(null);
   const [inputHeight, setInputHeight] = useState(60);
-  
-  // Complaints list & loading state
+
   const [complaints, setComplaints] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // Logged-in teacher details
   const [teacherInfo, setTeacherInfo] = useState<{ name: string; department: string }>({
     name: 'Teacher',
     department: ''
   });
 
-  // Load user data on mount
+  
   useEffect(() => {
     const loadUser = async () => {
       try {
@@ -40,7 +38,6 @@ export default function SubmitComplaintScreen({ onBack }: any) {
     loadUser();
   }, []);
 
-  // Screen load hone par ya history open hone par data fetch karein
   useEffect(() => {
     if (showHistory) {
       fetchComplaints();
@@ -67,14 +64,13 @@ export default function SubmitComplaintScreen({ onBack }: any) {
 
     setLoading(true);
     try {
-      // Backend API Call
+  
       await complaintService.createComplaint(complaint);
       
       setComplaint('');
       setInputHeight(60);
       Alert.alert('Success', 'Complaint submitted successfully');
       
-      // Agar history screen open hai toh list refresh karein
       if (showHistory) {
         await fetchComplaints();
       }
@@ -86,9 +82,9 @@ export default function SubmitComplaintScreen({ onBack }: any) {
   };
 
   const getStatusColor = (status: string) => {
-    if (status === 'pending') return '#FF9800';  // Orange
-    if (status === 'resolved') return '#4CAF50'; // Green
-    if (status === 'rejected') return '#F44336'; // Red
+    if (status === 'pending') return '#FF9800';  
+    if (status === 'resolved') return '#4CAF50'; 
+    if (status === 'rejected') return '#F44336';
     return '#999';
   };
 
@@ -97,9 +93,6 @@ export default function SubmitComplaintScreen({ onBack }: any) {
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
   };
 
-  // ==========================================
-  // VIEW 1: COMPLAINT DETAILS (Admin jaisa Detail View)
-  // ==========================================
   if (viewingComplaint) {
     const item = viewingComplaint;
     const teacherName = item.submittedBy || teacherInfo.name;
@@ -155,9 +148,6 @@ export default function SubmitComplaintScreen({ onBack }: any) {
     );
   }
 
-  // ==========================================
-  // VIEW 2: COMPLAINT HISTORY (Admin jaisa Card + View Complaint Button)
-  // ==========================================
   if (showHistory) {
     return (
       <SafeAreaView edges={['bottom']} style={styles.container}>
@@ -220,9 +210,6 @@ export default function SubmitComplaintScreen({ onBack }: any) {
     );
   }
 
-  // ==========================================
-  // VIEW 3: SUBMIT NEW COMPLAINT (Original Design)
-  // ==========================================
   return (
     <SafeAreaView edges={['bottom']} style={styles.container}>
       <View style={styles.header}>
@@ -292,7 +279,6 @@ export default function SubmitComplaintScreen({ onBack }: any) {
   );
 }
 
-// ✅ STYLES: Admin side ComplaintsScreen ke sath 100% consistent
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F5F5' },
   header: { 
@@ -383,7 +369,6 @@ const styles = StyleSheet.create({
 
   menuDots: { fontSize: 24, fontWeight: '700', color: '#1A237E', paddingHorizontal: 6 },
 
-  // Submit Form Styles
   mainContent: { 
     padding: 20, 
     paddingBottom: 40,

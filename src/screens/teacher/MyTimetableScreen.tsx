@@ -8,7 +8,6 @@ import { timetableService } from '../../services/timetableService';
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
-// ✅ Full 7 Periods for 1st Shift (08:00 AM to 01:15 PM)
 const DEFAULT_PERIODS_1ST = [
   { id: 1, period_number: 1, time: '08:00 AM - 08:45 AM' },
   { id: 2, period_number: 2, time: '08:45 AM - 09:30 AM' },
@@ -19,7 +18,6 @@ const DEFAULT_PERIODS_1ST = [
   { id: 7, period_number: 7, time: '12:30 PM - 01:15 PM' },
 ];
 
-// ✅ Full 7 Periods for 2nd Shift (01:00 PM to 06:15 PM)
 const DEFAULT_PERIODS_2ND = [
   { id: 1, period_number: 1, time: '01:00 PM - 01:45 PM' },
   { id: 2, period_number: 2, time: '01:45 PM - 02:30 PM' },
@@ -30,7 +28,7 @@ const DEFAULT_PERIODS_2ND = [
   { id: 7, period_number: 7, time: '05:30 PM - 06:15 PM' },
 ];
 
-// ✅ HELPER: 24-hour ko 12-hour (AM/PM) mein convert kare
+
 const formatTime12Hour = (time24: string): string => {
   if (!time24) return '';
   
@@ -149,11 +147,9 @@ export default function MyTimetableScreen({ onBack }: any) {
     else onBack();
   };
 
-  // ✅ Base periods (Dynamic from DB config ya complete 7-period fallback)
   const fallbackPeriods = selectedShift === '2nd Shift' ? DEFAULT_PERIODS_2ND : DEFAULT_PERIODS_1ST;
   const basePeriods = dynamicPeriods.length > 0 ? dynamicPeriods : fallbackPeriods;
 
-  // Agar koi lecture aisa ho jiska period_number base list mein na ho, usay bhi include karein
   const extraPeriods: any[] = [];
   myLectures.forEach(lec => {
     const pNum = Number(lec.period_number);
@@ -255,8 +251,6 @@ export default function MyTimetableScreen({ onBack }: any) {
                 <View style={styles.colTiming}><Text style={styles.tableTh}>Timing</Text></View>
                 <View style={styles.colLectures}><Text style={styles.tableTh}>Lectures</Text></View>
               </View>
-
-              {/* ✅ Yahan currentPeriods use ho rahe hain jo shift ke hisaab se change honge */}
               {currentPeriods.map(p => {
                 const pNum = p.period_number || p.id;
                 const lecture = getLecture(pNum);

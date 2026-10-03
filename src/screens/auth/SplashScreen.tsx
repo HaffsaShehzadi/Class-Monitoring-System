@@ -14,7 +14,7 @@ export default function SplashScreen() {
   const activeDotIndex = useRef(0);
 
   useEffect(() => {
-    // Logo animation
+
     Animated.parallel([
       Animated.timing(logoOpacity, {
         toValue: 1,
@@ -29,7 +29,6 @@ export default function SplashScreen() {
       }),
     ]).start();
 
-    // Text animation
     Animated.timing(textOpacity, {
       toValue: 1,
       duration: 600,
@@ -37,7 +36,6 @@ export default function SplashScreen() {
       useNativeDriver: true,
     }).start();
 
-    // Dots animation loop
     const interval = setInterval(() => {
       const nextIndex = (activeDotIndex.current + 1) % 3;
       dotAnims.forEach((anim, index) => {
@@ -69,7 +67,6 @@ export default function SplashScreen() {
         />
       </Animated.View>
 
-      {/* App Name */}
       <Animated.Text
         style={[
           styles.appName,
@@ -79,7 +76,6 @@ export default function SplashScreen() {
         Class Monitoring System
       </Animated.Text>
 
-      {/* Animated Dots */}
       <View style={styles.dotsContainer}>
         {dotAnims.map((anim, index) => (
           <Animated.View
@@ -95,7 +91,6 @@ export default function SplashScreen() {
         ))}
       </View>
 
-      {/* Loading Text */}
       <Text style={styles.loadingText}>Loading...</Text>
     </View>
   );

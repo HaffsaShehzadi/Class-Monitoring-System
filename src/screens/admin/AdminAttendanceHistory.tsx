@@ -104,7 +104,6 @@ export default function AdminAttendanceHistory({ onBack }: any) {
   const formatRoom = (room: any) => room ? (String(room).startsWith('R#') ? String(room) : `R#${String(room).replace(/^R#?/i, '')}`) : '';
   const uniqueDaysCount = new Set(filteredData.map((r: any) => r.date)).size;
 
-  // ✅ YEH HAI WO SMART HANDLE DOWNLOAD FUNCTION JO DONO MODES KE LIYE KAAM KAREGA
   const handleDownload = async () => {
     try {
       if (filteredData.length === 0) {
@@ -119,7 +118,6 @@ export default function AdminAttendanceHistory({ onBack }: any) {
       let url = '';
       let fileName = '';
 
-      // Check karein ke Admin ne kaunsa mode select kiya hai
       if (viewMode === 'department') {
         if (!selectedDeptId) {
           Alert.alert('Error', 'Department ID is missing');
@@ -158,7 +156,6 @@ export default function AdminAttendanceHistory({ onBack }: any) {
 
       const fileUri = (FileSystem as any).documentDirectory + fileName;
 
-      // Backend se PDF download karein
       const result = await FileSystem.downloadAsync(url, fileUri, {
         headers: { 'Authorization': `Bearer ${token}` }
       });

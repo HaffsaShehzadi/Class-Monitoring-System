@@ -7,7 +7,6 @@ import { sessionService, AcademicSession } from '../../services/sessionService';
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
-// ✅ Convert 24-hour (13:00) to 12-hour (1:00 PM) for Display
 const formatTime12Hour = (timeStr: string): string => {
   if (!timeStr || !timeStr.includes(' - ')) return timeStr || 'N/A';
   const [start, end] = timeStr.split(' - ');
@@ -28,7 +27,6 @@ const formatTime12Hour = (timeStr: string): string => {
   return `${formatSingle(start)} - ${formatSingle(end)}`;
 };
 
-// ✅ Convert 12-hour input (1:00 PM) to 24-hour (13:00) for Backend
 const convertTo24Hour = (time12: string): string => {
   if (!time12) return '00:00';
   const clean = time12.trim().toUpperCase();
@@ -48,7 +46,6 @@ const convertTo24Hour = (time12: string): string => {
   return `${String(hours).padStart(2, '0')}:${minutes}`;
 };
 
-// ✅ Convert 24-hour (13:00) to 12-hour (1:00 PM) for Input Field
 const convertTo12Hour = (time24: string): string => {
   if (!time24) return '00:00';
   const parts = time24.split(':');
@@ -281,13 +278,11 @@ export default function TimetableManagementScreen({ onBack, onNavigate, params }
     });
   };
 
-  // ✅ FIXED: Edit karte waqt 24-hour ko 12-hour mein convert kar ke dikhayein
   const handleEditPeriod = (period: any) => {
     setEditingPeriod(period);
     if (period.time && period.time.includes(' - ')) {
     const [start, end] = period.time.split(' - ');
-       // ✅ Direct backend se jo 12-hour format aa raha hai, wahi input mein dalein
-       // Koi conversion nahi karni!
+
        setPeriodStartTime(start.trim());
        setPeriodEndTime(end.trim());
       } else {
@@ -297,7 +292,6 @@ export default function TimetableManagementScreen({ onBack, onNavigate, params }
     setShowPeriodModal(true);
   };
 
-  // ✅ FIXED: Save karte waqt 12-hour ko 24-hour mein convert kar ke backend ko bhejein
   const handleSavePeriod = async () => {
     if (!periodStartTime.trim() || !periodEndTime.trim()) {
       Alert.alert('Error', 'Please fill both start and end time');
@@ -342,7 +336,6 @@ export default function TimetableManagementScreen({ onBack, onNavigate, params }
     setShowPeriodModal(true);
   };
 
-  // ✅ FIXED: Create karte waqt bhi 12-hour ko 24-hour mein convert kar ke bhejein
   const handleCreatePeriod = async () => {
     if (!periodStartTime.trim() || !periodEndTime.trim()) {
       Alert.alert('Error', 'Please fill both start and end time');
@@ -533,7 +526,6 @@ export default function TimetableManagementScreen({ onBack, onNavigate, params }
           )}
         </ScrollView>
 
-        {/* Modal: Create Session */}
         <Modal 
           visible={showCreateSessionModal} 
           transparent 
@@ -776,7 +768,6 @@ export default function TimetableManagementScreen({ onBack, onNavigate, params }
               <TouchableOpacity onPress={() => setShowPeriodModal(false)}><Text style={styles.modalCloseIcon}>✕</Text></TouchableOpacity>
             </View>
             
-            {/* ✅ Placeholders "00:00" aur labels clean kar diye gaye hain */}
             <Text style={styles.inputLabel}>Start Time</Text>
             <TextInput style={styles.periodInput} placeholder="00:00" placeholderTextColor="#999" value={periodStartTime} onChangeText={setPeriodStartTime} />
             

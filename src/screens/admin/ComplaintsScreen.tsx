@@ -24,7 +24,6 @@ export default function ComplaintsScreen({ onBack }: any) {
     }, 1500);
   };
 
-  // ✅ Screen load hone par data fetch karein
   useEffect(() => {
     fetchComplaints();
   }, []);
@@ -61,7 +60,6 @@ export default function ComplaintsScreen({ onBack }: any) {
     return `${d.getFullYear()}-${month}-${day}`;
   };
 
-  // ✅ UPDATED: Backend API call ke sath
   const handleResolve = async (id: number) => {
     Alert.alert('Resolve Complaint', 'Are you sure you want to mark this as resolved?', [
       { text: 'Cancel', style: 'cancel' },
@@ -81,7 +79,6 @@ export default function ComplaintsScreen({ onBack }: any) {
     ]);
   };
 
-  // ✅ UPDATED: Backend API call ke sath
   const handleReject = async (id: number) => {
     Alert.alert('Reject Complaint', 'Are you sure you want to reject this complaint?', [
       { text: 'Cancel', style: 'cancel' },
@@ -102,9 +99,6 @@ export default function ComplaintsScreen({ onBack }: any) {
     ]);
   };
 
-  // ==========================================
-  // DETAIL VIEW (Full Screen)
-  // ==========================================
   if (viewingComplaint) {
     const item = complaints.find((c: any) => c.id === viewingComplaint.id) || viewingComplaint;
 
@@ -164,9 +158,6 @@ export default function ComplaintsScreen({ onBack }: any) {
     );
   }
 
-  // ==========================================
-  // LIST VIEW (Pending / History)
-  // ==========================================
   return (
     <SafeAreaView edges={['bottom']} style={styles.container}>
       <View style={styles.header}>
@@ -254,7 +245,6 @@ export default function ComplaintsScreen({ onBack }: any) {
   );
 }
 
-// ✅ STYLES: Bilkul same jaise aapke original code mein the (Zero UI changes)
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F5F5' },
   header: { 

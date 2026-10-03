@@ -2,7 +2,7 @@ import { detectBackend } from './ipConfig';
 import { tokenStorage } from './tokenStorage';
 
 export const userService = {
-  // Admin: Saare users ki list fetch karna
+
   getAllUsers: async () => {
     const BACKEND_URL = await detectBackend();
     const token = await tokenStorage.getToken();
@@ -22,7 +22,6 @@ export const userService = {
     return data;
   },
 
-  // Admin: User ko delete karna
   deleteUser: async (id: number) => {
     const BACKEND_URL = await detectBackend();
     const token = await tokenStorage.getToken();

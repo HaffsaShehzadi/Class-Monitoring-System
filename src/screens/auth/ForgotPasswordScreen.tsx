@@ -17,12 +17,12 @@ export default function ForgotPasswordScreen({ onBack, onSent }: { onBack: () =>
   // Step 1: Send OTP
   const handleSendOtp = async () => {
     if (!email) {
-      Alert.alert('⚠️ Email Required', 'Please enter your registered email address');
+      Alert.alert(' Email Required', 'Please enter your registered email address');
       return;
     }
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      Alert.alert('⚠️ Invalid Email', 'Please enter a valid email address');
+      Alert.alert(' Invalid Email', 'Please enter a valid email address');
       return;
     }
 
@@ -31,10 +31,10 @@ export default function ForgotPasswordScreen({ onBack, onSent }: { onBack: () =>
       await authService.forgotPassword(email);
       setLoading(false);
       setStep('otp');
-      Alert.alert('✅ OTP Sent!', `A 4-digit OTP has been sent to:\n\n${email}`);
+      Alert.alert(' OTP Sent!', `A 4-digit OTP has been sent to:\n\n${email}`);
     } catch (error: any) {
       setLoading(false);
-      Alert.alert('❌ Error', error?.message || 'Failed to send OTP');
+      Alert.alert(' Error', error?.message || 'Failed to send OTP');
     }
   };
 
@@ -58,7 +58,7 @@ export default function ForgotPasswordScreen({ onBack, onSent }: { onBack: () =>
   const handleVerifyOtp = () => {
     const enteredOtp = otp.join('');
     if (enteredOtp.length !== 4) {
-      Alert.alert('⚠️ Invalid Code', 'Please enter the 4-digit OTP');
+      Alert.alert(' Invalid Code', 'Please enter the 4-digit OTP');
       return;
     }
     setStep('password');
@@ -67,15 +67,15 @@ export default function ForgotPasswordScreen({ onBack, onSent }: { onBack: () =>
   // Step 3: Reset Password
   const handleResetPassword = async () => {
     if (!newPassword || !confirmPassword) {
-      Alert.alert('⚠️ Fields Required', 'Please enter and confirm your new password');
+      Alert.alert(' Fields Required', 'Please enter and confirm your new password');
       return;
     }
     if (newPassword.length < 6) {
-      Alert.alert('⚠️ Weak Password', 'Password must be at least 6 characters');
+      Alert.alert(' Weak Password', 'Password must be at least 6 characters');
       return;
     }
     if (newPassword !== confirmPassword) {
-      Alert.alert('⚠️ Mismatch', 'Passwords do not match');
+      Alert.alert(' Mismatch', 'Passwords do not match');
       return;
     }
 
@@ -86,13 +86,13 @@ export default function ForgotPasswordScreen({ onBack, onSent }: { onBack: () =>
       
       setLoading(false);
       Alert.alert(
-        '✅ Success!', 
+        ' Success!', 
         'Your password has been reset successfully.',
-        [{ text: 'OK', onPress: onSent }] // onSent will navigate to Login
+        [{ text: 'OK', onPress: onSent }] 
       );
     } catch (error: any) {
       setLoading(false);
-      Alert.alert('❌ Error', error?.message || 'Failed to reset password');
+      Alert.alert(' Error', error?.message || 'Failed to reset password');
     }
   };
 

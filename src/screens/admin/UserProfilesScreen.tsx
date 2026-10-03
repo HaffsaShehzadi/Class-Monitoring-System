@@ -1,11 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, Modal, Animated, ActivityIndicator, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { userService } from '../../services/userService'; // ✅ NEW IMPORT
+import { userService } from '../../services/userService'; 
 
 export default function UserProfilesScreen({ onBack }: any) {
-  const [users, setUsers] = useState<any[]>([]); // ✅ Real data state
-  const [loading, setLoading] = useState(true); // ✅ Loading state
+  const [users, setUsers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true); 
   const [searchQuery, setSearchQuery] = useState('');
   const [filterRole, setFilterRole] = useState('All');
   const [selectedUser, setSelectedUser] = useState<any>(null);
@@ -15,7 +15,6 @@ export default function UserProfilesScreen({ onBack }: any) {
   const toastAnim = useRef(new Animated.Value(0)).current;
   const toastTimer = useRef<any>(null);
 
-  // ✅ Screen load hone par real data fetch karein
   useEffect(() => {
     fetchUsers();
   }, []);
@@ -47,7 +46,6 @@ export default function UserProfilesScreen({ onBack }: any) {
     return matchesSearch && matchesRole;
   });
 
-  // ✅ UPDATED: Backend API call ke sath
   const handleDeleteUser = (id: number, name: string) => {
     Alert.alert(
       'Remove User',
@@ -60,7 +58,7 @@ export default function UserProfilesScreen({ onBack }: any) {
           onPress: async () => {
             try {
               await userService.deleteUser(id);
-              setUsers(prev => prev.filter(u => u.id !== id)); // Local state update for smooth UI
+              setUsers(prev => prev.filter(u => u.id !== id));
               showToast(`${name} removed successfully`, 'error');
             } catch (error: any) {
               Alert.alert('Error', error.message || 'Failed to remove user');
@@ -91,7 +89,7 @@ export default function UserProfilesScreen({ onBack }: any) {
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
-        {/* Search Bar */}
+     
         <View style={styles.searchContainer}>
           <TextInput
             style={styles.searchInput}
@@ -107,7 +105,6 @@ export default function UserProfilesScreen({ onBack }: any) {
           )}
         </View>
 
-        {/* Filter Tabs */}
         <View style={styles.filterRow}>
           {['All', 'Teacher', 'Monitoring Official'].map(role => (
             <TouchableOpacity
@@ -171,7 +168,6 @@ export default function UserProfilesScreen({ onBack }: any) {
         )}
       </ScrollView>
 
-      {/* View Profile Modal */}
       <Modal visible={viewModalVisible} transparent animationType="fade">
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
@@ -254,7 +250,6 @@ export default function UserProfilesScreen({ onBack }: any) {
   );
 }
 
-// ✅ STYLES: Bilkul same jaise aapke original code mein the (Zero UI changes)
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F5F5F5' },
   header: { 

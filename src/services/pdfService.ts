@@ -4,13 +4,13 @@ import { Alert } from 'react-native';
 
 export const generateAndSharePDF = async (htmlContent: string, fileName: string) => {
   try {
-    // 1. HTML ko PDF mein convert karein
+
     const { uri } = await Print.printToFileAsync({ 
       html: htmlContent,
       base64: false 
     });
 
-    // 2. PDF ko share/save karne ka option dein
+    
     if (await Sharing.isAvailableAsync()) {
       await Sharing.shareAsync(uri, { 
         mimeType: 'application/pdf', 
@@ -25,7 +25,6 @@ export const generateAndSharePDF = async (htmlContent: string, fileName: string)
   }
 };
 
-// Helper function jo data ko HTML Table mein badalta hai
 export const createAttendanceHTML = (title: string, records: any[], userName: string) => {
   const rows = records.map((record: any) => `
     <tr>

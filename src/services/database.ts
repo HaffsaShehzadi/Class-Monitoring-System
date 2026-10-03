@@ -2,7 +2,6 @@ import * as SQLite from 'expo-sqlite';
 
 const DB_NAME = 'attendance.db';
 
-// ✅ SINGLE shared connection (NPE error fix)
 let dbPromise: Promise<SQLite.SQLiteDatabase> | null = null;
 
 export const getDB = async (): Promise<SQLite.SQLiteDatabase> => {

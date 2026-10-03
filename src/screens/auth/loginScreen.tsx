@@ -221,7 +221,6 @@ export default function LoginScreen({
         <View style={{ width: 24 }} />
       </View>
 
-      {/* ✅ KEYBOARD AVOIDING VIEW ADDED */}
       <KeyboardAvoidingView 
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
@@ -312,7 +311,7 @@ export default function LoginScreen({
 }
 
 const styles = StyleSheet.create({
-  // Web 2-Column Split Styles (Smart Desk Style)
+
   webContainer: {
     flex: 1,
     flexDirection: 'row',

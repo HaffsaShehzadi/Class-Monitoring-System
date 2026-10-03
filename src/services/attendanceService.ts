@@ -34,15 +34,12 @@ export const attendanceService = {
     }
     return data;
   },
-
-  // ✅ FIXED: Explicitly calls /my-history which relies ONLY on the JWT token
-    // ✅ FIXED: Ab yeh sahi endpoint call karega
+  
   getMyHistory: async (startDate: string, endDate: string) => {
     const BACKEND_URL = await detectBackend();
     const token = await tokenStorage.getToken();
-    const user = await tokenStorage.getUser(); // ✅ User info nikalo
-    
-    // ✅ Agar teacher hai toh apni ID use kare
+    const user = await tokenStorage.getUser();  
+   
     if (user && user.role === 'teacher') {
       const response = await fetch(
         `${BACKEND_URL}/api/reports/teacher/${user.id}?startDate=${startDate}&endDate=${endDate}`,
@@ -57,7 +54,6 @@ export const attendanceService = {
       return data;
     }
     
-    // ✅ Fallback for other roles
     throw new Error('Invalid user role');
   },
 
@@ -87,7 +83,7 @@ export const attendanceService = {
       const data = await response.json();
       return Array.isArray(data) ? data : (data.data || []);
     } catch (e: any) {
-      console.warn('⚠️ getTodayAttendance error:', e.message);
+      console.warn(' getTodayAttendance error:', e.message);
       return [];
     }
   }

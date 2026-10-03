@@ -1,7 +1,7 @@
 import { getDB } from './database';
 
 export interface AttendanceRecord {
-  timetable_id: number;  // ✅ NEW - backend sync ke liye zaroori
+  timetable_id: number; 
   teacher_name: string;
   date: string;
   period: number;
@@ -19,7 +19,7 @@ export const saveOfflineAttendance = async (record: AttendanceRecord): Promise<n
      (timetable_id, teacher_name, date, period, status, substitute, latitude, longitude, marked_at, synced)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`,
     [
-      record.timetable_id,  // ✅ NEW
+      record.timetable_id,
       record.teacher_name,
       record.date,
       record.period,

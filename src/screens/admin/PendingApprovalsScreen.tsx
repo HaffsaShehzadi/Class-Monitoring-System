@@ -56,7 +56,6 @@ export default function PendingApprovalsScreen({ onBack }: PendingApprovalsScree
     }, 1500);
   };
 
-  // Pending user ko Approve karna
   const handleApprove = (id: number, name: string) => {
     Alert.alert('Confirm Approval', `Are you sure you want to approve ${name}?`, [
       { text: 'Cancel', style: 'cancel' },
@@ -75,7 +74,6 @@ export default function PendingApprovalsScreen({ onBack }: PendingApprovalsScree
     ]);
   };
 
-  // Pending user ko Reject karna
   const handleReject = (id: number, name: string) => {
     Alert.alert('Reject Request', `Are you sure you want to reject ${name}'s request?`, [
       { text: 'Cancel', style: 'cancel' },
@@ -95,7 +93,6 @@ export default function PendingApprovalsScreen({ onBack }: PendingApprovalsScree
     ]);
   };
 
-  // Rejected user ko Re-Approve karna
   const handleApproveRejected = (id: number, name: string) => {
     const doApprove = async () => {
       try {
@@ -119,7 +116,6 @@ export default function PendingApprovalsScreen({ onBack }: PendingApprovalsScree
     }
   };
 
-  // Rejected user ko System se Permanently Delete karna
   const handleDeleteRejected = (id: number, name: string) => {
     const doDelete = async () => {
       try {
@@ -185,7 +181,6 @@ export default function PendingApprovalsScreen({ onBack }: PendingApprovalsScree
         )}
       </View>
 
-      {/* Three dots dropdown menu */}
       {showMenu && (
         <View style={styles.menuOverlay}>
           <TouchableWithoutFeedback onPress={() => setShowMenu(false)}>
@@ -207,10 +202,8 @@ export default function PendingApprovalsScreen({ onBack }: PendingApprovalsScree
         </View>
       )}
 
-      {/* Main Content */}
       <ScrollView contentContainerStyle={styles.list} keyboardShouldPersistTaps="handled">
         {currentView === 'pending' ? (
-          // ==================== PENDING USERS VIEW ====================
           loading ? (
             <View style={styles.emptyContainer}>
               <ActivityIndicator size="large" color="#1A237E" />
@@ -254,7 +247,6 @@ export default function PendingApprovalsScreen({ onBack }: PendingApprovalsScree
             ))
           )
         ) : (
-          // ==================== REJECTED USERS VIEW ====================
           loadingRejected ? (
             <View style={styles.emptyContainer}>
               <ActivityIndicator size="large" color="#1A237E" />
@@ -283,7 +275,6 @@ export default function PendingApprovalsScreen({ onBack }: PendingApprovalsScree
                   )}
                 </View>
                 
-                {/* 2 Buttons: Approve aur Delete */}
                 <View style={styles.actions}>
                   <TouchableOpacity 
                     style={[styles.btn, styles.approve]} 
@@ -306,7 +297,6 @@ export default function PendingApprovalsScreen({ onBack }: PendingApprovalsScree
         )}
       </ScrollView>
 
-      {/* Toast Notification */}
       {toast && (
         <View style={styles.toastOverlay} pointerEvents="none">
           <Animated.View 

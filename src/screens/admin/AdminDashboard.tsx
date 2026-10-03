@@ -72,7 +72,6 @@ export default function AdminDashboard({ onNavigate, onLogout, onToggleSidebar, 
 
       <ScrollView contentContainerStyle={styles.content}>
         
-        {/* ✅ FIXED: Stats Cards (Dono cards ab bilkul simple aur same hain) */}
         <View style={styles.statsContainer}>
           <View style={styles.statCard}>
             <Text style={styles.statValue}>{stats.total_teachers || 0}</Text>
@@ -84,7 +83,6 @@ export default function AdminDashboard({ onNavigate, onLogout, onToggleSidebar, 
           </View>
         </View>
 
-        {/* Menu Items */}
         {menuItems.map(item => (
           <TouchableOpacity 
             key={item.id} 
@@ -128,7 +126,6 @@ const styles = StyleSheet.create({
   logoutText: { color: '#1A237E', fontWeight: '700', fontSize: 14 },
   content: { padding: 15, paddingBottom: 30 },
 
-  // Stats Cards Styles
   statsContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -158,7 +155,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 
-  // Menu Styles
   menuCard: {
     backgroundColor: '#FFF', borderRadius: 12, padding: 18, marginBottom: 12,
     flexDirection: 'row', alignItems: 'center', elevation: 2,
