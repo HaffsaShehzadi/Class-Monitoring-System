@@ -231,23 +231,22 @@ export default function App() {
 
   useEffect(() => {
     initDatabase().then(async (db) => {
+      if (!db) return;
       try {
         await db.execAsync(`
           ALTER TABLE offline_attendance ADD COLUMN timetable_id INTEGER DEFAULT 0;
         `);
-        console.log('✅ Added timetable_id column');
       } catch (e) {
-        console.log('✅ Database schema ready');
+        // Database schema already has column
       }
-      console.log('✅ SQLite Database initialized');
     }).catch(err => {
-      console.log('⚠️ SQLite init warning:', err?.message || err);
+      console.log('SQLite init warning:', err?.message || err);
     });
 
     try {
       startAutoSync();
     } catch (syncErr: any) {
-      console.log('⚠️ Sync service error:', syncErr?.message || syncErr);
+      console.log('Sync service error:', syncErr?.message || syncErr);
     }
   }, []);
 
@@ -256,7 +255,14 @@ export default function App() {
 
     const backAction = () => {
       if (screen === 'splash' || screen === 'signin') {
-        BackHandler.exitApp();
+        Alert.alert(
+          'Exit Application',
+          'Are you sure you want to exit?',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Exit', onPress: () => BackHandler.exitApp() }
+          ]
+        );
         return true;
       }
       

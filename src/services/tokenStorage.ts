@@ -5,23 +5,45 @@ const USER_KEY = '@auth_user';
 
 export const tokenStorage = {
   saveToken: async (token: string) => {
-    await AsyncStorage.setItem(TOKEN_KEY, token);
+    try {
+      await AsyncStorage.setItem(TOKEN_KEY, token);
+    } catch (e) {
+      console.error('Error saving token:', e);
+    }
   },
 
   getToken: async (): Promise<string | null> => {
-    return await AsyncStorage.getItem(TOKEN_KEY);
+    try {
+      return await AsyncStorage.getItem(TOKEN_KEY);
+    } catch (e) {
+      console.error('Error reading token:', e);
+      return null;
+    }
   },
 
   saveUser: async (user: any) => {
-    await AsyncStorage.setItem(USER_KEY, JSON.stringify(user));
+    try {
+      await AsyncStorage.setItem(USER_KEY, JSON.stringify(user));
+    } catch (e) {
+      console.error('Error saving user:', e);
+    }
   },
 
   getUser: async (): Promise<any | null> => {
-    const data = await AsyncStorage.getItem(USER_KEY);
-    return data ? JSON.parse(data) : null;
+    try {
+      const data = await AsyncStorage.getItem(USER_KEY);
+      return data ? JSON.parse(data) : null;
+    } catch (e) {
+      console.error('Error parsing stored user:', e);
+      return null;
+    }
   },
 
   clearAll: async () => {
-    await AsyncStorage.multiRemove([TOKEN_KEY, USER_KEY]);
+    try {
+      await AsyncStorage.multiRemove([TOKEN_KEY, USER_KEY]);
+    } catch (e) {
+      console.error('Error clearing storage:', e);
+    }
   },
 };
