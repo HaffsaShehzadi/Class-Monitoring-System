@@ -266,6 +266,8 @@ export default function TimetableManagementScreen({ onBack, onNavigate, params }
     return timetable.find(c => c.dept === dept && c.sem === sem && c.day === selectedDay && c.period === periodId && c.shift === selectedShift);
   };
 
+  const formatRoom = (room: any) => room ? (String(room).startsWith('R#') ? String(room) : `R#${String(room).replace(/^R#?/i, '')}`) : '';
+
   const handleCellPress = (dept: string, sem: string, periodId: number, existingClass: any) => {
     onNavigate('addClassInTimetable', {
       mode: existingClass ? 'edit' : 'add',
@@ -734,7 +736,7 @@ export default function TimetableManagementScreen({ onBack, onNavigate, params }
                           <View style={styles.cellContent}>
                             <Text style={styles.cellTeacher} numberOfLines={1}>{cls.teacher}</Text>
                             <Text style={styles.cellCode} numberOfLines={1}>{cls.code}</Text>
-                            <Text style={styles.cellRoom}>{cls.room}</Text>
+                            <Text style={styles.cellRoom}>{formatRoom(cls.room)}</Text>
                           </View>
                         ) : (
                           <Text style={styles.cellPlusIcon}>+</Text>

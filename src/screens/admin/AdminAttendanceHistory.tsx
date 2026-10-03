@@ -101,7 +101,7 @@ export default function AdminAttendanceHistory({ onBack }: any) {
     return d.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
   };
 
-  const formatRoom = (room: string) => `R#${room.replace('R', '')}`;
+  const formatRoom = (room: any) => room ? (String(room).startsWith('R#') ? String(room) : `R#${String(room).replace(/^R#?/i, '')}`) : '';
   const uniqueDaysCount = new Set(filteredData.map((r: any) => r.date)).size;
 
   // ✅ YEH HAI WO SMART HANDLE DOWNLOAD FUNCTION JO DONO MODES KE LIYE KAAM KAREGA
@@ -191,18 +191,17 @@ export default function AdminAttendanceHistory({ onBack }: any) {
       );
     }
     if (record.status === 'Absent' || record.status === 'absent') {
-      if (record.substitute) {
-        return (
-          <View style={[styles.statusPill, { backgroundColor: '#E3F2FD' }]}>
-            <MaterialCommunityIcons name="account-switch" size={14} color="#2196F3" />
-            <Text style={[styles.statusPillText, { color: '#2196F3' }]} numberOfLines={2}>Sub: {record.substitute}</Text>
-          </View>
-        );
-      }
       return (
-        <View style={[styles.statusPill, { backgroundColor: '#FFEBEE' }]}>
-          <MaterialCommunityIcons name="close-circle" size={14} color="#F44336" />
-          <Text style={[styles.statusPillText, { color: '#F44336' }]}>Absent</Text>
+        <View style={{ alignItems: 'center' }}>
+          <View style={[styles.statusPill, { backgroundColor: '#FFEBEE' }]}>
+            <MaterialCommunityIcons name="close-circle" size={14} color="#F44336" />
+            <Text style={[styles.statusPillText, { color: '#F44336' }]}>Absent</Text>
+          </View>
+          {record.substitute ? (
+            <Text style={[styles.substituteText, { fontSize: 10, marginTop: 3 }]}>
+              → {record.substitute}
+            </Text>
+          ) : null}
         </View>
       );
     }

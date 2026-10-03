@@ -157,25 +157,24 @@ export default function TeacherAttendanceHistory({ onBack }: any) {
       );
     }
     if (status === 'absent') {
-      if (record.substitute || record.substitute_teacher_name) {
-        return (
-          <View style={[styles.statusPill, { backgroundColor: '#E3F2FD' }]}>
-            <Text style={[styles.statusPillText, { color: '#2196F3' }]} numberOfLines={2}>
-              Sub: {record.substitute || record.substitute_teacher_name}
-            </Text>
-          </View>
-        );
-      }
+      const subName = record.substitute || record.substitute_teacher_name;
       return (
-        <View style={[styles.statusPill, { backgroundColor: '#FFEBEE' }]}>
-          <Text style={[styles.statusPillText, { color: '#F44336' }]}>Absent</Text>
+        <View style={{ alignItems: 'center' }}>
+          <View style={[styles.statusPill, { backgroundColor: '#FFEBEE' }]}>
+            <Text style={[styles.statusPillText, { color: '#F44336' }]}>Absent</Text>
+          </View>
+          {subName ? (
+            <Text style={{ fontSize: 10, color: '#1976D2', marginTop: 3, fontWeight: '700', textAlign: 'center' }}>
+              → {subName}
+            </Text>
+          ) : null}
         </View>
       );
     }
     return null;
   };
 
-  const formatRoom = (room: string) => room ? `R#${room.replace('R', '')}` : 'N/A';
+  const formatRoom = (room: any) => room ? (String(room).startsWith('R#') ? String(room) : `R#${String(room).replace(/^R#?/i, '')}`) : 'N/A';
 
   const handleSearch = async () => {
     if (!selectedShift) {
